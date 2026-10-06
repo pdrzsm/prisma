@@ -27,11 +27,11 @@ faz parte de cada mudança: antes de contribuir, leia
 
 ## Papéis
 
-| Papel       | Visualiza registros | Registra e atualiza | Grava qualquer coisa |
-|-------------|:-------------------:|:-------------------:|:--------------------:|
-| `operador`  | sim                 | sim                 | conforme as policies |
-| `consultor` | sim                 | não                 | **nunca**            |
-| `admin`     | sim                 | sim                 | conforme as policies |
+| Papel       | Visualiza registros | Registra e atualiza | Configurações (instituições e setores) | Grava qualquer coisa |
+|-------------|:-------------------:|:-------------------:|:--------------------------------------:|:--------------------:|
+| `operador`  | sim                 | sim                 | não                                    | conforme as policies |
+| `consultor` | sim                 | não                 | não                                    | **nunca**            |
+| `admin`     | sim                 | sim                 | sim                                    | conforme as policies |
 
 Toda alteração fica na auditoria, e ninguém apaga um registro clínico. Detalhes
 em [docs/seguranca.md](docs/seguranca.md#permissões).

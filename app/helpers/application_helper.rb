@@ -8,8 +8,14 @@ module ApplicationHelper
   # --- Botões e campos -------------------------------------------------------
   # Uso: class: ApplicationHelper::BOTAO_PRIMARIO. Para mudar o tamanho, some
   # classes ("#{ApplicationHelper::CAMPO} h-12") em vez de copiar a lista.
-  BOTAO_PRIMARIO = "inline-flex items-center justify-center px-5 py-2.5 bg-marca-600 hover:bg-marca-700 text-white font-semibold text-sm rounded-lg shadow-sm cursor-pointer transition"
-  BOTAO_SECUNDARIO = "inline-flex items-center justify-center px-5 py-2.5 border border-marca-300 bg-white hover:bg-marca-50 text-slate-700 font-semibold text-sm rounded-lg cursor-pointer transition"
+  #
+  # Os botões têm as três faces do prisma (cores e cortes em botoes.css); o
+  # recuo maior à direita (pr-16, a largura das faces) deixa o texto fora delas.
+  BOTAO = "botao-prisma inline-flex items-center justify-center py-2.5 pl-5 pr-16 text-sm font-semibold cursor-pointer"
+  BOTAO_PRIMARIO = "#{BOTAO} shadow-sm".freeze
+  BOTAO_SECUNDARIO = "#{BOTAO} botao-prisma-secundario".freeze
+  # Ação que apaga algo (ex.: excluir um setor): só nas telas de edição
+  BOTAO_PERIGO = "#{BOTAO} botao-prisma-perigo".freeze
   CAMPO = "block w-full rounded-lg border border-marca-300 bg-white px-3 py-2 text-sm focus:border-marca-500 focus:outline-none focus:ring-2 focus:ring-marca-200 aria-invalid:border-rose-400"
 
   # --- Menu lateral (shared/_menu) -------------------------------------------

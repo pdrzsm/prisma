@@ -146,6 +146,32 @@ sistema, o contorno aparece pronto, sem a luz.
   legível. No celular, as faces somem e o símbolo com o nome vai para cima do
   formulário.
 
+## Botões
+
+Os botões também têm as três faces: no lado direito, duas diagonais sobem do
+pé do botão até o canto superior direito, onde as três faces se encontram,
+como no login e na barra lateral. As faces ficam embaixo das diagonais: a mais
+longa abre a face do meio e a mais curta, a face clara; o resto é a face
+principal, com o texto. Cantos retos.
+
+| Constante | Face principal | Faces do canto | Uso |
+| --- | --- | --- | --- |
+| `BOTAO_PRIMARIO` | `marca-700`, texto branco | `marca-500` e `marca-300` | a ação principal da tela |
+| `BOTAO_SECUNDARIO` | branco, com borda | `marca-300` e `marca-200` | cancelar, buscar, ações de apoio |
+| `BOTAO_PERIGO` | branco, texto rosa | rosa | excluir, só na tela de edição |
+
+O desenho está em [botoes.css](../app/assets/stylesheets/botoes.css): só
+fundo, com degradês de parada seca, para valer igual em `<a>`, `<button>` e
+`<input type="submit">` (que não aceita `::before`). O recuo à direita
+(`pr-16`) é a largura das faces: não dê largura fixa a um botão, ou o texto
+pode não caber antes delas. Cada variação troca só as
+três cores (`--face-principal`, `--face-meio`, `--face-clara`).
+
+Nas telas de edição, o Excluir fica na ponta direita da linha do Salvar. Um
+formulário não pode ficar dentro de outro, então o botão fica na linha mas
+envia um formulário de exclusão separado e escondido, pelo atributo `form`
+(`<button form="excluir_setor">`), sem JavaScript.
+
 ## Avisos
 
 Os avisos do sistema (o `flash` do Rails: "Notificação registrada.", "Você
@@ -188,8 +214,11 @@ layout para todas as telas:
   aparece na tela: compare sem diferenciar maiúsculas
   (`text: /\Aformulários\z/i`).
 - Botões e campos usam as constantes `ApplicationHelper::BOTAO_PRIMARIO`,
-  `BOTAO_SECUNDARIO` e `CAMPO`. Ajuste o tamanho somando classes
-  (`"#{ApplicationHelper::CAMPO} h-12"`), sem copiar a lista.
+  `BOTAO_SECUNDARIO`, `BOTAO_PERIGO` e `CAMPO`. Ajuste o tamanho somando
+  classes (`"#{ApplicationHelper::CAMPO} h-12"`), sem copiar a lista, e sem
+  somar uma classe que brigue com uma da constante (ex.: `py-0` com o
+  `py-2.5` dos botões): quem ganha é a ordem do CSS do Tailwind, não a do
+  atributo.
 - Nada de `style="..."` nem `<style>` na página: a CSP bloqueia. Valores fora
   da escala do Tailwind vão como classe arbitrária
   (`[clip-path:polygon(...)]`) ou em

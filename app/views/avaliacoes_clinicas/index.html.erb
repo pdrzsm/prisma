@@ -9,7 +9,7 @@
                            placeholder: "Prontuário SAH ou AGHUSE",
                            class: "#{ApplicationHelper::CAMPO} h-12 sm:w-92 placeholder:text-slate-500" %>
     <div class="flex items-center gap-4">
-      <%= busca.submit "Buscar", name: nil, class: "#{ApplicationHelper::BOTAO_SECUNDARIO} h-12 w-28" %>
+      <%= busca.submit "Buscar", name: nil, class: "#{ApplicationHelper::BOTAO_SECUNDARIO} h-12" %>
       <% if params[:prontuario].present? %>
         <%= link_to "Limpar", formulario_avaliacoes_clinicas_path(@formulario), class: "text-sm text-slate-600 hover:text-slate-900 hover:underline" %>
       <% end %>

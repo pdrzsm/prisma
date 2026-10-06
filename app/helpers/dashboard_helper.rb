@@ -3,7 +3,7 @@ module DashboardHelper
   O_QUE_O_PAPEL_PODE = {
     "operador" => "consulta, registra e atualiza notificações",
     "consultor" => "consulta tudo, sem registrar nem alterar nada",
-    "admin" => "consulta, registra e atualiza notificações"
+    "admin" => "consulta, registra e atualiza notificações e cuida das configurações (instituições e setores)"
   }.freeze
 
   # Duração em minutos, para os textos sobre login e sessão

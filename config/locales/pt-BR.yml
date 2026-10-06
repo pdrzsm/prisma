@@ -17,10 +17,25 @@ pt-BR:
       avaliacao_clinica:
         formulario: Formulário
         dados_formulario: Respostas
+      instituicao:
+        nome: Nome
+        sigla: Sigla
+        setores: setores
+      setor:
+        nome: Nome
+        instituicao: Instituição
+    models:
+      instituicao:
+        one: Instituição
+        other: Instituições
+      setor:
+        one: Setor
+        other: Setores
     errors:
       messages:
+        # Sem gênero: serve para "setores" e para "avaliações clínicas"
         restrict_dependent_destroy:
-          has_many: Não é possível excluir porque existem %{record} vinculadas
+          has_many: Não é possível excluir enquanto houver %{record}
       models:
         # Mesmo texto das perguntas do formulário ("é obrigatória")
         paciente:
@@ -37,6 +52,7 @@ pt-BR:
       confirmation: não confere com %{attribute}
       inclusion: não está na lista de opções
       invalid: tem um valor inválido
+      required: precisa existir
       taken: já está em uso
       too_long:
         one: deve ter no máximo 1 caractere

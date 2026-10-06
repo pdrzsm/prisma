@@ -12,8 +12,12 @@
 
 # Plural em português dos models (o Rails pluraliza em inglês por padrão).
 # Mantém tabela, rotas, associações e form_with com o mesmo nome.
+# Plurais em português que o Rails não sabe fazer sozinho (ele faria
+# "instituicaos" e "setors"): valem para tabelas, rotas e associações.
 ActiveSupport::Inflector.inflections(:en) do |inflect|
   inflect.irregular "avaliacao_clinica", "avaliacoes_clinicas"
+  inflect.irregular "instituicao", "instituicoes"
+  inflect.irregular "setor", "setores"
 end
 
 # These inflection rules are supported but not enabled by default:

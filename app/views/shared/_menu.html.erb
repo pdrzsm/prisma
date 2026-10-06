@@ -16,5 +16,9 @@
         <% end %>
       </ul>
     </li>
+    <%# Só o admin vê (ConfiguracaoPolicy); a URL também é barrada para os outros %>
+    <% if policy(Instituicao).index? %>
+      <li><%= item_do_menu "Configurações", configuracoes_instituicoes_path, ativo: controller_path.start_with?("configuracoes/") %></li>
+    <% end %>
   </ul>
 </nav>

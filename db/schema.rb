@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_06_163322) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_07_120000) do
   create_table "avaliacoes_clinicas", charset: "utf8mb4", collation: "utf8mb4_general_ci", force: :cascade do |t|
     t.bigint "paciente_id", null: false
     t.bigint "user_id", null: false
@@ -25,6 +25,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_06_163322) do
     t.check_constraint "json_valid(`dados_formulario`)", name: "dados_formulario"
   end
 
+  create_table "instituicoes", charset: "utf8mb4", collation: "utf8mb4_general_ci", force: :cascade do |t|
+    t.string "nome", limit: 150, null: false
+    t.string "sigla", limit: 20
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["nome"], name: "index_instituicoes_on_nome", unique: true
+    t.index ["sigla"], name: "index_instituicoes_on_sigla", unique: true
+  end
+
   create_table "pacientes", charset: "utf8mb4", collation: "utf8mb4_general_ci", force: :cascade do |t|
     t.string "prontuario_sah"
     t.string "prontuario_aghuse"
@@ -33,6 +42,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_06_163322) do
     t.string "iniciais", limit: 510, null: false
     t.index ["prontuario_aghuse"], name: "index_pacientes_on_prontuario_aghuse", unique: true
     t.index ["prontuario_sah"], name: "index_pacientes_on_prontuario_sah", unique: true
+  end
+
+  create_table "setores", charset: "utf8mb4", collation: "utf8mb4_general_ci", force: :cascade do |t|
+    t.bigint "instituicao_id", null: false
+    t.string "nome", limit: 150, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["instituicao_id", "nome"], name: "index_setores_on_instituicao_id_and_nome", unique: true
   end
 
   create_table "users", charset: "utf8mb4", collation: "utf8mb4_general_ci", force: :cascade do |t|
@@ -61,4 +78,5 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_06_163322) do
 
   add_foreign_key "avaliacoes_clinicas", "pacientes"
   add_foreign_key "avaliacoes_clinicas", "users"
+  add_foreign_key "setores", "instituicoes"
 end

@@ -32,6 +32,7 @@ definir a base legal (art. 11) com o seu encarregado (DPO).
 | Registrar notificação | ✅ | ❌ | ✅ |
 | Editar notificação (seguimento mês a mês) | ✅ | ❌ | ✅ |
 | Excluir notificação | ❌ | ❌ | ❌ |
+| Configurações: cadastrar, editar e excluir instituições e setores | ❌ | ❌ | ✅ |
 | Qualquer escrita (POST, PATCH, PUT, DELETE) | conforme a policy | ❌ sempre | conforme a policy |
 
 Como isso é garantido:
@@ -51,8 +52,12 @@ Como isso é garantido:
   `deny_writes_for_consultor` barra qualquer requisição que não seja GET ou HEAD
   vinda de um consultor, independente das policies. A exceção é o logout, que é
   do Devise.
-- **Rotas mínimas.** Cada recurso declara `only:` com as actions que existem.
-  Sem rota, o Rails não renderiza uma view órfã.
+- **Configurações só para o admin.** A `ConfiguracaoPolicy` (base de
+  `InstituicaoPolicy` e `SetorPolicy`) libera só o papel `admin`. O menu nem
+  aparece para os outros papéis, mas a proteção é no servidor: a URL digitada
+  à mão também é barrada.
+- **Rotas mínimas.** Cada recurso declara `only:` ou `except:` com as actions
+  que existem. Sem rota, o Rails não renderiza uma view órfã.
 
 ## Controles implementados
 

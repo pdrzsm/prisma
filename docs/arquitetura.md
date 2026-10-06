@@ -19,12 +19,14 @@ app/
     dashboard_controller.rb            "Visão geral"
     formularios_controller.rb          "Formulários": formulários disponíveis
     avaliacoes_clinicas_controller.rb  registros de um formulário (lista, ver, criar, editar)
+    configuracoes/                     "Configurações", só admin: instituições e setores
     users/sessions_controller.rb       login com limite por IP
   models/
     formulario.rb                      motor de formulários: lê, normaliza e valida
     avaliacao_clinica.rb               um formulário preenchido (respostas cifradas)
     paciente.rb                        identificação mínima do paciente
     user.rb                            usuários do sistema e papéis
+    instituicao.rb, setor.rb           organização: instituições e os seus setores
   policies/                            regras de permissão (Pundit)
   views/avaliacoes_clinicas/           telas geradas a partir da definição do formulário
   views/shared/                        barra lateral, menu, topo, logo e avisos
@@ -73,6 +75,8 @@ pergunta anterior é conferida quando o YAML é carregado.
 
 ```
 User 1 ── * AvaliacaoClinica * ── 1 Paciente
+
+Instituicao 1 ── * Setor
 ```
 
 - **User**: conta de quem usa o sistema. O `role` é `operador`, `consultor` ou
@@ -84,8 +88,14 @@ User 1 ── * AvaliacaoClinica * ── 1 Paciente
   definição ele segue, `dados_formulario` guarda as respostas (JSON cifrado),
   `user` é quem registrou e `lock_version` impede que edições simultâneas se
   sobrescrevam.
+- **Instituicao** e **Setor**: a organização, cadastrada pelo admin em
+  Configurações. Nome único (a sigla da instituição também), sem diferenciar
+  maiúsculas; o nome de um setor só não repete dentro da mesma instituição.
+  Instituição com setores não é excluída. Por enquanto não se ligam a pessoas,
+  formulários nem pacientes: isso é a próxima fase, com liberação explícita
+  em cada nível (instituição, setor e formulário).
 - **PaperTrail::Version** (tabela `versions`): histórico de criação e alteração
-  dos três modelos acima, com o autor.
+  dos modelos acima, com o autor.
 
 ## Rotas
 
@@ -97,7 +107,17 @@ POST  /formularios/:formulario/avaliacoes           registrar
 GET   /formularios/:formulario/avaliacoes/:id       ver
 GET   /formularios/:formulario/avaliacoes/:id/edit  editar
 PATCH /formularios/:formulario/avaliacoes/:id       salvar edição
+
+GET    /configuracoes/instituicoes                                 instituições e setores (só admin)
+GET    /configuracoes/instituicoes/new                             nova instituição
+GET    /configuracoes/instituicoes/:id/edit                        editar (e excluir) instituição
+GET    /configuracoes/instituicoes/:instituicao_id/setores/new     novo setor
+GET    /configuracoes/instituicoes/:instituicao_id/setores/:id/edit  editar (e excluir) setor
 ```
+
+Instituições e setores também têm `POST`, `PATCH` e `DELETE` nas rotas
+correspondentes. Um setor é sempre buscado dentro da instituição da URL: o id
+de um setor de outra instituição dá 404.
 
 `:formulario` é o nome do arquivo YAML (ex.: `seguimento_tb`). Um formulário
 inexistente dá 404. Não há rota de exclusão.

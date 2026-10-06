@@ -1,0 +1,57 @@
+<% content_for :title, "Instituições e setores · Configurações · Prisma" %>
+<% trilha ["Configurações", configuracoes_instituicoes_path], ["Instituições e setores"] %>
+<h1 class="sr-only">Instituições e setores</h1>
+
+<div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+  <p class="max-w-2xl text-sm text-slate-600">
+    Só o admin vê esta área. Cadastre as instituições e, dentro de cada uma, os setores.
+  </p>
+  <%= link_to "Nova instituição", new_configuracoes_instituicao_path, class: "#{ApplicationHelper::BOTAO_PRIMARIO} h-12 sm:w-50" %>
+</div>
+
+<% if @instituicoes.empty? %>
+  <div class="rounded-xl border border-marca-200 bg-white p-8 text-center text-sm text-slate-600">
+    Nenhuma instituição cadastrada ainda.
+  </div>
+<% else %>
+  <div class="grid gap-6 xl:grid-cols-2">
+    <% @instituicoes.each do |instituicao| %>
+      <%# O id é a âncora para onde a tela volta depois de salvar %>
+      <article id="<%= dom_id(instituicao) %>" class="rounded-xl border border-marca-200 bg-white shadow-sm">
+        <header class="flex items-start justify-between gap-4 border-b border-marca-100 p-5">
+          <div class="min-w-0">
+            <h2 class="text-lg font-bold text-slate-900"><%= instituicao.nome %></h2>
+            <% if instituicao.sigla %>
+              <p class="text-xs font-semibold uppercase tracking-widest text-marca-700"><%= instituicao.sigla %></p>
+            <% end %>
+          </div>
+          <%= link_to "Editar", edit_configuracoes_instituicao_path(instituicao),
+                      class: "shrink-0 text-sm font-semibold text-marca-700 hover:underline",
+                      aria: { label: "Editar #{instituicao.nome}" } %>
+        </header>
+
+        <div class="p-5">
+          <h3 class="text-xs font-semibold uppercase tracking-widest text-slate-600">Setores</h3>
+          <% if instituicao.setores.any? %>
+            <ul class="mt-2 divide-y divide-marca-100">
+              <% instituicao.setores.each do |setor| %>
+                <li class="flex items-center justify-between gap-4 py-2 text-sm">
+                  <span class="min-w-0"><%= setor.nome %></span>
+                  <%= link_to "Editar", edit_configuracoes_instituicao_setor_path(instituicao, setor),
+                              class: "shrink-0 font-semibold text-marca-700 hover:underline",
+                              aria: { label: "Editar setor #{setor.nome}" } %>
+                </li>
+              <% end %>
+            </ul>
+          <% else %>
+            <p class="mt-2 text-sm text-slate-600">Nenhum setor ainda.</p>
+          <% end %>
+
+          <%= link_to "Novo setor", new_configuracoes_instituicao_setor_path(instituicao),
+                      class: "#{ApplicationHelper::BOTAO_SECUNDARIO} mt-4",
+                      aria: { label: "Novo setor em #{instituicao.nome}" } %>
+        </div>
+      </article>
+    <% end %>
+  </div>
+<% end %>

@@ -1,0 +1,7 @@
+ambulatorio:
+  instituicao: centro
+  nome: Ambulatório
+
+laboratorio:
+  instituicao: centro
+  nome: Laboratório

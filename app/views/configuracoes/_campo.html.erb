@@ -1,0 +1,17 @@
+<%# locals: (form:, atributo:, rotulo:, maximo:, ajuda: nil) %>
+<%# Um campo de texto das telas de Configurações, com a ajuda e os erros
+    ligados ao campo (aria-describedby): o leitor de tela lê junto. %>
+<% erros = form.object.errors[atributo] %>
+<% descricoes = [ (form.field_id(atributo, :ajuda) if ajuda), (form.field_id(atributo, :erros) if erros.any?) ].compact %>
+<div class="space-y-1">
+  <%= form.label atributo, rotulo, class: "block text-sm font-semibold text-slate-900" %>
+  <%= form.text_field atributo, maxlength: maximo, autocomplete: "off",
+                                class: "#{ApplicationHelper::CAMPO} sm:max-w-md",
+                                aria: { invalid: erros.any?, describedby: descricoes.join(" ").presence } %>
+  <% if ajuda %>
+    <p id="<%= form.field_id(atributo, :ajuda) %>" class="text-xs text-slate-600"><%= ajuda %></p>
+  <% end %>
+  <% if erros.any? %>
+    <p id="<%= form.field_id(atributo, :erros) %>" class="text-sm font-medium text-rose-600"><%= erros.to_sentence %></p>
+  <% end %>
+</div>

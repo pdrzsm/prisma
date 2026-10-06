@@ -1,0 +1,62 @@
+/*
+ * Botões com as três faces do prisma (ApplicationHelper::BOTAO_*): no lado
+ * direito, duas diagonais sobem do pé do botão até o canto superior direito,
+ * onde as três faces se encontram, como no login e na barra lateral. As
+ * faces ficam embaixo das diagonais: a mais longa abre a face do meio (64 px
+ * de largura no pé); a mais curta, a face clara (32 px). O resto é a face
+ * principal, com o texto.
+ *
+ * O corte em "to bottom right" passa exatamente pela diagonal da área do
+ * degradê (do canto inferior esquerdo ao superior direito), seja qual for a
+ * altura do botão. A transição de 1 px no corte evita a borda serrilhada.
+ *
+ * Só fundo, com degradês de parada seca: vale igual para <a>, <button> e
+ * <input type="submit">, que não aceita ::before. Cada variação só troca as
+ * três cores (--face-*). Cantos retos, como o cartão do login.
+ */
+.botao-prisma {
+  --face-principal: var(--color-marca-700);
+  --face-meio: var(--color-marca-500);
+  --face-clara: var(--color-marca-300);
+  background:
+    /* face clara: a diagonal curta, na quina */
+    linear-gradient(to bottom right, transparent calc(50% - 0.5px), var(--face-clara) calc(50% + 0.5px)) right / 32px 100% no-repeat,
+    /* face do meio: a diagonal longa */
+    linear-gradient(to bottom right, transparent calc(50% - 0.5px), var(--face-meio) calc(50% + 0.5px)) right / 64px 100% no-repeat,
+    var(--face-principal);
+  color: #fff;
+}
+.botao-prisma:hover {
+  --face-principal: var(--color-marca-800);
+}
+.botao-prisma:focus-visible {
+  outline: 2px solid var(--color-marca-700);
+  outline-offset: 2px;
+}
+
+/* Secundário: face principal branca, com borda; as do canto em tons claros */
+.botao-prisma-secundario {
+  --face-principal: #fff;
+  --face-meio: var(--color-marca-300);
+  --face-clara: var(--color-marca-200);
+  border: 1px solid var(--color-marca-300);
+  color: var(--color-slate-800, #1e293b);
+}
+.botao-prisma-secundario:hover {
+  --face-principal: var(--color-marca-50);
+}
+
+/* Perigo (excluir): branco com as faces do canto em rosa */
+.botao-prisma-perigo {
+  --face-principal: #fff;
+  --face-meio: #fda4af;  /* rose-300 */
+  --face-clara: #fecdd3; /* rose-200 */
+  border: 1px solid #fda4af;
+  color: #be123c;        /* rose-700 */
+}
+.botao-prisma-perigo:hover {
+  --face-principal: #fff1f2; /* rose-50 */
+}
+.botao-prisma-perigo:focus-visible {
+  outline-color: #be123c;
+}

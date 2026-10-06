@@ -19,12 +19,12 @@
     </div>
 
     <div class="flex items-center gap-3 shrink-0">
-      <p class="hidden sm:flex h-8 items-center gap-2 rounded-md border border-marca-300 bg-white px-3 text-sm">
+      <p class="hidden sm:flex h-8 items-center gap-2 border border-marca-300 bg-white px-3 text-sm">
         <span class="font-semibold text-slate-900">@<%= current_user.username %></span>
         <span class="text-xs font-semibold uppercase tracking-wide text-marca-700"><%= current_user.role %></span>
       </p>
       <%= button_to "Sair", destroy_user_session_path, method: :delete,
-                    class: "h-8 rounded-md border border-marca-300 bg-white px-5 text-sm font-semibold uppercase tracking-wide text-slate-700 hover:bg-marca-50 cursor-pointer transition" %>
+                    class: "botao-prisma botao-prisma-secundario inline-flex h-8 cursor-pointer items-center pl-4 pr-16 text-sm font-semibold uppercase tracking-wide" %>
     </div>
   </div>
 </header>
