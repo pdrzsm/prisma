@@ -55,6 +55,6 @@ pt-BR:
       timeout: Sua sessão expirou. Entre novamente para continuar.
       unauthenticated: Para continuar, entre no sistema.
     sessions:
-      signed_in: Login efetuado.
+      signed_in: Login efetuado com sucesso.
       signed_out: Você saiu do sistema.
       already_signed_out: Você saiu do sistema.

@@ -3,11 +3,11 @@
     <div class="flex items-start gap-3 min-w-0">
       <%# Celular: o menu da barra lateral recolhido num botão, sem JavaScript %>
       <details class="lg:hidden relative shrink-0">
-        <summary class="list-none [&::-webkit-details-marker]:hidden cursor-pointer rounded-md bg-marca-500 p-2 text-marca-100">
+        <%# aria-label: o leitor de tela anuncia "Abrir menu", e não o nome do logo %>
+        <summary aria-label="Abrir menu" class="list-none [&::-webkit-details-marker]:hidden cursor-pointer bg-marca-700 p-2 text-marca-100">
           <%= render "shared/logo", classe: "h-8 w-8" %>
-          <span class="sr-only">Abrir menu</span>
         </summary>
-        <div class="absolute left-0 z-20 mt-2 w-64 rounded-xl bg-marca-500 py-3 shadow-lg">
+        <div class="absolute left-0 z-20 mt-2 w-64 bg-marca-700 py-3 shadow-lg">
           <%= render "shared/menu" %>
         </div>
       </details>

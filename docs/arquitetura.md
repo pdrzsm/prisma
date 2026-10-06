@@ -27,7 +27,7 @@ app/
     user.rb                            usuários do sistema e papéis
   policies/                            regras de permissão (Pundit)
   views/avaliacoes_clinicas/           telas geradas a partir da definição do formulário
-  views/shared/                        barra lateral, menu, topo, logo e mensagens
+  views/shared/                        barra lateral, menu, topo, logo e avisos
 config/formularios/                    definição de cada formulário (YAML)
 lib/cpf.rb                             CPF dos usuários: normalização, validação e geração
 docs/                                  esta documentação

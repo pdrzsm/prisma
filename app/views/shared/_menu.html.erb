@@ -1,15 +1,16 @@
-<%# Menu do sistema: na barra lateral (desktop) e no menu recolhido (celular) %>
-<%# No desktop, 12px como no layout; no menu do celular, maior para o toque %>
-<nav aria-label="Seções do sistema" class="px-2 text-sm lg:text-xs uppercase tracking-wide">
+<%# Menu do sistema: na barra lateral (desktop) e no menu recolhido (celular).
+    No desktop, 12px como no layout; no menu do celular, maior para o toque.
+    Sem margens: o fundo do item da página atual vai de ponta a ponta. %>
+<nav aria-label="Seções do sistema" class="text-sm lg:text-xs uppercase tracking-wide">
   <ul class="space-y-1 lg:space-y-8">
     <li><%= item_do_menu "Visão geral", root_path, ativo: controller_name == "dashboard" %></li>
     <li>
       <%= item_do_menu "Formulários", formularios_path, ativo: controller_name == "formularios",
                        icone: "before:content-['›'] before:mr-2 before:text-base before:leading-none" %>
-      <ul class="mt-1 space-y-1 pl-4 lg:pl-3">
+      <ul class="mt-1 space-y-1">
         <% Formulario.todos.each do |formulario| %>
           <li>
-            <%= item_do_menu formulario.titulo, formulario_avaliacoes_clinicas_path(formulario),
+            <%= item_do_menu formulario.titulo, formulario_avaliacoes_clinicas_path(formulario), subitem: true,
                              ativo: controller_name == "avaliacoes_clinicas" && params[:formulario_id] == formulario.chave %>
           </li>
         <% end %>

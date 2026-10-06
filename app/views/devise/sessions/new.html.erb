@@ -1,8 +1,10 @@
 <% content_for :title, "Entrar · Prisma" %>
 
-<%# Entrada do sistema: a marca num painel próprio e o formulário sozinho do
-    outro lado. Em tela estreita o painel some e a marca vai para cima do
-    formulário. O nome aparece sempre com o desenho do logo (PRIƧM∀). %>
+<%# Entrada do sistema, com as três faces do prisma: a marca num painel
+    escuro de um lado e o formulário num cartão do outro, sobre o fundo claro
+    e a terceira face. Em tela estreita as faces somem e a marca vai para cima
+    do formulário. O nome aparece sempre com o desenho do logo (PRIƧM∀). Os
+    avisos (erro de login, "Você saiu do sistema.") vêm do layout. %>
 <div class="relative min-h-screen lg:grid lg:grid-cols-[2fr_3fr]">
   <%# Três tons, como as faces de um prisma: o painel escuro (marca-700), o
       fundo claro (marca-100) e uma terceira face (marca-300). Ela nasce de
@@ -60,12 +62,10 @@
         <p class="mt-1 text-sm text-slate-600">Use seu CPF ou nome de usuário.</p>
 
         <div class="mt-8">
-          <%= render "shared/flash" %>
-
           <%= form_for(resource, as: resource_name, url: session_path(resource_name), html: { class: "space-y-5" }) do |f| %>
             <div>
               <%= f.label :login, "CPF ou nome de usuário", class: "mb-1.5 block text-sm font-semibold text-slate-700" %>
-              <%= f.text_field :login, autofocus: true, autocomplete: "off", placeholder: "Infome seu CPF",
+              <%= f.text_field :login, autofocus: true, autocomplete: "off", placeholder: "Informe seu CPF",
                                        class: "#{ApplicationHelper::CAMPO} h-12 placeholder:text-slate-500" %>
             </div>
 

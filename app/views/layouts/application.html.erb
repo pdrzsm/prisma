@@ -23,7 +23,7 @@
   </head>
 
   <body class="min-h-screen bg-marca-100 font-sans text-slate-800 antialiased">
-    <%# As telas do Devise têm página inteira própria e mostram as mensagens no cartão %>
+    <%# As telas do Devise (login) têm página inteira própria %>
     <% if devise_controller? %>
       <%= yield %>
     <% else %>
@@ -32,11 +32,12 @@
         <div class="flex-1 min-w-0">
           <%= render "shared/topo" %>
           <main class="px-4 sm:px-8 lg:px-16 py-6 space-y-6">
-            <%= render "shared/flash" %>
             <%= yield %>
           </main>
         </div>
       </div>
     <% end %>
+
+    <%= render "shared/avisos" %>
   </body>
 </html>

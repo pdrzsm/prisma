@@ -1,0 +1,47 @@
+<%# Avisos do sistema (flash) em pop-ups discretos no alto da tela, com os três
+    tons do prisma, como no login: a face escura com o símbolo e o nome, a
+    clara com a mensagem e a do meio com o botão de fechar. Os cortes têm as
+    mesmas inclinações das quebras do login.
+
+    Sem JavaScript: cada aviso é um <dialog open>, e o botão de fechar é um
+    form method="dialog", que o próprio navegador fecha. O de sucesso some
+    sozinho depois de alguns segundos (avisos.css; pausa com o mouse em cima);
+    o de erro fica até a pessoa fechar. O ERB escapa a mensagem. %>
+<% avisos = { notice: notice, alert: alert }.compact_blank %>
+<% if avisos.any? %>
+  <%# No alto e ao centro: no canto direito cobririam o usuário e o botão Sair %>
+  <div class="pointer-events-none fixed inset-x-3 top-3 z-50 flex flex-col items-center gap-2 sm:top-4">
+    <% avisos.each do |tipo, mensagem| %>
+      <% erro = tipo == :alert %>
+      <dialog open aria-label="Aviso do Prisma"
+              class="aviso <%= erro ? "aviso-erro" : "aviso-ok" %> pointer-events-auto static m-0 w-full overflow-hidden border border-marca-400 bg-white p-0 text-slate-800 shadow-lg sm:w-auto sm:min-w-80 sm:max-w-md">
+        <div class="flex min-h-12 items-stretch">
+          <%# Face escura: símbolo e nome. A borda desce para a direita, como a primeira diagonal do login %>
+          <div class="flex shrink-0 items-center gap-2 bg-marca-700 py-2 pl-3 pr-6 text-marca-100 [clip-path:polygon(0_0,calc(100%-14px)_0,100%_100%,0_100%)]" aria-hidden="true">
+            <%= render "shared/logo", classe: "h-6 w-auto" %>
+            <%= render "shared/logo", versao: :nome, classe: "h-3 w-auto" %>
+          </div>
+
+          <%# Face clara: a mensagem %>
+          <p role="<%= erro ? "alert" : "status" %>" class="flex flex-1 items-center gap-2 py-2 pl-1 pr-3 text-sm">
+            <span class="font-semibold <%= erro ? "text-rose-700" : "text-emerald-700" %>" aria-hidden="true">»</span>
+            <span><%= mensagem %></span>
+          </p>
+
+          <%# Terceira face: fechar. A borda sobe para a direita, como a segunda quebra do login %>
+          <form method="dialog" class="flex shrink-0 bg-marca-300 pl-3 [clip-path:polygon(14px_0,100%_0,100%_100%,0_100%)]">
+            <button type="submit" aria-label="Fechar aviso"
+                    class="flex w-9 cursor-pointer items-center justify-center text-lg leading-none text-marca-800 transition hover:text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-marca-700">
+              <span aria-hidden="true">×</span>
+            </button>
+          </form>
+        </div>
+
+        <% unless erro %>
+          <%# Quanto falta para o aviso sumir %>
+          <span class="aviso-tempo block h-0.5 bg-marca-500" aria-hidden="true"></span>
+        <% end %>
+      </dialog>
+    <% end %>
+  </div>
+<% end %>
