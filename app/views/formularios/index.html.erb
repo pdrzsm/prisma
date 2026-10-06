@@ -1,0 +1,27 @@
+<% content_for :title, "Formulários · Prisma" %>
+
+<div>
+  <h1 class="text-2xl font-bold text-slate-900">Formulários</h1>
+  <p class="text-sm text-slate-600">Formulários clínicos disponíveis.</p>
+</div>
+
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+  <% @formularios.each do |formulario| %>
+    <% total = @totais.fetch(formulario.chave, 0) %>
+    <article class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col gap-4">
+      <div>
+        <h2 class="text-lg font-bold text-slate-900"><%= formulario.titulo %></h2>
+        <p class="text-sm text-slate-600 mt-1"><%= formulario.descricao %></p>
+      </div>
+      <p class="text-xs text-slate-500">
+        <%= formulario.perguntas.size %> perguntas · <%= pluralize(total, "registro", plural: "registros") %>
+      </p>
+      <div class="flex flex-wrap gap-3 mt-auto">
+        <% if policy(AvaliacaoClinica).create? %>
+          <%= link_to "Nova notificação", new_formulario_avaliacao_clinica_path(formulario), class: ApplicationHelper::BOTAO_PRIMARIO %>
+        <% end %>
+        <%= link_to "Ver registros", formulario_avaliacoes_clinicas_path(formulario), class: ApplicationHelper::BOTAO_SECUNDARIO %>
+      </div>
+    </article>
+  <% end %>
+</div>

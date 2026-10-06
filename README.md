@@ -1,7 +1,13 @@
 # Prisma
 
-Sistema web de código aberto para formulários de análises clínicas. O primeiro
-formulário em construção é a notificação de seguimento de tuberculose (TB).
+Sistema web de código aberto para formulários de análises clínicas. Cada
+formulário é descrito num arquivo YAML; o sistema gera a tela, valida as
+respostas, cifra os dados e registra quem alterou o quê.
+
+O primeiro formulário é o **seguimento de tuberculose (TB)**: 47 perguntas com
+os códigos do SINAN. A notificação é aberta no início do tratamento e
+atualizada mês a mês até o encerramento. Os formulários ficam na aba
+**Formulários** do painel.
 
 > **Estado:** desenvolvimento inicial. Ainda **não está pronto para produção**;
 > veja as [pendências conhecidas](docs/seguranca.md#pendências-conhecidas).
@@ -21,14 +27,14 @@ faz parte de cada mudança: antes de contribuir, leia
 
 ## Papéis
 
-| Papel       | Registra formulários | Visualiza registros | Grava qualquer coisa |
-|-------------|:--------------------:|:-------------------:|:--------------------:|
-| `operador`  | sim                  | sim                 | conforme as policies |
-| `consultor` | não                  | sim                 | **nunca**            |
-| `admin`     | sim                  | sim                 | conforme as policies |
+| Papel       | Visualiza registros | Registra e atualiza | Grava qualquer coisa |
+|-------------|:-------------------:|:-------------------:|:--------------------:|
+| `operador`  | sim                 | sim                 | conforme as policies |
+| `consultor` | sim                 | não                 | **nunca**            |
+| `admin`     | sim                 | sim                 | conforme as policies |
 
-Ninguém edita ou apaga um registro clínico. Detalhes em
-[docs/seguranca.md](docs/seguranca.md#permissões).
+Toda alteração fica na auditoria, e ninguém apaga um registro clínico. Detalhes
+em [docs/seguranca.md](docs/seguranca.md#permissões).
 
 ## Rodando em desenvolvimento
 
@@ -65,24 +71,27 @@ porque isso tira o acesso dos outros containers aos arquivos.
 
 ```bash
 docker compose exec web bin/rails db:test:prepare test
+docker compose exec web bin/rails test:system   # navegador de verdade (Chromium)
 docker compose exec web bin/brakeman
 docker compose exec web bin/bundler-audit
 docker compose exec web bin/rubocop
 ```
 
 Os testes usam um banco separado (`prisma_test`) e chaves de criptografia
-próprias, públicas e fictícias. Eles nunca tocam no banco de desenvolvimento. O
-CI ([.github/workflows/ci.yml](.github/workflows/ci.yml)) roda tudo isso a cada
-pull request.
+próprias, públicas e fictícias. Eles nunca tocam no banco de desenvolvimento.
+Os testes de navegador precisam do Chromium que vem na imagem de
+desenvolvimento: depois de atualizar o `Dockerfile`, rode `docker compose build`.
+O CI ([.github/workflows/ci.yml](.github/workflows/ci.yml)) roda tudo isso a
+cada pull request.
 
 ## Documentação
 
-- [docs/arquitetura.md](docs/arquitetura.md): organização do código, modelos e
-  convenções
+- [docs/arquitetura.md](docs/arquitetura.md): organização do código, motor de
+  formulários, modelos e convenções
 - [docs/seguranca.md](docs/seguranca.md): controles, permissões, chaves,
   checklist de produção e pendências
-- [docs/novo-formulario.md](docs/novo-formulario.md): passo a passo para
-  adicionar um formulário clínico com segurança
+- [docs/novo-formulario.md](docs/novo-formulario.md): como criar um formulário
+  clínico novo em YAML
 - [SECURITY.md](SECURITY.md): como relatar uma vulnerabilidade
 
 ## Contribuindo

@@ -1,38 +1,53 @@
+# Um formulário clínico preenchido. As respostas seguem a definição em
+# config/formularios/<formulario>.yml (ver Formulario) e ficam cifradas.
 class AvaliacaoClinica < ApplicationRecord
-  # Limites do JSON livre do formulário, até cada formulário ter seu próprio
-  # schema de campos (ver docs/novo-formulario.md)
-  NOME_DE_CAMPO = /\A[a-z0-9_]{1,64}\z/
-  MAXIMO_DE_CAMPOS = 300
-  MAXIMO_DE_BYTES = 64.kilobytes
-
   belongs_to :paciente
-  belongs_to :user # Quem registrou
+  belongs_to :user # Quem registrou; as alterações seguintes ficam na auditoria
   has_paper_trail
 
   # Respostas do formulário em JSON; o documento inteiro é criptografado
   serialize :dados_formulario, coder: JSON
   encrypts :dados_formulario
 
-  validates :dados_formulario, presence: true
-  validate :formato_dos_dados_formulario
+  validates :formulario, inclusion: { in: ->(_) { Formulario.chaves } }
+  before_validation :normalizar_respostas
+  validate :respostas_conforme_formulario
+
+  def definicao
+    Formulario.find(formulario)
+  end
+
+  def respostas
+    dados_formulario.is_a?(Hash) ? dados_formulario : {}
+  end
+
+  def encerrada?
+    definicao.encerrada?(respostas)
+  end
+
+  # Erros da última validação, por pergunta, para mostrar ao lado de cada uma
+  def erros_da_pergunta(chave)
+    @erros_por_pergunta.to_h.fetch(chave.to_s, [])
+  end
 
   private
 
-  def formato_dos_dados_formulario
-    return if dados_formulario.blank?
-    return errors.add(:dados_formulario, "deve ser um conjunto de campos") unless dados_formulario.is_a?(Hash)
-
-    errors.add(:dados_formulario, "tem campos demais") if dados_formulario.size > MAXIMO_DE_CAMPOS
-    errors.add(:dados_formulario, "é grande demais") if dados_formulario.to_json.bytesize > MAXIMO_DE_BYTES
-    errors.add(:dados_formulario, "tem nome de campo inválido") unless dados_formulario.keys.all? { |campo| campo.to_s.match?(NOME_DE_CAMPO) }
-    errors.add(:dados_formulario, "aceita só textos, números, booleanos ou listas deles") unless dados_formulario.values.all? { |valor| valor_simples?(valor) || lista_simples?(valor) }
+  def formulario_conhecido?
+    Formulario.chaves.include?(formulario)
   end
 
-  def valor_simples?(valor)
-    valor.nil? || valor.is_a?(String) || valor.is_a?(Numeric) || valor == true || valor == false
+  def normalizar_respostas
+    self.dados_formulario = definicao.normalizar(dados_formulario || {}) if formulario_conhecido?
   end
 
-  def lista_simples?(valor)
-    valor.is_a?(Array) && valor.all? { |item| valor_simples?(item) }
+  def respostas_conforme_formulario
+    return unless formulario_conhecido?
+
+    @erros_por_pergunta = definicao.validar(dados_formulario)
+    @erros_por_pergunta.each do |chave, mensagens|
+      pergunta = definicao.pergunta(chave)
+      prefixo = pergunta ? "#{pergunta.numero}. #{pergunta.texto}" : "Formulário"
+      mensagens.each { |mensagem| errors.add(:base, "#{prefixo}: #{mensagem}") }
+    end
   end
 end

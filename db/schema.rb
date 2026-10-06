@@ -10,30 +10,29 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_06_152025) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_06_163322) do
   create_table "avaliacoes_clinicas", charset: "utf8mb4", collation: "utf8mb4_general_ci", force: :cascade do |t|
     t.bigint "paciente_id", null: false
     t.bigint "user_id", null: false
     t.text "dados_formulario", size: :long, collation: "utf8mb4_bin"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "formulario", null: false
+    t.integer "lock_version", default: 0, null: false
+    t.index ["formulario", "updated_at"], name: "index_avaliacoes_clinicas_on_formulario_and_updated_at"
     t.index ["paciente_id"], name: "index_avaliacoes_clinicas_on_paciente_id"
     t.index ["user_id"], name: "index_avaliacoes_clinicas_on_user_id"
     t.check_constraint "json_valid(`dados_formulario`)", name: "dados_formulario"
   end
 
   create_table "pacientes", charset: "utf8mb4", collation: "utf8mb4_general_ci", force: :cascade do |t|
-    t.string "nome", limit: 510, null: false
-    t.string "cpf"
     t.string "prontuario_sah"
     t.string "prontuario_aghuse"
-    t.string "numero_sinan"
-    t.boolean "recebe_beneficio_social"
-    t.string "municipio_residencia"
-    t.string "numero_contatos", limit: 510
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["cpf"], name: "index_pacientes_on_cpf", unique: true
+    t.string "iniciais", limit: 510, null: false
+    t.index ["prontuario_aghuse"], name: "index_pacientes_on_prontuario_aghuse", unique: true
+    t.index ["prontuario_sah"], name: "index_pacientes_on_prontuario_sah", unique: true
   end
 
   create_table "users", charset: "utf8mb4", collation: "utf8mb4_general_ci", force: :cascade do |t|

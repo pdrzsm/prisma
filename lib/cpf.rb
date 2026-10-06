@@ -17,10 +17,11 @@ module Cpf
   end
 
   # CPF aleatório com dígitos verificadores válidos, para seeds e testes.
-  # Nunca versione CPFs reais.
+  # Nunca versione CPFs reais. SecureRandom, e não rand: o rand segue a
+  # semente fixa dos testes e repetiria CPFs entre fixtures e testes.
   def gerar
     loop do
-      cpf = Array.new(9) { rand(10) }.join.then { |base| base + digitos_verificadores(base) }
+      cpf = Array.new(9) { SecureRandom.random_number(10) }.join.then { |base| base + digitos_verificadores(base) }
       return cpf if valido?(cpf)
     end
   end

@@ -1,10 +1,20 @@
 /*
- * This is a manifest file that'll be compiled into application.css.
- *
- * With Propshaft, assets are served efficiently without preprocessing steps. You can still include
- * application-wide styles in this file, but keep in mind that CSS precedence will follow the standard
- * cascading order, meaning styles declared later in the document or manifest will override earlier ones,
- * depending on specificity.
- *
- * Consider organizing styles into separate files for maintainability.
+ * Estilos que o Tailwind (app/assets/tailwind) não cobre.
+ * Sem atributo style nem <style> nas views: a CSP só aceita CSS deste site.
  */
+
+/*
+ * Pergunta condicional dos formulários clínicos (ex.: a pergunta 10 do
+ * seguimento de TB só vale para forma clínica extrapulmonar). Ela fica logo
+ * depois da pergunta que a controla e só aparece quando uma opção marcada
+ * com data-revela está selecionada. Funciona sem JavaScript: :has() existe em
+ * todos os navegadores aceitos pelo allow_browser :modern. O servidor aplica a
+ * mesma regra (Formulario#condicao_atendida?) de qualquer forma.
+ */
+.pergunta-condicional {
+  display: none;
+}
+
+.pergunta:has(input[data-revela]:checked) + .pergunta-condicional {
+  display: block;
+}

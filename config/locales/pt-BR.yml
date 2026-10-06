@@ -1,0 +1,60 @@
+# Traduções usadas pela interface. O que faltar aqui cai no inglês
+# (config.i18n.fallbacks em config/application.rb).
+pt-BR:
+  activerecord:
+    attributes:
+      paciente:
+        iniciais: Iniciais
+        prontuario_sah: Prontuário SAH
+        prontuario_aghuse: Prontuário AGHUSE
+      user:
+        login: CPF ou nome de usuário
+        username: Nome de usuário
+        cpf: CPF
+        password: Senha
+        password_confirmation: Confirmação da senha
+        role: Papel
+      avaliacao_clinica:
+        formulario: Formulário
+        dados_formulario: Respostas
+    errors:
+      messages:
+        restrict_dependent_destroy:
+          has_many: Não é possível excluir porque existem %{record} vinculadas
+      models:
+        # Mesmo texto das perguntas do formulário ("é obrigatória")
+        paciente:
+          attributes:
+            iniciais:
+              blank: é obrigatória
+              too_long: deve ter no máximo %{count} letras
+
+  errors:
+    format: "%{attribute} %{message}"
+    # Frases sem gênero: servem para "senha" e "iniciais" tanto quanto para "CPF"
+    messages:
+      blank: não pode ficar em branco
+      confirmation: não confere com %{attribute}
+      inclusion: não está na lista de opções
+      invalid: tem um valor inválido
+      taken: já está em uso
+      too_long:
+        one: deve ter no máximo 1 caractere
+        other: deve ter no máximo %{count} caracteres
+      too_short:
+        one: deve ter pelo menos 1 caractere
+        other: deve ter pelo menos %{count} caracteres
+
+  devise:
+    failure:
+      already_authenticated: Você já entrou no sistema.
+      inactive: Sua conta ainda não está ativa.
+      invalid: Usuário, CPF ou senha inválidos.
+      locked: Sua conta está bloqueada.
+      not_found_in_database: Usuário, CPF ou senha inválidos.
+      timeout: Sua sessão expirou. Entre novamente para continuar.
+      unauthenticated: Para continuar, entre no sistema.
+    sessions:
+      signed_in: Login efetuado.
+      signed_out: Você saiu do sistema.
+      already_signed_out: Você saiu do sistema.

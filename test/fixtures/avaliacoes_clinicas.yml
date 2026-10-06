@@ -1,11 +1,27 @@
 # Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
 
+# Notificações de seguimento de TB com dados fictícios, só com a abertura
 one:
+  formulario: seguimento_tb
   paciente: one
   user: operador
   dados_formulario:
+    numero_sinan: "0000001"
+    gestante: "6"
+    populacoes_especiais: ["0"]
+    recebe_beneficio: "0"
+    municipio_residencia: Cidade Fictícia
+    forma_clinica: "1"
 
 two:
+  formulario: seguimento_tb
   paciente: two
   user: admin
   dados_formulario:
+    numero_sinan: "0000002"
+    gestante: "5"
+    populacoes_especiais: ["3"]
+    recebe_beneficio: "1"
+    municipio_residencia: Outra Cidade
+    forma_clinica: "2"
+    tb_extrapulmonar: ["1", "2"]

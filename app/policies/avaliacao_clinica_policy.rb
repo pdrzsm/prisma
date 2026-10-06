@@ -15,8 +15,13 @@ class AvaliacaoClinicaPolicy < ApplicationPolicy
     ESCRITA.include?(user.role)
   end
 
-  # update? e destroy? continuam negados (herdados): avaliação registrada não é
-  # alterada nem apagada, para preservar o histórico clínico
+  # O seguimento é atualizado ao longo do tratamento; cada alteração fica na
+  # auditoria (PaperTrail). edit? segue update? (ApplicationPolicy).
+  def update?
+    ESCRITA.include?(user.role)
+  end
+
+  # destroy? continua negado (herdado): registro clínico não é apagado
 
   class Scope < ApplicationPolicy::Scope
     def resolve

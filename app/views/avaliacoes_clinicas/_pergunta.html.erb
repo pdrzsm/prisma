@@ -1,0 +1,61 @@
+<%# locals: (formulario:, pergunta:, nome:, valor:, erros:) %>
+<%# Uma pergunta do formulário. As classes .pergunta e .pergunta-condicional
+    escondem/mostram a pergunta condicional só com CSS (application.css). %>
+<% id = "campo_#{pergunta.chave}" %>
+<% revela = formulario.condicional_seguinte(pergunta)&.condicao&.fetch("valores") || [] %>
+<div class="pergunta <%= "pergunta-condicional" if pergunta.condicao %> space-y-2">
+  <% if pergunta.tipo.in?(%w[unica multipla]) %>
+    <fieldset class="space-y-2">
+      <legend class="text-sm"><%= render "avaliacoes_clinicas/enunciado", pergunta: %></legend>
+      <% if pergunta.tipo == "multipla" %>
+        <p class="text-xs text-slate-500">Marque todas que se aplicam.</p>
+        <%# Garante a chave no envio mesmo sem nada marcado, para limpar a resposta %>
+        <%= hidden_field_tag "#{nome}[]", "", id: nil %>
+      <% end %>
+      <div class="grid gap-2 sm:grid-cols-2">
+        <% pergunta.opcoes.each do |opcao| %>
+          <% opcao_id = "#{id}_#{opcao.codigo}" %>
+          <label for="<%= opcao_id %>" class="flex items-start gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm cursor-pointer hover:border-indigo-300 has-checked:border-indigo-500 has-checked:bg-indigo-50">
+            <% if pergunta.tipo == "unica" %>
+              <%= radio_button_tag nome, opcao.codigo, valor == opcao.codigo, id: opcao_id, class: "mt-0.5",
+                                   data: ({ revela: true } if revela.include?(opcao.codigo)) %>
+            <% else %>
+              <%= check_box_tag "#{nome}[]", opcao.codigo, Array(valor).include?(opcao.codigo), id: opcao_id, class: "mt-0.5" %>
+            <% end %>
+            <span><%= opcao.rotulo %> <span class="text-slate-400">(<%= opcao.codigo %>)</span></span>
+          </label>
+        <% end %>
+        <%# Escolha única opcional precisa de um jeito de desmarcar %>
+        <% if pergunta.tipo == "unica" && pergunta.obrigatoria != "abertura" %>
+          <label for="<%= id %>_sem_resposta" class="flex items-start gap-2 rounded-lg border border-dashed border-slate-200 bg-white px-3 py-2 text-sm cursor-pointer hover:border-slate-300 has-checked:border-slate-400 has-checked:bg-slate-50">
+            <%= radio_button_tag nome, "", valor.nil?, id: "#{id}_sem_resposta", class: "mt-0.5" %>
+            <span class="text-slate-500">Sem resposta</span>
+          </label>
+        <% end %>
+      </div>
+    </fieldset>
+  <% else %>
+    <label for="<%= id %>" class="block text-sm"><%= render "avaliacoes_clinicas/enunciado", pergunta: %></label>
+    <% atributos = { id:, class: "#{ApplicationHelper::CAMPO} sm:max-w-md", aria: { invalid: erros.any? } } %>
+    <% case pergunta.tipo %>
+    <% when "numero" %>
+      <%= number_field_tag nome, valor, min: pergunta.minimo, max: pergunta.maximo, step: 1, inputmode: "numeric", autocomplete: "off", **atributos %>
+    <% when "data" %>
+      <%= date_field_tag nome, valor, max: Date.current.iso8601, **atributos %>
+    <% else %>
+      <% if pergunta.maximo >= 200 %>
+        <%# Texto longo (ex.: motivo da mudança de esquema): várias linhas na tela %>
+        <%= text_area_tag nome, valor, rows: 3, maxlength: pergunta.maximo, autocomplete: "off", **atributos %>
+      <% else %>
+        <%= text_field_tag nome, valor, maxlength: pergunta.maximo, autocomplete: "off", **atributos %>
+      <% end %>
+    <% end %>
+  <% end %>
+
+  <% if pergunta.ajuda %>
+    <p class="text-xs text-slate-500"><%= pergunta.ajuda %></p>
+  <% end %>
+  <% erros.each do |erro| %>
+    <p class="text-sm font-medium text-rose-600"><%= erro %></p>
+  <% end %>
+</div>

@@ -1,7 +1,8 @@
 class DashboardController < ApplicationController
   def index
     authorize :dashboard
-    # Ainda não lista registros; ao listar, troque por policy_scope(...)
-    skip_policy_scope
+    registros = policy_scope(AvaliacaoClinica)
+    @total = registros.count
+    @registrados_hoje = registros.where(created_at: Time.current.all_day).count
   end
 end

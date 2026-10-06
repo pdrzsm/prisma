@@ -8,13 +8,16 @@ e para quem implanta o sistema.
 
 | Dado | Onde | Como fica no banco |
 |------|------|--------------------|
-| CPF, prontuários SAH e AGHUse, número SINAN do paciente | `pacientes` | Cifrado, determinístico (permite busca exata) |
-| Nome e telefones do paciente | `pacientes` | Cifrado |
-| Município de residência, recebe benefício social | `pacientes` | Texto puro (permite agrupar em estatísticas) |
-| Respostas do formulário clínico | `avaliacoes_clinicas.dados_formulario` | Cifrado (o JSON inteiro) |
+| Prontuários SAH e AGHUSE do paciente | `pacientes` | Cifrado, determinístico (permite busca exata) |
+| Iniciais do nome do paciente | `pacientes` | Cifrado |
+| Respostas do formulário: número SINAN, município, benefício, exames, desfecho, contatos etc. | `avaliacoes_clinicas.dados_formulario` | Cifrado (o JSON inteiro) |
 | CPF do usuário do sistema | `users` | Cifrado, determinístico (usado no login) |
 | Senha do usuário | `users` | Hash bcrypt (nunca reversível) |
 | Histórico de alterações | `versions` (PaperTrail) | Campos cifrados continuam cifrados |
+
+O Prisma **não guarda nome completo nem CPF de paciente**: como no formulário
+em papel, a identificação é feita por prontuário e iniciais (minimização,
+LGPD art. 6º, III).
 
 Dados de saúde são dados pessoais sensíveis (LGPD, art. 5º, II). Cada
 instituição que implanta o Prisma é a controladora desses dados e precisa
@@ -24,10 +27,11 @@ definir a base legal (art. 11) com o seu encarregado (DPO).
 
 | Ação | operador | consultor | admin |
 |------|:--------:|:---------:|:-----:|
-| Ver o painel | ✅ | ✅ | ✅ |
-| Registrar avaliação | ✅ | ❌ | ✅ |
-| Visualizar avaliações (todas) | ✅ | ✅ | ✅ |
-| Editar ou excluir avaliação | ❌ | ❌ | ❌ |
+| Ver o painel e a aba Formulários | ✅ | ✅ | ✅ |
+| Listar e visualizar registros (todos) | ✅ | ✅ | ✅ |
+| Registrar notificação | ✅ | ❌ | ✅ |
+| Editar notificação (seguimento mês a mês) | ✅ | ❌ | ✅ |
+| Excluir notificação | ❌ | ❌ | ❌ |
 | Qualquer escrita (POST, PATCH, PUT, DELETE) | conforme a policy | ❌ sempre | conforme a policy |
 
 Como isso é garantido:
@@ -69,8 +73,9 @@ Como isso é garantido:
 ### Criptografia (Active Record Encryption)
 
 - Campos sensíveis são cifrados antes de ir para o banco (tabela acima).
-- O modo determinístico só é usado onde é preciso buscar por igualdade (CPF,
-  prontuários, SINAN). Os demais campos usam o modo padrão, mais forte.
+- O modo determinístico só é usado onde é preciso buscar por igualdade
+  (prontuários do paciente, CPF do usuário). Os demais campos usam o modo
+  padrão, mais forte.
 - Colunas cifradas têm 510 caracteres, porque o texto cifrado ocupa bem mais
   que o original. Os models limitam o tamanho do valor original para caber.
 
@@ -78,8 +83,9 @@ Como isso é garantido:
 
 [config/initializers/filter_parameter_logging.rb](../config/initializers/filter_parameter_logging.rb)
 esconde os objetos `paciente` e `avaliacao_clinica` inteiros, além de CPF,
-login, senha, nome, prontuário e município. **Cada formulário novo precisa
-acrescentar ali a sua chave raiz.** Os testes conferem isso com
+login, senha, iniciais, prontuário e município. Todos os formulários de
+`config/formularios` enviam as respostas dentro de `avaliacao_clinica`, então
+um formulário novo já nasce coberto. Os testes conferem isso com
 `request.filtered_parameters`.
 
 ### Auditoria (PaperTrail)
@@ -93,16 +99,24 @@ acrescentar ali a sua chave raiz.** Os testes conferem isso com
 
 ### Integridade dos registros clínicos
 
-- Registrar uma avaliação **nunca altera o cadastro** de um paciente que já
-  existe; ela só é vinculada a ele. O paciente é localizado pelo CPF ou, sem
-  CPF, pelo prontuário SAH. Se os dois apontarem para pacientes diferentes, o
-  registro é recusado.
-- CPF tem pontuação removida e dígitos verificadores conferidos. Um índice
-  único no banco impede paciente duplicado.
-- Paciente com avaliações não pode ser apagado, e nada é apagado em cascata.
-  A Lei 13.787/2018 prevê guarda mínima de 20 anos do prontuário.
-- O JSON do formulário aceita só campos simples (texto, número, booleano, nulo
-  ou listas deles), com no máximo 300 campos e 64 KB.
+- Registrar uma notificação **nunca altera a identificação** de um paciente que
+  já existe; ela só é vinculada a ele. O paciente é localizado pelo prontuário
+  SAH ou AGHUSE. Para um prontuário digitado errado não pôr a notificação no
+  paciente errado, o registro é recusado quando:
+  - os dois prontuários apontam para pacientes diferentes;
+  - um dos prontuários não confere com o cadastro;
+  - as iniciais não conferem com as do cadastro.
+- Um índice único impede dois pacientes com o mesmo prontuário.
+- As respostas seguem a definição do formulário (`config/formularios/*.yml`):
+  só perguntas declaradas, só códigos de opção existentes, textos e números
+  dentro dos limites, datas válidas e não futuras. Qualquer outra chave é
+  recusada, no controller (strong params) e no model.
+- Toda edição fica na auditoria com autor e horário. Se duas pessoas editam a
+  mesma notificação ao mesmo tempo, a segunda é avisada do conflito em vez de
+  apagar a alteração da primeira (bloqueio otimista, `lock_version`).
+- Paciente com notificações não pode ser apagado, notificação não tem exclusão,
+  e nada é apagado em cascata. A Lei 13.787/2018 prevê guarda mínima de 20 anos
+  do prontuário.
 
 ### Navegador
 
@@ -119,8 +133,11 @@ acrescentar ali a sua chave raiz.** Os testes conferem isso com
   só os domínios de `APP_HOSTS` são aceitos.
 - No `docker-compose.yml`, o banco e o servidor de desenvolvimento só escutam
   em `127.0.0.1`.
-- O CI roda Brakeman, bundler-audit, RuboCop e os testes, contra MariaDB, com
-  token do GitHub somente leitura.
+- O CI roda Brakeman, bundler-audit, RuboCop, os testes e os testes de
+  navegador, contra MariaDB, com token do GitHub somente leitura. Os controles
+  desta página têm testes próprios (`test/integration/seguranca_test.rb`,
+  `autenticacao_test.rb` e os de permissão), e um deles ficar quebrado
+  derruba o CI.
 - O Dependabot atualiza gems e actions.
 
 ## Valores configuráveis
@@ -131,7 +148,8 @@ acrescentar ali a sua chave raiz.** Os testes conferem isso com
 | Tentativas até bloquear / tempo de bloqueio | 5 / 15 min | `devise.rb` (`maximum_attempts`, `unlock_in`) |
 | Tentativas de login por IP | 20 a cada 3 min | `app/controllers/users/sessions_controller.rb` |
 | Sessão ociosa | 30 min | `devise.rb` (`timeout_in`) |
-| Limites do JSON do formulário | 300 campos, 64 KB | `app/models/avaliacao_clinica.rb` |
+| Perguntas, opções, obrigatoriedade e limites de cada formulário | por pergunta | `config/formularios/*.yml` |
+| Fuso horário | America/Sao_Paulo | variável `PRISMA_FUSO_HORARIO` |
 
 Ao mexer nesses valores, considere os efeitos colaterais:
 
@@ -185,21 +203,19 @@ Em ordem aproximada de prioridade:
 1. **Dockerfile de produção.** O `Dockerfile` atual é só de desenvolvimento:
    roda como root e não instala gems nem compila assets na imagem. O deploy com
    Kamal (`config/deploy.yml`) ainda não funciona.
-2. **Tela do formulário de TB.** O `avaliacoes_clinicas/new.html.erb` ainda é
-   um placeholder.
-3. **Schema por formulário.** Hoje `dados_formulario` aceita qualquer campo
-   dentro dos limites. Cada formulário deve declarar seus campos, tipos e
-   respostas válidas ([novo-formulario.md](novo-formulario.md)).
-4. **Telas de consulta** (`index`/`show`) com `policy_scope` e `authorize`, e
-   **auditoria de leitura** (quem visualizou qual paciente).
-5. **Gestão de usuários pela interface.** Hoje as contas são criadas pelo
+2. **Auditoria de leitura.** A auditoria registra criação e edição, mas não
+   quem visualizou qual notificação. Agora que existem lista e visualização,
+   esse é o próximo passo para a LGPD.
+3. **Correção da identificação do paciente.** A edição de uma notificação não
+   altera prontuários nem iniciais (por segurança). Corrigir um prontuário
+   digitado errado ainda exige o console.
+4. **Gestão de usuários pela interface.** Hoje as contas são criadas pelo
    console.
-6. **Minimização para o consultor.** Avaliar se ele precisa ver nome e CPF ou
-   se basta ver dados pseudonimizados (LGPD, art. 6º, III).
-7. **Segundo fator de autenticação** para admin.
-8. **Rotação de chaves.** O Active Record Encryption aceita várias chaves
+5. **Segundo fator de autenticação** para admin.
+6. **Rotação de chaves.** O Active Record Encryption aceita várias chaves
    primárias (a última cifra, as anteriores ainda decifram), mas o Prisma lê só
    uma por variável. O modo determinístico não suporta rotação.
-9. **Mensagens em português.** As mensagens padrão do Rails e do Devise ainda
-   estão em inglês.
-10. **Licença** do projeto.
+7. **Mensagens em português.** As telas e as mensagens de login e de validação
+   já estão em português (`config/locales/pt-BR.yml`); o que não tem tradução
+   ainda aparece em inglês.
+8. **Licença** do projeto.

@@ -7,13 +7,15 @@ class DashboardControllerTest < ActionDispatch::IntegrationTest
     assert_redirected_to new_user_session_path
   end
 
-  test "todos os papéis veem o painel; só quem registra vê o botão de novo formulário" do
-    { operador: true, admin: true, consultor: false }.each do |papel, ve_botao|
+  test "todos os papéis veem o painel com os totais reais e o acesso aos formulários" do
+    %i[operador admin consultor].each do |papel|
       sign_in users(papel)
       get root_path
 
       assert_response :success
-      assert_equal ve_botao, response.body.include?(new_avaliacao_clinica_path), "#{papel} e o botão"
+      assert_select "nav a[aria-current='page']", text: "Visão geral"
+      assert_select "a[href='#{formularios_path}']", minimum: 1
+      assert_select "p.text-3xl", text: AvaliacaoClinica.count.to_s
     end
   end
 

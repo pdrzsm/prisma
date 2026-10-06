@@ -21,9 +21,16 @@ class AvaliacaoClinicaPolicyTest < ActiveSupport::TestCase
     end
   end
 
-  test "ninguém edita nem exclui avaliações" do
+  test "operador e admin editam o seguimento; consultor não" do
+    assert policy(:operador).update?
+    assert policy(:admin).update?
+    assert policy(:operador).edit?
+    assert_not policy(:consultor).update?
+    assert_not policy(:consultor).edit?
+  end
+
+  test "ninguém exclui avaliações" do
     PAPEIS.each do |papel|
-      assert_not policy(papel).update?, "#{papel} não deveria editar"
       assert_not policy(papel).destroy?, "#{papel} não deveria excluir"
     end
   end
