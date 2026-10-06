@@ -6,8 +6,8 @@ respostas, cifra os dados e registra quem alterou o quê.
 
 O primeiro formulário é o **seguimento de tuberculose (TB)**: 47 perguntas com
 os códigos do SINAN. A notificação é aberta no início do tratamento e
-atualizada mês a mês até o encerramento. Os formulários ficam na aba
-**Formulários** do painel.
+atualizada mês a mês até o encerramento. Os formulários ficam na seção
+**Formulários** do menu lateral.
 
 > **Estado:** desenvolvimento inicial. Ainda **não está pronto para produção**;
 > veja as [pendências conhecidas](docs/seguranca.md#pendências-conhecidas).
@@ -23,7 +23,7 @@ faz parte de cada mudança: antes de contribuir, leia
   [Pundit](https://github.com/varvet/pundit) para permissões e
   [PaperTrail](https://github.com/paper-trail-gem/paper_trail) para auditoria
 - Active Record Encryption para os dados sensíveis no banco
-- Tailwind CSS; ainda sem JavaScript
+- Tailwind CSS; sem JavaScript
 
 ## Papéis
 
@@ -63,6 +63,17 @@ Abra <http://localhost:3000> e entre como `admin`, `operador` ou `consultor`,
 com a senha `prisma-dev-senha`. Essas contas só existem em desenvolvimento
 (ver [db/seeds.rb](db/seeds.rb)); o seed se recusa a rodar em produção.
 
+Para ver as telas com dados, gere notificações fictícias de seguimento de TB,
+abertas em datas variadas, atualizadas mês a mês e parte delas encerradas:
+
+```bash
+docker compose exec web bin/rails dev:notificacoes               # 50
+docker compose exec web bin/rails dev:notificacoes QUANTIDADE=120
+```
+
+Os prontuários começam com `TESTE-`, e rodar de novo não duplica nada. A
+tarefa também se recusa a rodar em produção.
+
 O banco e o servidor ficam acessíveis só na sua máquina (`127.0.0.1`). Em
 sistemas com SELinux (Fedora, RHEL), os volumes usam `:z`; não troque por `:Z`,
 porque isso tira o acesso dos outros containers aos arquivos.
@@ -92,6 +103,8 @@ cada pull request.
   checklist de produção e pendências
 - [docs/novo-formulario.md](docs/novo-formulario.md): como criar um formulário
   clínico novo em YAML
+- [docs/identidade-visual.md](docs/identidade-visual.md): cores, fonte, logo e
+  layout das telas
 - [SECURITY.md](SECURITY.md): como relatar uma vulnerabilidade
 
 ## Contribuindo

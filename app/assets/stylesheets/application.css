@@ -4,6 +4,18 @@
  */
 
 /*
+ * Source Sans 3 (Adobe, licença SIL OFL 1.1: app/assets/fonts/OFL-source-sans-3.txt).
+ * Arquivo variável com todos os pesos e os caracteres latinos do português.
+ */
+@font-face {
+  font-family: "Source Sans 3";
+  font-style: normal;
+  font-weight: 200 900;
+  font-display: swap;
+  src: url("source-sans-3-latin-wght-normal.woff2") format("woff2");
+}
+
+/*
  * Pergunta condicional dos formulários clínicos (ex.: a pergunta 10 do
  * seguimento de TB só vale para forma clínica extrapulmonar). Ela fica logo
  * depois da pergunta que a controla e só aparece quando uma opção marcada

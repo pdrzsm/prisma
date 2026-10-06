@@ -6,7 +6,8 @@ Visão geral do código para quem vai contribuir. As regras de segurança estão
 ## Visão geral
 
 Monolito Rails 8.1 com MariaDB. As páginas são renderizadas no servidor (ERB e
-Tailwind), sem JavaScript. O código usa nomes em português para o domínio
+Tailwind), sem JavaScript. Cores, fonte e layout estão em
+[identidade-visual.md](identidade-visual.md). O código usa nomes em português para o domínio
 (paciente, formulário, papel) e nomes em inglês para o que vem do Rails e das
 gems. A interface é em português (`config/locales/pt-BR.yml`) e usa o horário
 de Brasília (`PRISMA_FUSO_HORARIO` muda o fuso).
@@ -15,8 +16,8 @@ de Brasília (`PRISMA_FUSO_HORARIO` muda o fuso).
 app/
   controllers/
     application_controller.rb          login obrigatório, Pundit, trava do consultor, no-store
-    dashboard_controller.rb            aba "Visão geral"
-    formularios_controller.rb          aba "Formulários": formulários disponíveis
+    dashboard_controller.rb            "Visão geral"
+    formularios_controller.rb          "Formulários": formulários disponíveis
     avaliacoes_clinicas_controller.rb  registros de um formulário (lista, ver, criar, editar)
     users/sessions_controller.rb       login com limite por IP
   models/
@@ -26,6 +27,7 @@ app/
     user.rb                            usuários do sistema e papéis
   policies/                            regras de permissão (Pundit)
   views/avaliacoes_clinicas/           telas geradas a partir da definição do formulário
+  views/shared/                        barra lateral, menu, topo, logo e mensagens
 config/formularios/                    definição de cada formulário (YAML)
 lib/cpf.rb                             CPF dos usuários: normalização, validação e geração
 docs/                                  esta documentação
@@ -88,7 +90,7 @@ User 1 ── * AvaliacaoClinica * ── 1 Paciente
 ## Rotas
 
 ```
-GET   /formularios                                  aba Formulários
+GET   /formularios                                  seção Formulários
 GET   /formularios/:formulario/avaliacoes           lista (busca por prontuário)
 GET   /formularios/:formulario/avaliacoes/new       nova notificação
 POST  /formularios/:formulario/avaliacoes           registrar

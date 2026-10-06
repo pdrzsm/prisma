@@ -15,20 +15,20 @@
       <div class="grid gap-2 sm:grid-cols-2">
         <% pergunta.opcoes.each do |opcao| %>
           <% opcao_id = "#{id}_#{opcao.codigo}" %>
-          <label for="<%= opcao_id %>" class="flex items-start gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm cursor-pointer hover:border-indigo-300 has-checked:border-indigo-500 has-checked:bg-indigo-50">
+          <label for="<%= opcao_id %>" class="flex items-start gap-2 rounded-lg border border-marca-200 bg-white px-3 py-2 text-sm cursor-pointer hover:border-marca-400 has-checked:border-marca-500 has-checked:bg-marca-50">
             <% if pergunta.tipo == "unica" %>
-              <%= radio_button_tag nome, opcao.codigo, valor == opcao.codigo, id: opcao_id, class: "mt-0.5",
+              <%= radio_button_tag nome, opcao.codigo, valor == opcao.codigo, id: opcao_id, class: "mt-0.5 accent-marca-600",
                                    data: ({ revela: true } if revela.include?(opcao.codigo)) %>
             <% else %>
-              <%= check_box_tag "#{nome}[]", opcao.codigo, Array(valor).include?(opcao.codigo), id: opcao_id, class: "mt-0.5" %>
+              <%= check_box_tag "#{nome}[]", opcao.codigo, Array(valor).include?(opcao.codigo), id: opcao_id, class: "mt-0.5 accent-marca-600" %>
             <% end %>
-            <span><%= opcao.rotulo %> <span class="text-slate-400">(<%= opcao.codigo %>)</span></span>
+            <span><%= opcao.rotulo %></span>
           </label>
         <% end %>
         <%# Escolha única opcional precisa de um jeito de desmarcar %>
         <% if pergunta.tipo == "unica" && pergunta.obrigatoria != "abertura" %>
-          <label for="<%= id %>_sem_resposta" class="flex items-start gap-2 rounded-lg border border-dashed border-slate-200 bg-white px-3 py-2 text-sm cursor-pointer hover:border-slate-300 has-checked:border-slate-400 has-checked:bg-slate-50">
-            <%= radio_button_tag nome, "", valor.nil?, id: "#{id}_sem_resposta", class: "mt-0.5" %>
+          <label for="<%= id %>_sem_resposta" class="flex items-start gap-2 rounded-lg border border-dashed border-marca-200 bg-white px-3 py-2 text-sm cursor-pointer hover:border-marca-400 has-checked:border-marca-400 has-checked:bg-marca-50">
+            <%= radio_button_tag nome, "", valor.nil?, id: "#{id}_sem_resposta", class: "mt-0.5 accent-marca-600" %>
             <span class="text-slate-500">Sem resposta</span>
           </label>
         <% end %>

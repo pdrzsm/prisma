@@ -1,7 +1,7 @@
 Rails.application.routes.draw do
   devise_for :users, controllers: { sessions: "users/sessions" }
 
-  # Aba "Formulários" e os registros de cada formulário (/formularios/seguimento_tb/avaliacoes).
+  # Seção "Formulários" e os registros de cada formulário (/formularios/seguimento_tb/avaliacoes).
   # Só as ações que existem: sem rota, o Rails não renderiza views órfãs, e
   # registro clínico não é apagado (sem destroy).
   resources :formularios, only: [ :index ] do

@@ -85,6 +85,27 @@ class AutenticacaoTest < ActionDispatch::IntegrationTest
     assert_not_includes response.body, "remember_me"
   end
 
+  test "o logo em contorno do login é decorativo, só CSS" do
+    get new_user_session_path
+
+    facetas = LogoHelper::CAMADAS_DO_SIMBOLO.flatten.size
+    assert_select "svg.contorno[aria-hidden='true']" do
+      assert_select "path[pathLength='100']", facetas * 3 # traço, brilho e núcleo
+    end
+    # Sem estilo inline (a CSP bloqueia) e sem JavaScript
+    assert_select "svg.contorno [style]", 0
+    assert_select "script", 0
+  end
+
+  test "o login mostra o nome com o desenho do logo, e não em texto" do
+    get new_user_session_path
+
+    # Painel da marca e cabeçalho do celular: o nome é o SVG do logo (PRIƧM∀)
+    assert_select "svg[viewBox='#{LogoHelper::RECORTES[:nome]}'][aria-label='Prisma']", 2 do |nomes|
+      nomes.each { |nome| assert_select nome, "path", LogoHelper::NOME.size }
+    end
+  end
+
   private
 
   def entrar(login, senha = SENHA_DE_TESTE)

@@ -2,7 +2,7 @@
 
 Um formulário novo é um arquivo YAML em `config/formularios/`. O Prisma gera a
 tela, a lista, a visualização e a validação a partir dele, e o formulário
-aparece sozinho na aba **Formulários**. O exemplo completo é o
+aparece sozinho em **Formulários**, no menu lateral. O exemplo completo é o
 [seguimento de TB](../config/formularios/seguimento_tb.yml).
 
 ## 1. Crie o arquivo

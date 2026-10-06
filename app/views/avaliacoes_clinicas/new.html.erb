@@ -1,10 +1,7 @@
 <% content_for :title, "Nova notificação · #{@formulario.titulo} · Prisma" %>
+<% trilha ["Formulários", formularios_path], [@formulario.titulo, formulario_avaliacoes_clinicas_path(@formulario)], ["Nova notificação"] %>
 
 <div>
-  <p class="text-sm text-slate-500">
-    <%= link_to "Formulários", formularios_path, class: "hover:text-slate-800" %> /
-    <%= link_to @formulario.titulo, formulario_avaliacoes_clinicas_path(@formulario), class: "hover:text-slate-800" %> /
-  </p>
   <h1 class="text-2xl font-bold text-slate-900">Nova notificação</h1>
   <p class="text-sm text-slate-600"><%= @formulario.descricao %></p>
 </div>

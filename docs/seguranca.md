@@ -27,7 +27,7 @@ definir a base legal (art. 11) com o seu encarregado (DPO).
 
 | Ação | operador | consultor | admin |
 |------|:--------:|:---------:|:-----:|
-| Ver o painel e a aba Formulários | ✅ | ✅ | ✅ |
+| Ver a visão geral e os formulários | ✅ | ✅ | ✅ |
 | Listar e visualizar registros (todos) | ✅ | ✅ | ✅ |
 | Registrar notificação | ✅ | ❌ | ✅ |
 | Editar notificação (seguimento mês a mês) | ✅ | ❌ | ✅ |

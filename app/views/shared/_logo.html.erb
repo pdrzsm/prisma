@@ -1,0 +1,20 @@
+<%# locals: (classe: "", versao: :simbolo) %>
+<%# Logo do Prisma, gerado a partir do arquivo original (LOGO PRISMA.svg), em
+    três versões:
+      :simbolo   só o símbolo (barra lateral, menu do celular)
+      :nome      só o nome, PRIƧM∀, com o S e o A rotacionados (é o desenho)
+      :completo  símbolo e nome, como no arquivo original
+    Os desenhos vêm de LogoHelper. A cor vem do CSS (fill="currentColor"). %>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="<%= LogoHelper::RECORTES.fetch(versao) %>"
+     fill="currentColor" class="<%= classe %>" role="img" aria-label="Prisma">
+  <% unless versao == :nome %>
+    <% LogoHelper::CAMADAS_DO_SIMBOLO.flatten.each do |faceta| %>
+      <path d="<%= faceta %>"/>
+    <% end %>
+  <% end %>
+  <% unless versao == :simbolo %>
+    <% LogoHelper::NOME.each do |letra| %>
+      <path d="<%= letra %>"/>
+    <% end %>
+  <% end %>
+</svg>

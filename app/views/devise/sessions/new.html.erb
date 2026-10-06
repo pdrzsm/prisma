@@ -1,57 +1,87 @@
-<div class="min-h-screen bg-slate-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8 font-sans">
-  
-  <!-- Cabeçalho / Logo -->
-  <div class="sm:mx-auto sm:w-full sm:max-w-md text-center">
-    <div class="mx-auto h-14 w-14 bg-blue-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-600/20 mb-4">
-      <!-- Ícone de prancheta médica -->
-      <svg class="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-      </svg>
-    </div>
-    <h2 class="text-3xl font-extrabold text-slate-900 tracking-tight">Prisma</h2>
-    <p class="mt-2 text-sm text-slate-500 font-medium">Sistema de Triagem e Prontuários</p>
+<% content_for :title, "Entrar · Prisma" %>
+
+<%# Entrada do sistema: a marca num painel próprio e o formulário sozinho do
+    outro lado. Em tela estreita o painel some e a marca vai para cima do
+    formulário. O nome aparece sempre com o desenho do logo (PRIƧM∀). %>
+<div class="relative min-h-screen lg:grid lg:grid-cols-[2fr_3fr]">
+  <%# Três tons, como as faces de um prisma: o painel escuro (marca-700), o
+      fundo claro (marca-100) e uma terceira face (marca-300). Ela nasce de
+      uma segunda quebra, que sobe da primeira diagonal até o canto superior
+      direito da tela. Fica por baixo do painel da marca, então só aparece do
+      lado claro, e as três faces se encontram num ponto da primeira diagonal.
+      A quebra passa por trás do formulário, por isso ele fica num cartão. %>
+  <div class="hidden lg:block absolute inset-0 bg-marca-300 [clip-path:polygon(41%_100%,100%_0,100%_100%)]"></div>
+
+  <%# Fundo do painel da marca, com a borda em diagonal na mesma inclinação das
+      formas do símbolo, e o símbolo em contorno animado atrás de tudo. O tom
+      mais escuro da paleta deixa a luz do contorno aparecer e dá contraste
+      folgado ao texto branco (7,7:1). %>
+  <div class="hidden lg:block absolute inset-y-0 left-0 w-1/2 xl:w-[55%] overflow-hidden bg-marca-700 [clip-path:polygon(0_0,65%_0,100%_100%,0_100%)]">
+    <%= render "shared/logo_contorno",
+               classe: "pointer-events-none absolute left-[48%] top-1/2 h-[86%] w-auto -translate-x-1/2 -translate-y-1/2" %>
   </div>
 
-  <!-- Container do Formulário -->
-  <div class="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-    <div class="bg-white py-8 px-4 shadow-xl shadow-slate-200/60 sm:rounded-2xl sm:px-10 border border-slate-100">
-      
-      <!-- Mensagens de Feedback Estilizadas -->
-      <%= render "shared/flash" %>
+  <section class="relative hidden lg:flex flex-col justify-between p-12 text-white">
+    <%= render "shared/logo", classe: "h-12 w-auto self-start text-marca-100" %>
 
-      <!-- Formulário Devise -->
-      <%= form_for(resource, as: resource_name, url: session_path(resource_name), html: { class: "space-y-6" }) do |f| %>
-        
-        <div>
-          <%= f.label :login, "CPF ou Nome de Usuário", class: "block text-sm font-semibold text-slate-700 mb-1.5" %>
-          <%= f.text_field :login, autofocus: true, autocomplete: "off", placeholder: "00000000000 ou usuario",
-          class: "appearance-none block w-full px-4 py-3 border border-slate-300 rounded-xl shadow-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent sm:text-sm transition-colors bg-slate-50 focus:bg-white" %>
-        </div>
+    <div class="max-w-sm">
+      <%= render "shared/logo", versao: :nome, classe: "h-14 w-auto" %>
+      <p class="mt-4 text-sm uppercase tracking-widest text-marca-100">Central de Formulários Clínicos</p>
+      <p class="mt-6 text-[15px] leading-relaxed text-marca-100">
+        Notificações registradas, acompanhadas e encerradas em um único espaço seguro.
+      </p>
 
-        <div>
-          <%= f.label :password, "Senha de acesso", class: "block text-sm font-semibold text-slate-700 mb-1.5" %>
-          <%= f.password_field :password, autocomplete: "current-password", placeholder: "••••••••",
-          class: "appearance-none block w-full px-4 py-3 border border-slate-300 rounded-xl shadow-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent sm:text-sm transition-colors bg-slate-50 focus:bg-white" %>
-        </div>
-
-        <% if devise_mapping.rememberable? %>
-          <div class="flex items-center">
-            <%= f.check_box :remember_me, class: "h-4 w-4 text-blue-600 focus:ring-blue-500 border-slate-300 rounded cursor-pointer transition-colors" %>
-            <%= f.label :remember_me, "Lembrar neste computador", class: "ml-2 block text-sm text-slate-600 cursor-pointer select-none" %>
-          </div>
+      <ul class="mt-10 flex flex-col gap-4">
+        <% Formulario.todos.each do |formulario| %>
+          <li>
+            <p class="text-xs font-semibold uppercase tracking-widest"><%= formulario.titulo %></p>
+            <p class="mt-1 text-sm text-marca-100"><%= formulario.descricao %></p>
+          </li>
         <% end %>
-
-        <div>
-          <%= f.submit "Entrar no Sistema", class: "w-full flex justify-center py-3.5 px-4 border border-transparent rounded-xl shadow-sm text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 cursor-pointer transition-all active:scale-[0.98]" %>
-        </div>
-        
-      <% end %>
+      </ul>
     </div>
-    
-    <!-- Rodapé de Ajuda -->
-    <p class="mt-8 text-center text-sm text-slate-500">
-      Acesso restrito. Não possui credencial? <br class="hidden sm:inline">
-      <span class="font-semibold text-slate-600">Contate a administração do setor.</span>
-    </p>
-  </div>
+
+    <p class="text-xs text-marca-100">Acesso restrito a profissionais autorizados.</p>
+  </section>
+
+  <main class="relative flex min-h-screen items-center justify-center px-6 py-12">
+    <div class="w-full max-w-sm">
+      <%# Celular: símbolo e nome juntos, lidos como uma imagem só %>
+      <div class="lg:hidden mb-10 flex items-center gap-3" role="img" aria-label="Prisma">
+        <%= render "shared/logo", classe: "h-12 w-auto text-marca-500" %>
+        <span class="flex flex-col gap-1.5">
+          <%= render "shared/logo", versao: :nome, classe: "h-5 w-auto self-start text-marca-700" %>
+          <span class="text-[10px] uppercase tracking-widest text-slate-600">Formulários clínicos</span>
+        </span>
+      </div>
+
+      <div class="border border-marca-200 bg-white p-6 shadow-sm sm:p-8">
+        <h1 class="text-2xl font-bold text-slate-900">Entrar</h1>
+        <p class="mt-1 text-sm text-slate-600">Use seu CPF ou nome de usuário.</p>
+
+        <div class="mt-8">
+          <%= render "shared/flash" %>
+
+          <%= form_for(resource, as: resource_name, url: session_path(resource_name), html: { class: "space-y-5" }) do |f| %>
+            <div>
+              <%= f.label :login, "CPF ou nome de usuário", class: "mb-1.5 block text-sm font-semibold text-slate-700" %>
+              <%= f.text_field :login, autofocus: true, autocomplete: "off", placeholder: "Infome seu CPF",
+                                       class: "#{ApplicationHelper::CAMPO} h-12 placeholder:text-slate-500" %>
+            </div>
+
+            <div>
+              <%= f.label :password, "Senha", class: "mb-1.5 block text-sm font-semibold text-slate-700" %>
+              <%= f.password_field :password, autocomplete: "current-password", class: "#{ApplicationHelper::CAMPO} h-12" %>
+            </div>
+
+            <%= f.submit "Entrar", class: "#{ApplicationHelper::BOTAO_PRIMARIO} h-12 w-full uppercase tracking-wide" %>
+          <% end %>
+        </div>
+
+        <p class="mt-8 border-t border-marca-200 pt-6 text-sm text-slate-600">
+          Algum problema para entrar? Abra chamado com a TI.
+        </p>
+      </div>
+    </div>
+  </main>
 </div>

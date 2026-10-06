@@ -1,0 +1,9 @@
+<%# Barra lateral (desktop). No celular, o mesmo menu fica no topo (shared/_topo). %>
+<aside class="hidden lg:block w-38 shrink-0 bg-marca-500">
+  <div class="sticky top-0">
+    <%= link_to root_path, class: "flex justify-center px-4 pt-5 pb-12 text-marca-100", aria: { label: "Prisma, visão geral" } do %>
+      <%= render "shared/logo", classe: "h-18 w-auto" %>
+    <% end %>
+    <%= render "shared/menu" %>
+  </div>
+</aside>

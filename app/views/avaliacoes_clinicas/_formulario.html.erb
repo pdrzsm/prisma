@@ -15,7 +15,7 @@
   </p>
 
   <% @formulario.secoes.each do |secao| %>
-    <section class="bg-white rounded-xl border border-slate-200 shadow-sm p-6 space-y-6">
+    <section class="bg-white rounded-xl border border-marca-200 shadow-sm p-6 space-y-6">
       <h2 class="text-lg font-bold text-slate-900"><%= secao.titulo %></h2>
 
       <% if @avaliacao.persisted? && secao.perguntas.any?(&:paciente) %>

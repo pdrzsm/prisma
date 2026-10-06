@@ -1,0 +1,26 @@
+<%# locals: (classe: "") %>
+<%# O símbolo em contorno, animado, no fundo do painel da marca do login. Só a
+    linha de cada faceta, sem preenchimento, parada no lugar e discreta. Duas
+    coisas acontecem, nesta ordem (CSS em logo_contorno.css):
+
+      1. o traço se desenha, faceta por faceta;
+      2. uma faixa de luz passa a correr por cada contorno, em ritmo e fase
+         próprios: nenhuma faceta acende junto com a vizinha.
+
+    As facetas vêm de LogoHelper, a mesma fonte do logo cheio. Sem estilo
+    inline (a CSP bloqueia): a ordem e o ritmo de cada faceta estão nas
+    classes contorno-faceta-N.
+
+    pathLength="100" dá a toda faceta o mesmo "comprimento", então o tracejado
+    da luz ("9 91" = 9% do contorno aceso) serve para qualquer uma.
+    Com "reduzir movimento" ligado no sistema, o contorno fica pronto e parado. %>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="<%= LogoHelper::RECORTES[:simbolo] %>" fill="none"
+     class="contorno <%= classe %>" aria-hidden="true" focusable="false">
+  <% LogoHelper::CAMADAS_DO_SIMBOLO.flatten.each_with_index do |caminho, faceta| %>
+    <g class="contorno-faceta-<%= faceta %>">
+      <path d="<%= caminho %>" pathLength="100" class="contorno-traco"/>
+      <path d="<%= caminho %>" pathLength="100" class="contorno-luz contorno-brilho"/>
+      <path d="<%= caminho %>" pathLength="100" class="contorno-luz contorno-nucleo"/>
+    </g>
+  <% end %>
+</svg>

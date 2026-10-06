@@ -1,4 +1,4 @@
-# Aba "Formulários" do painel: os formulários clínicos disponíveis
+# Seção "Formulários" do menu: os formulários clínicos disponíveis
 class FormulariosController < ApplicationController
   def index
     authorize :formulario

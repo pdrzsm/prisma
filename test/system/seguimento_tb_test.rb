@@ -34,6 +34,9 @@ class SeguimentoTbTest < ApplicationSystemTestCase
     fill_in "campo_municipio_residencia", with: "Cidade Fictícia"
     click_on "Registrar notificação"
 
+    # Espera a página nova antes de ler o texto. Sem isso, o Chrome às vezes
+    # inspeciona a página antiga no meio da navegação e o teste falha à toa.
+    assert_current_path %r{/avaliacoes/\d+\z}
     assert_text "Notificação registrada."
     assert_text "Notificação · RTS"
     assert_text "SAH7777"
@@ -45,6 +48,7 @@ class SeguimentoTbTest < ApplicationSystemTestCase
     marcar "campo_baciloscopia_escarro_mes_1_2"
     click_on "Salvar alterações"
 
+    assert_current_path %r{/avaliacoes/\d+\z}
     assert_text "Notificação atualizada."
     assert_text "Negativa"
     assert_text "Alterada por @operador_teste"
@@ -57,6 +61,7 @@ class SeguimentoTbTest < ApplicationSystemTestCase
     fill_in "campo_municipio_residencia", with: "Cidade Digitada"
     click_on "Registrar notificação"
 
+    assert_current_path formulario_avaliacoes_clinicas_path(FORMULARIO)
     assert_text "Não foi possível registrar. Revise as perguntas destacadas."
     assert_selector "#campo_iniciais[aria-invalid='true']"
     assert_field "campo_municipio_residencia", with: "Cidade Digitada"
@@ -66,15 +71,19 @@ class SeguimentoTbTest < ApplicationSystemTestCase
     sign_in users(:consultor)
     visit root_path
 
-    click_on "Formulários"
-    assert_selector "nav a[aria-current='page']", text: "Formulários"
+    within("aside") { click_on "Formulários" } # a visão geral também cita Formulários no texto
+    assert_current_path formularios_path
+    # O menu é exibido em caixa alta (CSS), e o navegador devolve o texto como aparece
+    assert_selector "nav a[aria-current='page']", text: /\Aformulários\z/i
     assert_no_link "Nova notificação"
 
     click_on "Ver registros"
+    assert_current_path formulario_avaliacoes_clinicas_path(FORMULARIO)
     assert_text "MFU"
     assert_no_link "Editar"
 
     click_on "Ver", match: :first
+    assert_current_path %r{/avaliacoes/\d+\z}
     assert_text "Histórico de alterações"
     assert_no_link "Editar"
   end
@@ -84,6 +93,7 @@ class SeguimentoTbTest < ApplicationSystemTestCase
     visit root_path
     click_on "Sair"
 
+    assert_current_path new_user_session_path
     assert_text "Você saiu do sistema."
     assert_field "user_login"
   end

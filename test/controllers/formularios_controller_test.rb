@@ -20,7 +20,7 @@ class FormulariosControllerTest < ActionDispatch::IntegrationTest
     end
   end
 
-  test "as abas aparecem no topo, com a ativa marcada" do
+  test "o menu lateral marca a seção atual" do
     sign_in users(:consultor)
     get formularios_path
 

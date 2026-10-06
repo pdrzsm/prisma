@@ -1,42 +1,40 @@
 <% content_for :title, "#{@formulario.titulo} · Prisma" %>
+<% trilha ["Formulários", formularios_path], [@formulario.titulo] %>
+<h1 class="sr-only"><%= @formulario.titulo %></h1>
 
-<div class="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
-  <div>
-    <p class="text-sm text-slate-500"><%= link_to "Formulários", formularios_path, class: "hover:text-slate-800" %> /</p>
-    <h1 class="text-2xl font-bold text-slate-900"><%= @formulario.titulo %></h1>
-  </div>
+<div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+  <%= form_with url: formulario_avaliacoes_clinicas_path(@formulario), method: :get, html: { role: "search" }, class: "flex flex-col gap-4 sm:flex-row sm:items-center" do |busca| %>
+    <%= busca.label :prontuario, "Buscar por prontuário (SAH ou AGHUSE)", class: "sr-only" %>
+    <%= busca.search_field :prontuario, value: params[:prontuario], autocomplete: "off",
+                           placeholder: "Prontuário SAH ou AGHUSE",
+                           class: "#{ApplicationHelper::CAMPO} h-12 sm:w-92 placeholder:text-slate-500" %>
+    <div class="flex items-center gap-4">
+      <%= busca.submit "Buscar", name: nil, class: "#{ApplicationHelper::BOTAO_SECUNDARIO} h-12 w-28" %>
+      <% if params[:prontuario].present? %>
+        <%= link_to "Limpar", formulario_avaliacoes_clinicas_path(@formulario), class: "text-sm text-slate-600 hover:text-slate-900 hover:underline" %>
+      <% end %>
+    </div>
+  <% end %>
   <% if policy(AvaliacaoClinica).create? %>
-    <%= link_to "Nova notificação", new_formulario_avaliacao_clinica_path(@formulario), class: ApplicationHelper::BOTAO_PRIMARIO %>
+    <%= link_to "Nova notificação", new_formulario_avaliacao_clinica_path(@formulario), class: "#{ApplicationHelper::BOTAO_PRIMARIO} h-12 sm:w-50" %>
   <% end %>
 </div>
 
-<%= form_with url: formulario_avaliacoes_clinicas_path(@formulario), method: :get, class: "flex flex-col sm:flex-row gap-3 sm:items-end" do |busca| %>
-  <div class="sm:w-80">
-    <%= busca.label :prontuario, "Buscar por prontuário (SAH ou AGHUSE)", class: "block text-sm font-medium text-slate-700 mb-1" %>
-    <%= busca.text_field :prontuario, value: params[:prontuario], autocomplete: "off", class: ApplicationHelper::CAMPO %>
-  </div>
-  <div class="flex gap-3">
-    <%= busca.submit "Buscar", name: nil, class: ApplicationHelper::BOTAO_SECUNDARIO %>
-    <% if params[:prontuario].present? %>
-      <%= link_to "Limpar", formulario_avaliacoes_clinicas_path(@formulario), class: "self-center text-sm text-slate-600 hover:text-slate-900" %>
-    <% end %>
-  </div>
-<% end %>
-
 <% if @avaliacoes.empty? %>
-  <div class="bg-white rounded-xl border border-slate-200 p-8 text-center text-sm text-slate-600">
+  <div class="bg-white rounded-xl border border-marca-200 p-8 text-center text-sm text-slate-600">
     <% if params[:prontuario].present? %>
       Nenhum registro com esse prontuário.
     <% elsif @pagina > 1 %>
-      Não há registros nesta página. <%= link_to "Voltar à primeira página", formulario_avaliacoes_clinicas_path(@formulario), class: "font-semibold text-indigo-700" %>
+      Não há registros nesta página. <%= link_to "Voltar à primeira página", formulario_avaliacoes_clinicas_path(@formulario), class: "font-semibold text-marca-700 hover:underline" %>
     <% else %>
       Nenhum registro ainda.
     <% end %>
   </div>
 <% else %>
-  <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-x-auto">
-    <table class="min-w-full divide-y divide-slate-200 text-sm">
-      <thead class="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+  <%# relative: segura dentro da rolagem o "Ações" só para leitores de tela (sr-only é absolute) %>
+  <div class="relative bg-white rounded-xl border border-marca-200 shadow-sm overflow-x-auto">
+    <table class="min-w-full divide-y divide-marca-200 text-sm">
+      <thead class="bg-marca-50 text-left text-xs font-semibold uppercase tracking-wider text-slate-600">
         <tr>
           <th scope="col" class="px-4 py-3">Iniciais</th>
           <th scope="col" class="px-4 py-3">Prontuário SAH</th>
@@ -51,7 +49,7 @@
       </thead>
       <tbody class="divide-y divide-slate-100">
         <% @avaliacoes.each do |avaliacao| %>
-          <tr>
+          <tr class="hover:bg-marca-50/60">
             <td class="px-4 py-3 font-semibold text-slate-900"><%= avaliacao.paciente.iniciais %></td>
             <td class="px-4 py-3"><%= avaliacao.paciente.prontuario_sah || "—" %></td>
             <td class="px-4 py-3"><%= avaliacao.paciente.prontuario_aghuse || "—" %></td>
@@ -62,9 +60,9 @@
             <td class="px-4 py-3"><%= selo_da_situacao(avaliacao) %></td>
             <td class="px-4 py-3 whitespace-nowrap text-slate-600"><%= data_e_hora(avaliacao.updated_at) %></td>
             <td class="px-4 py-3 whitespace-nowrap text-right">
-              <%= link_to "Ver", formulario_avaliacao_clinica_path(@formulario, avaliacao), class: "font-semibold text-indigo-700 hover:text-indigo-900" %>
+              <%= link_to "Ver", formulario_avaliacao_clinica_path(@formulario, avaliacao), class: "font-semibold text-marca-700 hover:text-marca-900 hover:underline" %>
               <% if policy(avaliacao).update? %>
-                <%= link_to "Editar", edit_formulario_avaliacao_clinica_path(@formulario, avaliacao), class: "ml-3 font-semibold text-indigo-700 hover:text-indigo-900" %>
+                <%= link_to "Editar", edit_formulario_avaliacao_clinica_path(@formulario, avaliacao), class: "ml-3 font-semibold text-marca-700 hover:text-marca-900 hover:underline" %>
               <% end %>
             </td>
           </tr>
@@ -76,12 +74,12 @@
   <nav aria-label="Páginas" class="flex justify-between text-sm">
     <span>
       <% if @pagina > 1 %>
-        <%= link_to "← Anterior", formulario_avaliacoes_clinicas_path(@formulario, prontuario: params[:prontuario].presence, pagina: @pagina - 1), class: "font-semibold text-indigo-700" %>
+        <%= link_to "← Anterior", formulario_avaliacoes_clinicas_path(@formulario, prontuario: params[:prontuario].presence, pagina: @pagina - 1), class: "font-semibold text-marca-700 hover:underline" %>
       <% end %>
     </span>
     <span>
       <% if @tem_proxima %>
-        <%= link_to "Próxima →", formulario_avaliacoes_clinicas_path(@formulario, prontuario: params[:prontuario].presence, pagina: @pagina + 1), class: "font-semibold text-indigo-700" %>
+        <%= link_to "Próxima →", formulario_avaliacoes_clinicas_path(@formulario, prontuario: params[:prontuario].presence, pagina: @pagina + 1), class: "font-semibold text-marca-700 hover:underline" %>
       <% end %>
     </span>
   </nav>

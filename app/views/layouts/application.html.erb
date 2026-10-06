@@ -22,16 +22,21 @@
     <%= stylesheet_link_tag :app, "data-turbo-track": "reload" %>
   </head>
 
-  <body class="min-h-screen bg-slate-50 text-slate-800 antialiased">
+  <body class="min-h-screen bg-marca-100 font-sans text-slate-800 antialiased">
     <%# As telas do Devise têm página inteira própria e mostram as mensagens no cartão %>
     <% if devise_controller? %>
       <%= yield %>
     <% else %>
-      <%= render "shared/topo" %>
-      <main class="max-w-6xl mx-auto px-4 sm:px-6 py-6 md:py-8 space-y-6">
-        <%= render "shared/flash" %>
-        <%= yield %>
-      </main>
+      <div class="flex min-h-screen">
+        <%= render "shared/lateral" %>
+        <div class="flex-1 min-w-0">
+          <%= render "shared/topo" %>
+          <main class="px-4 sm:px-8 lg:px-16 py-6 space-y-6">
+            <%= render "shared/flash" %>
+            <%= yield %>
+          </main>
+        </div>
+      </div>
     <% end %>
   </body>
 </html>
