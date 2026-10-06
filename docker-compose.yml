@@ -1,0 +1,47 @@
+# Ambiente de DESENVOLVIMENTO. As senhas abaixo são só para uso local.
+services:
+  db:
+    image: mariadb:10.11
+    volumes:
+      - mariadb_data:/var/lib/mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root_password
+      MYSQL_DATABASE: prisma_development
+      MYSQL_USER: app_user
+      MYSQL_PASSWORD: app_password
+    # Só na própria máquina: as portas publicadas pelo Docker passam por cima
+    # do firewall do host e ficariam acessíveis para a rede inteira
+    ports:
+      - "127.0.0.1:3306:3306"
+
+  web:
+    build: .
+    command: bash -c "rm -f tmp/pids/server.pid && bin/rails server -b '0.0.0.0'"
+    volumes:
+      - .:/rails:z
+      - bundle_data:/usr/local/bundle
+    # O modo de desenvolvimento mostra código e parâmetros nas páginas de erro
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      - db
+    environment:
+      DATABASE_URL: mysql2://app_user:app_password@db/prisma_development
+      ACTIVE_RECORD_ENCRYPTION_PRIMARY_KEY: ${ACTIVE_RECORD_ENCRYPTION_PRIMARY_KEY}
+      ACTIVE_RECORD_ENCRYPTION_DETERMINISTIC_KEY: ${ACTIVE_RECORD_ENCRYPTION_DETERMINISTIC_KEY}
+      ACTIVE_RECORD_ENCRYPTION_KEY_DERIVATION_SALT: ${ACTIVE_RECORD_ENCRYPTION_KEY_DERIVATION_SALT}
+
+  css:
+    build: .
+    command: bundle exec rails tailwindcss:watch
+    volumes:
+      - .:/rails:z
+      - bundle_data:/usr/local/bundle
+    depends_on:
+      - web
+    stdin_open: true
+    tty: true
+
+volumes:
+  mariadb_data:
+  bundle_data:

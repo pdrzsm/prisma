@@ -1,0 +1,18 @@
+default: &default
+  adapter: mysql2
+  encoding: utf8mb4
+  pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
+  url: <%= ENV.fetch("DATABASE_URL", "") %>
+
+development:
+  <<: *default
+
+# Nunca usa DATABASE_URL: no container de dev ela aponta para o banco de
+# desenvolvimento, e os testes apagam as tabelas. O padrão é o MariaDB do
+# docker-compose; o CI define TEST_DATABASE_URL.
+test:
+  <<: *default
+  url: <%= ENV.fetch("TEST_DATABASE_URL", "mysql2://root:root_password@db/prisma_test") %>
+
+production:
+  <<: *default

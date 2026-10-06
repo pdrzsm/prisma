@@ -1,0 +1,57 @@
+<div class="min-h-screen bg-slate-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8 font-sans">
+  
+  <!-- Cabeçalho / Logo -->
+  <div class="sm:mx-auto sm:w-full sm:max-w-md text-center">
+    <div class="mx-auto h-14 w-14 bg-blue-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-600/20 mb-4">
+      <!-- Ícone de prancheta médica -->
+      <svg class="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+      </svg>
+    </div>
+    <h2 class="text-3xl font-extrabold text-slate-900 tracking-tight">Prisma</h2>
+    <p class="mt-2 text-sm text-slate-500 font-medium">Sistema de Triagem e Prontuários</p>
+  </div>
+
+  <!-- Container do Formulário -->
+  <div class="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
+    <div class="bg-white py-8 px-4 shadow-xl shadow-slate-200/60 sm:rounded-2xl sm:px-10 border border-slate-100">
+      
+      <!-- Mensagens de Feedback Estilizadas -->
+      <%= render "shared/flash" %>
+
+      <!-- Formulário Devise -->
+      <%= form_for(resource, as: resource_name, url: session_path(resource_name), html: { class: "space-y-6" }) do |f| %>
+        
+        <div>
+          <%= f.label :login, "CPF ou Nome de Usuário", class: "block text-sm font-semibold text-slate-700 mb-1.5" %>
+          <%= f.text_field :login, autofocus: true, autocomplete: "off", placeholder: "00000000000 ou usuario",
+          class: "appearance-none block w-full px-4 py-3 border border-slate-300 rounded-xl shadow-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent sm:text-sm transition-colors bg-slate-50 focus:bg-white" %>
+        </div>
+
+        <div>
+          <%= f.label :password, "Senha de acesso", class: "block text-sm font-semibold text-slate-700 mb-1.5" %>
+          <%= f.password_field :password, autocomplete: "current-password", placeholder: "••••••••",
+          class: "appearance-none block w-full px-4 py-3 border border-slate-300 rounded-xl shadow-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent sm:text-sm transition-colors bg-slate-50 focus:bg-white" %>
+        </div>
+
+        <% if devise_mapping.rememberable? %>
+          <div class="flex items-center">
+            <%= f.check_box :remember_me, class: "h-4 w-4 text-blue-600 focus:ring-blue-500 border-slate-300 rounded cursor-pointer transition-colors" %>
+            <%= f.label :remember_me, "Lembrar neste computador", class: "ml-2 block text-sm text-slate-600 cursor-pointer select-none" %>
+          </div>
+        <% end %>
+
+        <div>
+          <%= f.submit "Entrar no Sistema", class: "w-full flex justify-center py-3.5 px-4 border border-transparent rounded-xl shadow-sm text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 cursor-pointer transition-all active:scale-[0.98]" %>
+        </div>
+        
+      <% end %>
+    </div>
+    
+    <!-- Rodapé de Ajuda -->
+    <p class="mt-8 text-center text-sm text-slate-500">
+      Acesso restrito. Não possui credencial? <br class="hidden sm:inline">
+      <a href="#" class="font-semibold text-blue-600 hover:text-blue-500 transition-colors">Contate a administração do setor.</a>
+    </p>
+  </div>
+</div>

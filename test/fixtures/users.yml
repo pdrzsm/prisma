@@ -1,0 +1,21 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+# CPFs gerados a cada carga: nenhum CPF fica versionado
+<% senha = Devise::Encryptor.digest(User, ActiveSupport::TestCase::SENHA_DE_TESTE) %>
+admin:
+  username: admin_teste
+  cpf: <%= Cpf.gerar %>
+  role: admin
+  encrypted_password: <%= senha %>
+
+operador:
+  username: operador_teste
+  cpf: <%= Cpf.gerar %>
+  role: operador
+  encrypted_password: <%= senha %>
+
+consultor:
+  username: consultor_teste
+  cpf: <%= Cpf.gerar %>
+  role: consultor
+  encrypted_password: <%= senha %>

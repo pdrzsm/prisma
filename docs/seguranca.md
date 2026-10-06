@@ -1,0 +1,205 @@
+# Segurança do Prisma
+
+Este documento descreve como o Prisma protege os dados, o que cada instalação
+precisa configurar e o que ainda falta. Ele vale para quem contribui com código
+e para quem implanta o sistema.
+
+## Dados tratados
+
+| Dado | Onde | Como fica no banco |
+|------|------|--------------------|
+| CPF, prontuários SAH e AGHUse, número SINAN do paciente | `pacientes` | Cifrado, determinístico (permite busca exata) |
+| Nome e telefones do paciente | `pacientes` | Cifrado |
+| Município de residência, recebe benefício social | `pacientes` | Texto puro (permite agrupar em estatísticas) |
+| Respostas do formulário clínico | `avaliacoes_clinicas.dados_formulario` | Cifrado (o JSON inteiro) |
+| CPF do usuário do sistema | `users` | Cifrado, determinístico (usado no login) |
+| Senha do usuário | `users` | Hash bcrypt (nunca reversível) |
+| Histórico de alterações | `versions` (PaperTrail) | Campos cifrados continuam cifrados |
+
+Dados de saúde são dados pessoais sensíveis (LGPD, art. 5º, II). Cada
+instituição que implanta o Prisma é a controladora desses dados e precisa
+definir a base legal (art. 11) com o seu encarregado (DPO).
+
+## Permissões
+
+| Ação | operador | consultor | admin |
+|------|:--------:|:---------:|:-----:|
+| Ver o painel | ✅ | ✅ | ✅ |
+| Registrar avaliação | ✅ | ❌ | ✅ |
+| Visualizar avaliações (todas) | ✅ | ✅ | ✅ |
+| Editar ou excluir avaliação | ❌ | ❌ | ❌ |
+| Qualquer escrita (POST, PATCH, PUT, DELETE) | conforme a policy | ❌ sempre | conforme a policy |
+
+Como isso é garantido:
+
+- **Login obrigatório em tudo.** O `before_action :authenticate_user!` fica no
+  `ApplicationController`. Uma página pública precisa de um
+  `skip_before_action` explícito. O health check `/up` não passa por esse
+  controller e não expõe dados.
+- **Pundit fechado por padrão.** O `ApplicationPolicy` nega tudo e rejeita
+  usuário nulo. Cada policy libera ações com listas explícitas de papéis, então
+  um papel novo começa sem acesso.
+- **`authorize` antes de gravar.** O `verify_pundit_authorization` (um
+  `after_action`) quebra a requisição se a action esquecer o `authorize`, mas
+  ele roda *depois* da action. A proteção real é chamar `authorize` na primeira
+  linha.
+- **Consultor somente leitura no sistema inteiro.** O
+  `deny_writes_for_consultor` barra qualquer requisição que não seja GET ou HEAD
+  vinda de um consultor, independente das policies. A exceção é o logout, que é
+  do Devise.
+- **Rotas mínimas.** Cada recurso declara `only:` com as actions que existem.
+  Sem rota, o Rails não renderiza uma view órfã.
+
+## Controles implementados
+
+### Autenticação (Devise)
+
+- Login por nome de usuário ou CPF, com ou sem pontuação.
+- Senha com no mínimo 12 caracteres.
+- A conta é bloqueada por 15 minutos após 5 senhas erradas seguidas.
+- Cada IP pode fazer no máximo 20 tentativas de login a cada 3 minutos.
+- A sessão expira após 30 minutos sem uso.
+- Não existe "lembrar de mim": ele desativaria a expiração da sessão, o que é
+  ruim em computador compartilhado.
+- Modo `paranoid`: login inexistente, senha errada e conta bloqueada recebem a
+  mesma resposta, no mesmo tempo. Ninguém descobre quem tem conta.
+- Não há cadastro público nem recuperação de senha por e-mail. As contas são
+  criadas pela administração.
+
+### Criptografia (Active Record Encryption)
+
+- Campos sensíveis são cifrados antes de ir para o banco (tabela acima).
+- O modo determinístico só é usado onde é preciso buscar por igualdade (CPF,
+  prontuários, SINAN). Os demais campos usam o modo padrão, mais forte.
+- Colunas cifradas têm 510 caracteres, porque o texto cifrado ocupa bem mais
+  que o original. Os models limitam o tamanho do valor original para caber.
+
+### Logs
+
+[config/initializers/filter_parameter_logging.rb](../config/initializers/filter_parameter_logging.rb)
+esconde os objetos `paciente` e `avaliacao_clinica` inteiros, além de CPF,
+login, senha, nome, prontuário e município. **Cada formulário novo precisa
+acrescentar ali a sua chave raiz.** Os testes conferem isso com
+`request.filtered_parameters`.
+
+### Auditoria (PaperTrail)
+
+- Criação e alteração de pacientes, avaliações e usuários ficam na tabela
+  `versions`, com o autor em `whodunnit`.
+- Campos cifrados continuam cifrados na auditoria. O hash da senha não é
+  gravado.
+- Leituras (quem visualizou o quê) ainda **não** são registradas; ver
+  pendências.
+
+### Integridade dos registros clínicos
+
+- Registrar uma avaliação **nunca altera o cadastro** de um paciente que já
+  existe; ela só é vinculada a ele. O paciente é localizado pelo CPF ou, sem
+  CPF, pelo prontuário SAH. Se os dois apontarem para pacientes diferentes, o
+  registro é recusado.
+- CPF tem pontuação removida e dígitos verificadores conferidos. Um índice
+  único no banco impede paciente duplicado.
+- Paciente com avaliações não pode ser apagado, e nada é apagado em cascata.
+  A Lei 13.787/2018 prevê guarda mínima de 20 anos do prontuário.
+- O JSON do formulário aceita só campos simples (texto, número, booleano, nulo
+  ou listas deles), com no máximo 300 campos e 64 KB.
+
+### Navegador
+
+- CSP restritiva: só recursos do próprio Prisma, sem script inline nem
+  atributo `style`, e a página não pode ser embutida em outro site.
+- `Cache-Control: no-store` em todas as páginas: depois do logout, o botão
+  "voltar" não mostra dados num computador compartilhado.
+- `robots.txt` bloqueia indexação.
+- Views nunca usam `html_safe` nem `raw`; o ERB escapa tudo.
+
+### Infraestrutura e processo
+
+- Em produção, HTTPS é obrigatório (`force_ssl`, com HSTS e cookies seguros) e
+  só os domínios de `APP_HOSTS` são aceitos.
+- No `docker-compose.yml`, o banco e o servidor de desenvolvimento só escutam
+  em `127.0.0.1`.
+- O CI roda Brakeman, bundler-audit, RuboCop e os testes, contra MariaDB, com
+  token do GitHub somente leitura.
+- O Dependabot atualiza gems e actions.
+
+## Valores configuráveis
+
+| Item | Valor atual | Onde mudar |
+|------|-------------|------------|
+| Tamanho mínimo da senha | 12 | `config/initializers/devise.rb` (`password_length`) |
+| Tentativas até bloquear / tempo de bloqueio | 5 / 15 min | `devise.rb` (`maximum_attempts`, `unlock_in`) |
+| Tentativas de login por IP | 20 a cada 3 min | `app/controllers/users/sessions_controller.rb` |
+| Sessão ociosa | 30 min | `devise.rb` (`timeout_in`) |
+| Limites do JSON do formulário | 300 campos, 64 KB | `app/models/avaliacao_clinica.rb` |
+
+Ao mexer nesses valores, considere os efeitos colaterais:
+
+- **Bloqueio por conta:** quem sabe o login de alguém consegue bloqueá-lo por
+  15 minutos. Um admin desbloqueia antes pelo console com
+  `User.find_by(username: "...").unlock_access!`.
+- **Limite por IP:** todos os computadores de um hospital podem sair pelo mesmo
+  IP. Um limite baixo demais bloqueia a equipe inteira na troca de turno.
+- **Sessão de 30 minutos:** um formulário longo preenchido sem enviar por mais
+  de 30 minutos se perde ao enviar.
+
+## Chaves de criptografia
+
+- **Gere chaves próprias para cada instalação** com
+  `bin/rails db:encryption:init`. Elas entram pelas variáveis
+  `ACTIVE_RECORD_ENCRYPTION_PRIMARY_KEY`, `ACTIVE_RECORD_ENCRYPTION_DETERMINISTIC_KEY`
+  e `ACTIVE_RECORD_ENCRYPTION_KEY_DERIVATION_SALT`.
+- Guarde-as num gerenciador de senhas ou cofre de segredos. Nunca no git, na
+  imagem Docker ou em logs.
+- **Quem perde as chaves perde os dados.** O backup do banco não serve sem
+  elas, então guarde as chaves com o mesmo cuidado, mas separadas do backup.
+- Em produção, a aplicação não sobe sem as três variáveis
+  ([config/initializers/active_record_encryption.rb](../config/initializers/active_record_encryption.rb)).
+- Os testes usam chaves fixas, públicas e fictícias, definidas em
+  `config/environments/test.rb`. Elas não protegem nada e não devem ser usadas
+  fora dos testes.
+
+## Checklist de produção
+
+Antes de colocar dados reais:
+
+- [ ] TLS terminado no proxy (kamal-proxy, nginx ou o proxy da instituição). A
+      aplicação assume HTTPS (`assume_ssl`); sem TLS no proxy, o tráfego ficaria
+      aberto sem nenhum aviso. Em rede interna sem DNS público, use um
+      certificado da instituição em vez de Let's Encrypt.
+- [ ] `APP_HOSTS` com o domínio do sistema.
+- [ ] Chaves de criptografia próprias, com cópia segura.
+- [ ] `secret_key_base` próprio: crie as suas credenciais com
+      `bin/rails credentials:edit` ou defina `SECRET_KEY_BASE`. Não reaproveite
+      o `config/credentials.yml.enc` de outra instalação.
+- [ ] `DATABASE_URL` com usuário próprio (não root). Se o banco estiver em outro
+      servidor, use conexão com TLS.
+- [ ] Backup do banco testado e cifrado, com política de retenção.
+- [ ] `RAILS_LOG_LEVEL` em `info` ou acima. `debug` grava SQL.
+- [ ] Contas criadas só para quem precisa, com o papel mínimo necessário.
+
+## Pendências conhecidas
+
+Em ordem aproximada de prioridade:
+
+1. **Dockerfile de produção.** O `Dockerfile` atual é só de desenvolvimento:
+   roda como root e não instala gems nem compila assets na imagem. O deploy com
+   Kamal (`config/deploy.yml`) ainda não funciona.
+2. **Tela do formulário de TB.** O `avaliacoes_clinicas/new.html.erb` ainda é
+   um placeholder.
+3. **Schema por formulário.** Hoje `dados_formulario` aceita qualquer campo
+   dentro dos limites. Cada formulário deve declarar seus campos, tipos e
+   respostas válidas ([novo-formulario.md](novo-formulario.md)).
+4. **Telas de consulta** (`index`/`show`) com `policy_scope` e `authorize`, e
+   **auditoria de leitura** (quem visualizou qual paciente).
+5. **Gestão de usuários pela interface.** Hoje as contas são criadas pelo
+   console.
+6. **Minimização para o consultor.** Avaliar se ele precisa ver nome e CPF ou
+   se basta ver dados pseudonimizados (LGPD, art. 6º, III).
+7. **Segundo fator de autenticação** para admin.
+8. **Rotação de chaves.** O Active Record Encryption aceita várias chaves
+   primárias (a última cifra, as anteriores ainda decifram), mas o Prisma lê só
+   uma por variável. O modo determinístico não suporta rotação.
+9. **Mensagens em português.** As mensagens padrão do Rails e do Devise ainda
+   estão em inglês.
+10. **Licença** do projeto.
