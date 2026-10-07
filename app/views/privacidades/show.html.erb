@@ -1,0 +1,103 @@
+<% content_for :title, "Privacidade e proteção de dados · Prisma" %>
+<% trilha ["Privacidade e proteção de dados"] %>
+<% cartao = "rounded-xl border border-marca-200 bg-white p-5 shadow-sm sm:p-6" %>
+<% titulo = "text-lg font-bold text-slate-900" %>
+<% texto = "mt-2 max-w-3xl text-sm text-slate-700" %>
+<% lista = "mt-2 max-w-3xl list-disc space-y-1 pl-5 text-sm text-slate-700" %>
+
+<div>
+  <h1 class="text-2xl font-bold text-slate-900">Privacidade e proteção de dados</h1>
+  <p class="max-w-3xl text-sm text-slate-600">
+    O Prisma registra dados de saúde, que a LGPD trata como dados pessoais sensíveis (art. 5º, II). Esta página
+    resume para que eles são coletados, com qual base legal, quem os acessa, por quanto tempo ficam guardados e
+    como os direitos dos pacientes são atendidos (art. 9º).
+  </p>
+</div>
+
+<section class="<%= cartao %>" aria-labelledby="privacidade-responsavel">
+  <h2 id="privacidade-responsavel" class="<%= titulo %>">Quem responde pelos dados</h2>
+  <p class="<%= texto %>">
+    A instituição que usa o Prisma é a controladora dos dados (art. 5º, VI): é ela quem decide sobre o tratamento
+    e atende os pedidos dos pacientes, pelo encarregado de dados (DPO).
+  </p>
+  <p class="<%= texto %>">
+    <% if @encarregado %>
+      <span class="font-semibold text-slate-900">Encarregado (DPO):</span> <%= @encarregado %>
+    <% else %>
+      Procure o encarregado de dados (DPO) da sua instituição.
+    <% end %>
+  </p>
+</section>
+
+<section class="<%= cartao %>" aria-labelledby="privacidade-finalidade">
+  <h2 id="privacidade-finalidade" class="<%= titulo %>">Para que e com qual base legal</h2>
+  <ul class="mt-3 space-y-4">
+    <% @formularios.each do |formulario| %>
+      <li class="max-w-3xl text-sm text-slate-700">
+        <p class="font-semibold text-slate-900"><%= formulario.titulo %></p>
+        <p class="mt-1">Dados coletados para <%= formulario.finalidade.chomp(".") %>.</p>
+        <p class="mt-1">Base legal: <%= formulario.base_legal.chomp(".") %>.</p>
+      </li>
+    <% end %>
+  </ul>
+  <p class="mt-3 max-w-3xl text-xs text-slate-600">
+    Cada notificação grava a finalidade e a base legal em vigor quando foi registrada, e as mostra nos detalhes.
+  </p>
+</section>
+
+<section class="<%= cartao %>" aria-labelledby="privacidade-dados">
+  <h2 id="privacidade-dados" class="<%= titulo %>">Quais dados</h2>
+  <ul class="<%= lista %>">
+    <li>
+      <span class="font-semibold text-slate-900">Do paciente:</span> os prontuários SAH e AGHUSE, as iniciais e as
+      respostas do formulário. Não há nome completo, CPF nem endereço do paciente.
+    </li>
+    <li>
+      <span class="font-semibold text-slate-900">De quem usa o sistema:</span> nome, CPF, nome de usuário e senha
+      (guardada só como hash, que não pode ser revertido), e o registro de cada acesso a dados de pacientes: quem,
+      quando, qual registro, de qual IP e com qual navegador.
+    </li>
+  </ul>
+</section>
+
+<section class="<%= cartao %>" aria-labelledby="privacidade-acesso">
+  <h2 id="privacidade-acesso" class="<%= titulo %>">Quem acessa</h2>
+  <p class="<%= texto %>">
+    Só quem a administração liberou, por instituição, setor e formulário. Cada visualização e cada alteração ficam
+    registradas, com o autor e o horário. O Prisma não envia dados a outros sistemas.
+  </p>
+</section>
+
+<section class="<%= cartao %>" aria-labelledby="privacidade-guarda">
+  <h2 id="privacidade-guarda" class="<%= titulo %>">Por quanto tempo</h2>
+  <p class="<%= texto %>">
+    No mínimo 20 anos após o último registro, como o prontuário do paciente (Lei 13.787/2018). Por isso o Prisma
+    não apaga notificações nem pacientes: a guarda é uma obrigação legal (LGPD, art. 16, I).
+  </p>
+</section>
+
+<section class="<%= cartao %>" aria-labelledby="privacidade-direitos">
+  <h2 id="privacidade-direitos" class="<%= titulo %>">Direitos dos pacientes</h2>
+  <p class="<%= texto %>">O paciente pode pedir à instituição, pelo encarregado (art. 18):</p>
+  <ul class="<%= lista %>">
+    <li>confirmação de que existem dados dele e acesso a eles;</li>
+    <li>
+      correção de dados incompletos, inexatos ou desatualizados: prontuário e iniciais são corrigidos em
+      “Corrigir identificação”, nos detalhes da notificação, e as respostas, na edição dela;
+    </li>
+    <li>informação sobre com quem os dados são compartilhados.</li>
+  </ul>
+  <p class="<%= texto %>">
+    A eliminação não se aplica enquanto a guarda for obrigatória por lei (art. 16, I). Para responder aos pedidos,
+    a instituição conta com o registro de quem viu e de quem alterou os dados de cada paciente.
+  </p>
+</section>
+
+<section class="<%= cartao %>" aria-labelledby="privacidade-seguranca">
+  <h2 id="privacidade-seguranca" class="<%= titulo %>">Segurança</h2>
+  <p class="<%= texto %>">
+    Os dados de saúde ficam cifrados no banco, o acesso exige login e liberação, a sessão expira após
+    <%= em_minutos(Devise.timeout_in) %> sem uso e as páginas não ficam guardadas no navegador. Mais detalhes na
+    <%= link_to "Visão geral", root_path, class: "font-semibold text-marca-700 hover:underline" %>.
+  </p>
+</section>

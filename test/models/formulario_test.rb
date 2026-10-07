@@ -108,27 +108,53 @@ class FormularioTest < ActiveSupport::TestCase
   end
 
   test "definição com condição que não depende da pergunta anterior é recusada" do
-    definicao = {
-      "titulo" => "Teste",
-      "secoes" => [ { "titulo" => "Única", "perguntas" => [
-        { "numero" => 1, "chave" => "controle", "texto" => "Controle", "tipo" => "unica", "opcoes" => { "1" => "Sim" } },
-        { "numero" => 2, "chave" => "outra", "texto" => "Outra", "tipo" => "texto" },
-        { "numero" => 3, "chave" => "alvo", "texto" => "Alvo", "tipo" => "texto", "condicao" => { "pergunta" => "controle", "valores" => [ "1" ] } }
-      ] } ]
-    }
+    definicao = definicao_com([
+      { "numero" => 1, "chave" => "controle", "texto" => "Controle", "tipo" => "unica", "opcoes" => { "1" => "Sim" } },
+      { "numero" => 2, "chave" => "outra", "texto" => "Outra", "tipo" => "texto" },
+      { "numero" => 3, "chave" => "alvo", "texto" => "Alvo", "tipo" => "texto", "condicao" => { "pergunta" => "controle", "valores" => [ "1" ] } }
+    ])
 
-    assert_raises(Formulario::DefinicaoInvalida) { Formulario.new("teste", definicao) }
+    erro = assert_raises(Formulario::DefinicaoInvalida) { Formulario.new("teste", definicao) }
+    assert_match "deve depender da pergunta anterior", erro.message
   end
 
   test "definição com tipo desconhecido é recusada" do
-    definicao = { "titulo" => "Teste", "secoes" => [ { "titulo" => "Única", "perguntas" => [
-      { "numero" => 1, "chave" => "campo", "texto" => "Campo", "tipo" => "arquivo" }
-    ] } ] }
+    definicao = definicao_com([ { "numero" => 1, "chave" => "campo", "texto" => "Campo", "tipo" => "arquivo" } ])
 
-    assert_raises(Formulario::DefinicaoInvalida) { Formulario.new("teste", definicao) }
+    erro = assert_raises(Formulario::DefinicaoInvalida) { Formulario.new("teste", definicao) }
+    assert_match "tipo inválido", erro.message
+  end
+
+  test "todo formulário diz para que coleta os dados e com qual base legal" do
+    assert_match "tratamento da tuberculose", @tb.finalidade
+    assert_match "art. 11, II", @tb.base_legal
+    Formulario.todos.each do |formulario|
+      assert formulario.finalidade.present? && formulario.base_legal.present?, formulario.chave
+    end
+  end
+
+  test "definição sem finalidade ou sem base legal é recusada" do
+    definicao = definicao_com([ { "numero" => 1, "chave" => "campo", "texto" => "Campo", "tipo" => "texto" } ])
+    assert_nothing_raised { Formulario.new("teste", definicao) }
+
+    %w[finalidade base_legal].each do |campo|
+      assert_raises(Formulario::DefinicaoInvalida, campo) { Formulario.new("teste", definicao.except(campo)) }
+      [ "  ", nil, [ "lista" ] ].each do |valor|
+        erro = assert_raises(Formulario::DefinicaoInvalida, "#{campo}: #{valor.inspect}") do
+          Formulario.new("teste", definicao.merge(campo => valor))
+        end
+        assert_match "finalidade e base_legal são obrigatórias", erro.message
+      end
+    end
   end
 
   private
+
+  # Definição mínima válida, com as perguntas dadas numa seção
+  def definicao_com(perguntas)
+    { "titulo" => "Teste", "finalidade" => "testar o carregamento", "base_legal" => "nenhuma, é um teste",
+      "secoes" => [ { "titulo" => "Única", "perguntas" => perguntas } ] }
+  end
 
   def validar(entrada)
     @tb.validar(@tb.normalizar(entrada))

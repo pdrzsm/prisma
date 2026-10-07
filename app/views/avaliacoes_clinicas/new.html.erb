@@ -6,4 +6,6 @@
   <p class="text-sm text-slate-600"><%= @formulario.descricao %></p>
 </div>
 
+<%= render "finalidade", finalidade: @formulario.finalidade, base_legal: @formulario.base_legal %>
+
 <%= render "formulario", url: formulario_avaliacoes_clinicas_path(@formulario), metodo: :post %>

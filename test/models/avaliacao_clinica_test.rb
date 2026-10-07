@@ -73,6 +73,17 @@ class AvaliacaoClinicaTest < ActiveSupport::TestCase
     assert_raises(ActiveRecord::ReadonlyAttributeError) { avaliacoes_clinicas(:one).setor = setores(:laboratorio) }
   end
 
+  test "o registro grava a finalidade e a base legal do formulário, que não mudam depois" do
+    tb = Formulario.find("seguimento_tb")
+    registro = avaliacao(respostas_de_abertura)
+    registro.finalidade = "outra finalidade qualquer"
+    registro.save!
+
+    assert_equal [ tb.finalidade, tb.base_legal ], [ registro.reload.finalidade, registro.base_legal ]
+    assert_raises(ActiveRecord::ReadonlyAttributeError) { registro.finalidade = "mudada depois" }
+    assert_raises(ActiveRecord::ReadonlyAttributeError) { registro.base_legal = "mudada depois" }
+  end
+
   private
 
   def avaliacao(respostas)

@@ -22,6 +22,7 @@ app/
     identificacoes_controller.rb       correção da identificação do paciente (prontuários e iniciais)
     configuracoes/                     "Configurações", só admin: instituições, setores, usuários e liberações
     senhas_controller.rb               troca da própria senha (obrigatória com senha temporária)
+    privacidades_controller.rb         "Privacidade e proteção de dados", ligada no rodapé
     users/sessions_controller.rb       login com limite por IP
   models/
     formulario.rb                      motor de formulários: lê, normaliza e valida
@@ -54,7 +55,9 @@ de verdade para:
 - **o que é permitido** (strong params só com as perguntas declaradas);
 - **como normalizar** o que chega do navegador (espaços, números, listas vazias);
 - **o que é válido** (tipos, opções, obrigatórias, comparações entre perguntas);
-- **como mostrar** (as views percorrem seções e perguntas; não há HTML por formulário).
+- **como mostrar** (as views percorrem seções e perguntas; não há HTML por formulário);
+- **para que e com qual base legal** os dados são coletados (`finalidade` e
+  `base_legal`, obrigatórias, mostradas no registro e gravadas em cada notificação).
 
 Um formulário novo, na maior parte dos casos, é só um YAML novo: não precisa
 de model, controller, rota nem view. O passo a passo está em
@@ -103,6 +106,8 @@ User ── * LiberacaoInstituicao, LiberacaoSetor, LiberacaoFormulario (com o p
   definição ele segue, `dados_formulario` guarda as respostas (JSON cifrado),
   `user` é quem registrou, `setor` é o do paciente (não muda depois do
   registro) e `lock_version` impede que edições simultâneas se sobrescrevam.
+  `finalidade` e `base_legal` são copiadas do formulário no registro e também
+  não mudam depois.
 - **Instituicao** e **Setor**: a organização, cadastrada pelo admin em
   Configurações. Nome único (a sigla da instituição também), sem diferenciar
   maiúsculas; o nome de um setor só não repete dentro da mesma instituição.
@@ -146,6 +151,7 @@ GET    /configuracoes/usuarios/:id/edit                            editar, ativa
 GET    /configuracoes/usuarios/:usuario_id/liberacoes/edit         liberações
 GET    /configuracoes/usuarios/:usuario_id/senha/edit              senha temporária
 GET    /senha/edit                                                 trocar a própria senha
+GET    /privacidade                                                privacidade e proteção de dados
 ```
 
 Instituições, setores, usuários, liberações e senhas também têm `POST` ou

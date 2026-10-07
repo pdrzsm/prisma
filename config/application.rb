@@ -26,6 +26,10 @@ module Prisma
     # Horário de Brasília por padrão; outra região: PRISMA_FUSO_HORARIO=America/Manaus
     config.time_zone = ENV.fetch("PRISMA_FUSO_HORARIO", "America/Sao_Paulo")
 
+    # Contato do encarregado de dados (DPO) da instituição, mostrado na página
+    # de privacidade (LGPD, art. 41, § 1º). Ex.: "Maria Souza · dpo@hospital.gov.br"
+    config.x.encarregado = ENV["PRISMA_ENCARREGADO"].presence
+
     # Interface em português; o que ainda não tiver tradução cai no inglês
     config.i18n.default_locale = :"pt-BR"
     config.i18n.available_locales = [ :"pt-BR", :en ]

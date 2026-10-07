@@ -38,6 +38,14 @@ _opcoes:
 
 titulo: Seguimento de TB
 descricao: Acompanhamento do tratamento de tuberculose, da abertura ao encerramento, com exames mensais e desfecho.
+# Para que os dados são coletados e com qual base legal (LGPD, art. 6º, I e X,
+# e art. 11). Aparecem na tela de registro e ficam gravados em cada
+# notificação. A finalidade completa a frase "Dados coletados para ...".
+# Texto a validar com o encarregado de dados (DPO) da instituição.
+finalidade: acompanhar o tratamento da tuberculose até o desfecho e notificar o caso à vigilância epidemiológica (SINAN)
+base_legal: >-
+  cumprimento de obrigação legal, porque a tuberculose é de notificação compulsória (Lei 6.259/1975),
+  e execução de políticas públicas de saúde (LGPD, art. 11, II, “a” e “b”)
 encerramento: data_encerramento
 lista: [numero_sinan, forma_clinica]
 

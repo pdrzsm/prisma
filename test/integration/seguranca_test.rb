@@ -15,7 +15,7 @@ class SegurancaTest < ActionDispatch::IntegrationTest
       root_path, formularios_path,
       formulario_avaliacoes_clinicas_path(FORMULARIO), new_formulario_avaliacao_clinica_path(FORMULARIO),
       formulario_avaliacao_clinica_path(FORMULARIO, avaliacao), edit_formulario_avaliacao_clinica_path(FORMULARIO, avaliacao),
-      edit_paciente_identificacao_path(avaliacao.paciente)
+      edit_paciente_identificacao_path(avaliacao.paciente), privacidade_path
     ]
     paginas.each do |pagina|
       get pagina
@@ -41,7 +41,8 @@ class SegurancaTest < ActionDispatch::IntegrationTest
     avaliacao = avaliacoes_clinicas(:one)
     [ root_path, formularios_path, formulario_avaliacoes_clinicas_path(FORMULARIO),
       new_formulario_avaliacao_clinica_path(FORMULARIO), formulario_avaliacao_clinica_path(FORMULARIO, avaliacao),
-      edit_formulario_avaliacao_clinica_path(FORMULARIO, avaliacao), edit_paciente_identificacao_path(avaliacao.paciente) ].each do |pagina|
+      edit_formulario_avaliacao_clinica_path(FORMULARIO, avaliacao), edit_paciente_identificacao_path(avaliacao.paciente),
+      privacidade_path ].each do |pagina|
       get pagina
       assert_response :success
       assert_cabecalhos pagina

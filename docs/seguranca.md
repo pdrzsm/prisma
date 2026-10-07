@@ -171,6 +171,25 @@ um formulário novo já nasce coberto. Os testes conferem isso com
   computador da rede interna forjaria o próprio IP, na auditoria e no limite de
   tentativas de login.
 
+### Transparência: finalidade e base legal
+
+- Cada formulário declara no YAML a **finalidade** da coleta e a **base legal**
+  (LGPD, art. 6º, I e X, e art. 11). O formulário sem as duas não carrega.
+- A tela de registro mostra as duas **antes das perguntas**, com a guarda
+  mínima de 20 anos (Lei 13.787/2018). A edição e os detalhes de uma
+  notificação mostram as gravadas nela.
+- Cada notificação **grava** a finalidade e a base legal em vigor no registro
+  (`avaliacoes_clinicas.finalidade` e `base_legal`). Elas vêm sempre do
+  formulário, nunca da tela, e não mudam depois: se a definição mudar, as
+  notificações antigas continuam dizendo para que foram coletadas.
+- A página **Privacidade e proteção de dados** (`/privacidade`, no rodapé de
+  todas as telas) resume para quem usa o sistema o que o art. 9º pede: quem
+  responde pelos dados, finalidade e base legal de cada formulário, quais
+  dados, quem acessa, por quanto tempo e os direitos dos pacientes, com o
+  contato do encarregado (`PRISMA_ENCARREGADO`). Ela exige login: os
+  pacientes não usam o Prisma, e a política para eles é publicada pela
+  instituição (ver o checklist).
+
 ### Integridade dos registros clínicos
 
 - Registrar ou editar uma notificação **nunca altera a identificação** de um
@@ -233,6 +252,8 @@ um formulário novo já nasce coberto. Os testes conferem isso com
 | Sessão ociosa | 30 min | `devise.rb` (`timeout_in`) |
 | Perguntas, opções, obrigatoriedade e limites de cada formulário | por pergunta | `config/formularios/*.yml` |
 | Fuso horário | America/Sao_Paulo | variável `PRISMA_FUSO_HORARIO` |
+| Finalidade e base legal de cada formulário | por formulário | `finalidade` e `base_legal` em `config/formularios/*.yml` |
+| Contato do encarregado de dados (DPO) | não definido | variável `PRISMA_ENCARREGADO` (ex.: "Maria Souza · dpo@hospital.gov.br") |
 
 Ao mexer nesses valores, considere os efeitos colaterais:
 
@@ -282,6 +303,14 @@ Antes de colocar dados reais:
       e rode as migrações com outro usuário, que tem permissão de alterar tabelas.
 - [ ] Política de retenção para `audit_logs` (contém IP e navegador de quem
       acessou), definida com o encarregado (DPO).
+- [ ] Finalidade e base legal de cada formulário (`config/formularios/*.yml`)
+      validadas com o encarregado (DPO). As do seguimento de TB são uma
+      proposta: obrigação legal (notificação compulsória) e políticas públicas
+      de saúde, art. 11, II, "a" e "b".
+- [ ] `PRISMA_ENCARREGADO` com o nome e o contato do encarregado (DPO), e a
+      política de privacidade para os pacientes publicada pela instituição
+      (LGPD, art. 9º e art. 41, § 1º); o texto de `/privacidade` pode servir de
+      base.
 - [ ] Chaves de criptografia próprias, com cópia segura.
 - [ ] `secret_key_base` próprio: crie as suas credenciais com
       `bin/rails credentials:edit` ou defina `SECRET_KEY_BASE`. Não reaproveite

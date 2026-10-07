@@ -35,6 +35,9 @@ Rails.application.routes.draw do
   # Troca da própria senha (obrigatória com senha temporária)
   resource :senha, only: [ :edit, :update ]
 
+  # Privacidade e proteção de dados (LGPD, art. 9º), ligada no rodapé
+  resource :privacidade, only: [ :show ]
+
   # Health check do Kamal/balanceador. Não passa pelo ApplicationController,
   # então não exige login e não expõe dados.
   get "up" => "rails/health#show", as: :rails_health_check

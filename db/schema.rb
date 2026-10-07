@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_07_140000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_07_160000) do
   create_table "audit_logs", charset: "utf8mb4", collation: "utf8mb4_general_ci", force: :cascade do |t|
     t.bigint "user_id", null: false
     t.string "auditable_type", limit: 64, null: false
@@ -33,6 +33,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_07_140000) do
     t.string "formulario", null: false
     t.integer "lock_version", default: 0, null: false
     t.bigint "setor_id", null: false
+    t.text "finalidade", null: false
+    t.text "base_legal", null: false
     t.index ["formulario", "updated_at"], name: "index_avaliacoes_clinicas_on_formulario_and_updated_at"
     t.index ["paciente_id"], name: "index_avaliacoes_clinicas_on_paciente_id"
     t.index ["setor_id", "formulario", "updated_at"], name: "idx_on_setor_id_formulario_updated_at_02132e20f9"

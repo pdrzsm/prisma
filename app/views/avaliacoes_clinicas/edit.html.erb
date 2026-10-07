@@ -7,4 +7,7 @@
   <p class="text-sm text-slate-600">Toda alteração fica registrada na auditoria, com autor e horário.</p>
 </div>
 
+<%# A finalidade gravada no registro da notificação %>
+<%= render "finalidade", finalidade: @avaliacao.finalidade, base_legal: @avaliacao.base_legal %>
+
 <%= render "formulario", url: formulario_avaliacao_clinica_path(@formulario, @avaliacao), metodo: :patch %>

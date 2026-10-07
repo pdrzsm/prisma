@@ -13,6 +13,10 @@ aparece sozinho em **Formulários**, no menu lateral. O exemplo completo é o
 ```yaml
 titulo: Nome curto do formulário
 descricao: Uma frase sobre quando ele é usado.
+# Obrigatórias (LGPD, art. 6º, I e X, e art. 11): aparecem na tela de registro
+# e ficam gravadas em cada notificação
+finalidade: acompanhar ... até o desfecho   # completa "Dados coletados para ..."
+base_legal: cumprimento de obrigação legal (LGPD, art. 11, II, "a")
 encerramento: data_encerramento   # opcional: pergunta de data que "fecha" o registro
 lista: [numero_sinan]             # opcional: perguntas que viram colunas na lista
 
@@ -32,6 +36,14 @@ secoes:
           "1": Positivo
           "2": Negativo
 ```
+
+`finalidade` e `base_legal` dizem para que os dados são coletados e com qual
+base legal. Aparecem antes das perguntas na tela de registro e na página
+"Privacidade e proteção de dados", e cada notificação grava os dois textos no
+registro: se mudarem depois, as notificações antigas continuam com os de
+quando foram coletadas. A finalidade completa a frase "Dados coletados
+para ...", sem ponto final. **Valide os dois textos com o encarregado de dados
+(DPO) da instituição antes de publicar.**
 
 ## 2. Campos de cada pergunta
 
@@ -59,6 +71,8 @@ em `_opcoes` no arquivo do TB.
 O arquivo é conferido ao carregar e nos testes, então um erro de definição
 nunca chega a quem preenche:
 
+- `finalidade` e `base_legal` preenchidas: nenhum formulário coleta dados sem
+  dizer para quê;
 - chaves únicas e válidas, tipos conhecidos, `unica`/`multipla` com opções;
 - `condicao` aponta para a pergunta **imediatamente anterior**, de escolha
   única, com códigos que existem. Isso permite mostrar e esconder a pergunta só

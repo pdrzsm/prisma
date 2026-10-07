@@ -20,7 +20,7 @@ class Formulario
   # Perguntas de identificação gravadas no Paciente, não nas respostas
   CAMPOS_DO_PACIENTE = %w[prontuario_sah prontuario_aghuse iniciais].freeze
 
-  attr_reader :chave, :titulo, :descricao, :secoes, :campo_encerramento
+  attr_reader :chave, :titulo, :descricao, :finalidade, :base_legal, :secoes, :campo_encerramento
 
   class << self
     def todos
@@ -56,6 +56,8 @@ class Formulario
     @chave = chave
     @titulo = definicao.fetch("titulo")
     @descricao = definicao["descricao"]
+    @finalidade = definicao.fetch("finalidade")
+    @base_legal = definicao.fetch("base_legal")
     @campo_encerramento = definicao["encerramento"]
     @chaves_da_lista = Array(definicao["lista"])
     @secoes = definicao.fetch("secoes").map do |secao|
@@ -250,6 +252,9 @@ class Formulario
     chaves = perguntas.map(&:chave)
     falha = ->(mensagem) { raise DefinicaoInvalida, "#{chave}: #{mensagem}" }
 
+    # Prestação de contas (LGPD, art. 6º, X): nenhum formulário coleta dados
+    # sem dizer para quê e com qual base legal
+    falha.("finalidade e base_legal são obrigatórias") unless [ finalidade, base_legal ].all? { |texto| texto.is_a?(String) && texto.strip.present? }
     falha.("chaves repetidas") if chaves.uniq.size != chaves.size
     perguntas.each do |pergunta|
       falha.("chave inválida #{pergunta.chave}") unless pergunta.chave.match?(NOME_DE_CAMPO)

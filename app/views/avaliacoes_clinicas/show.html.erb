@@ -46,6 +46,8 @@
   </section>
 <% end %>
 
+<%= render "finalidade", finalidade: @avaliacao.finalidade, base_legal: @avaliacao.base_legal %>
+
 <section class="bg-white rounded-xl border border-marca-200 shadow-sm p-6">
   <h2 class="text-lg font-bold text-slate-900 mb-4">Histórico de alterações</h2>
   <ol class="space-y-2 text-sm">

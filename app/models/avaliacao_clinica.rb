@@ -15,6 +15,12 @@ class AvaliacaoClinica < ApplicationRecord
   validates :formulario, inclusion: { in: ->(_) { Formulario.chaves } }
   # O setor nunca muda depois do registro (tiraria a notificação de quem a vê)
   attr_readonly :setor_id
+  # Para que e com qual base legal a notificação foi coletada (LGPD, art. 6º,
+  # X): copiadas do formulário no registro e nunca mais alteradas, mesmo que a
+  # definição do formulário mude depois
+  attr_readonly :finalidade, :base_legal
+  before_validation :registrar_finalidade, on: :create
+  validates :finalidade, :base_legal, presence: true
   before_validation :normalizar_respostas
   validate :respostas_conforme_formulario
   validate :mesmo_setor_do_paciente
@@ -41,6 +47,13 @@ class AvaliacaoClinica < ApplicationRecord
 
   def formulario_conhecido?
     Formulario.chaves.include?(formulario)
+  end
+
+  def registrar_finalidade
+    return unless formulario_conhecido?
+
+    self.finalidade = definicao.finalidade
+    self.base_legal = definicao.base_legal
   end
 
   def normalizar_respostas

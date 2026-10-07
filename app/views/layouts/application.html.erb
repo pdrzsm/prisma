@@ -34,6 +34,9 @@
           <main class="px-4 sm:px-8 lg:px-16 py-6 space-y-6">
             <%= yield %>
           </main>
+          <footer class="px-4 pb-8 text-xs text-slate-600 sm:px-8 lg:px-16">
+            <%= link_to "Privacidade e proteção de dados", privacidade_path, class: "hover:text-marca-700 hover:underline" %>
+          </footer>
         </div>
       </div>
     <% end %>

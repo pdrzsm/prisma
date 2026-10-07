@@ -1,9 +1,13 @@
 # Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
 
 # Notificações de seguimento de TB com dados fictícios, só com a abertura.
-# "one" e "two" são do Ambulatório; "tres" é do Laboratório.
+# "one" e "two" são do Ambulatório; "tres" é do Laboratório. Finalidade e base
+# legal são as do formulário, como no registro (AvaliacaoClinica).
+<% tb = Formulario.find("seguimento_tb") %>
 one:
   formulario: seguimento_tb
+  finalidade: <%= tb.finalidade.to_json %>
+  base_legal: <%= tb.base_legal.to_json %>
   setor: ambulatorio
   paciente: one
   user: operador
@@ -17,6 +21,8 @@ one:
 
 two:
   formulario: seguimento_tb
+  finalidade: <%= tb.finalidade.to_json %>
+  base_legal: <%= tb.base_legal.to_json %>
   setor: ambulatorio
   paciente: two
   user: admin
@@ -31,6 +37,8 @@ two:
 
 tres:
   formulario: seguimento_tb
+  finalidade: <%= tb.finalidade.to_json %>
+  base_legal: <%= tb.base_legal.to_json %>
   setor: laboratorio
   paciente: tres
   user: laboratorista
