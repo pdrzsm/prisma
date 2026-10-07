@@ -9,6 +9,9 @@ pt-BR:
         prontuario_aghuse: Prontuário AGHUSE
       user:
         login: CPF ou nome de usuário
+        nome: Nome
+        ativo: Conta ativa
+        current_password: Senha atual
         username: Nome de usuário
         cpf: CPF
         password: Senha
@@ -37,6 +40,10 @@ pt-BR:
         restrict_dependent_destroy:
           has_many: Não é possível excluir enquanto houver %{record}
       models:
+        user:
+          attributes:
+            current_password:
+              invalid: não confere
         # Mesmo texto das perguntas do formulário ("é obrigatória")
         paciente:
           attributes:
@@ -65,6 +72,7 @@ pt-BR:
     failure:
       already_authenticated: Você já entrou no sistema.
       inactive: Sua conta ainda não está ativa.
+      desativada: Conta desativada. Fale com a administração do sistema.
       invalid: Usuário, CPF ou senha inválidos.
       locked: Sua conta está bloqueada.
       not_found_in_database: Usuário, CPF ou senha inválidos.

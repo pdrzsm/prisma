@@ -7,24 +7,29 @@ class DashboardControllerTest < ActionDispatch::IntegrationTest
     assert_redirected_to new_user_session_path
   end
 
-  test "todos os papéis veem a visão geral com os totais reais e o acesso aos formulários" do
-    %i[operador admin consultor].each do |papel|
+  test "todos veem a visão geral, com os totais só do que podem ver" do
+    { operador: 2, admin: 3, consultor: 2, laboratorista: 1, sem_acesso: 0 }.each do |papel, total|
       sign_in users(papel)
       get root_path
 
       assert_response :success
       assert_select "nav a[aria-current='page']", text: "Visão geral"
       assert_select "a[href='#{formularios_path}']", minimum: 1
-      assert_select "p.text-3xl", text: AvaliacaoClinica.count.to_s
+      assert_select "p.text-3xl", text: total.to_s
     end
   end
 
-  test "a visão geral explica o sistema e o que o papel de quem entrou pode fazer" do
-    { operador: "consulta, registra e atualiza", consultor: "sem registrar nem alterar nada" }.each do |papel, permissao|
+  test "a visão geral mostra a cada um o seu acesso" do
+    {
+      admin: /conta\s+admin\s*: administra o sistema/,
+      operador: /CRF - Ambulatório\s*:\s+Seguimento de TB \(registra\)/,
+      consultor: /CRF - Ambulatório\s*:\s+Seguimento de TB \(só consulta\)/,
+      sem_acesso: /ainda não tem nenhum acesso liberado/
+    }.each do |papel, acesso|
       sign_in users(papel)
       get root_path
 
-      assert_select "p", text: /Você entrou como\s+#{papel}\s+e .*#{permissao}/
+      assert_match acesso, response.body.gsub(/<[^>]+>/, " ").squish, papel
       [ "O que é o Prisma", "Como funciona", "Quem pode o quê", "Segurança e privacidade" ].each do |titulo|
         assert_select "h2", text: titulo
       end

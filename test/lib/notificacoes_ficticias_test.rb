@@ -15,6 +15,7 @@ class NotificacoesFicticiasTest < ActiveSupport::TestCase
     assert geradas.any?(&:encerrada?)
     assert geradas.any? { |avaliacao| !avaliacao.encerrada? }
     assert geradas.all? { |avaliacao| avaliacao.paciente.prontuario_sah.start_with?("TESTE-SAH-") }
+    assert geradas.all? { |avaliacao| avaliacao.setor == setores(:ambulatorio) && avaliacao.paciente.setor == setores(:ambulatorio) }
     assert geradas.all? { |avaliacao| avaliacao.created_at.to_date <= HOJE && avaliacao.updated_at >= avaliacao.created_at }
 
     # Cada etapa (abertura, meses, encerramento) é uma versão, com autor
@@ -43,6 +44,6 @@ class NotificacoesFicticiasTest < ActiveSupport::TestCase
   private
 
   def gerar(quantidade)
-    NotificacoesFicticias.new(quantidade:, autores: [ users(:operador), users(:admin) ], hoje: HOJE).gerar
+    NotificacoesFicticias.new(quantidade:, autores: [ users(:operador), users(:admin) ], setor: setores(:ambulatorio), hoje: HOJE).gerar
   end
 end

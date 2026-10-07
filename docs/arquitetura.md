@@ -19,7 +19,8 @@ app/
     dashboard_controller.rb            "Visão geral"
     formularios_controller.rb          "Formulários": formulários disponíveis
     avaliacoes_clinicas_controller.rb  registros de um formulário (lista, ver, criar, editar)
-    configuracoes/                     "Configurações", só admin: instituições e setores
+    configuracoes/                     "Configurações", só admin: instituições, setores, usuários e liberações
+    senhas_controller.rb               troca da própria senha (obrigatória com senha temporária)
     users/sessions_controller.rb       login com limite por IP
   models/
     formulario.rb                      motor de formulários: lê, normaliza e valida
@@ -27,6 +28,10 @@ app/
     paciente.rb                        identificação mínima do paciente
     user.rb                            usuários do sistema e papéis
     instituicao.rb, setor.rb           organização: instituições e os seus setores
+    formulario_habilitado.rb           formulários habilitados em cada setor
+    liberacao_*.rb                     liberações por instituição, setor e formulário
+    permissoes.rb                      o RBAC: o que cada pessoa pode em cada setor e formulário
+    liberacoes_do_usuario.rb           grava as liberações de uma pessoa mantendo a hierarquia
   policies/                            regras de permissão (Pundit)
   views/avaliacoes_clinicas/           telas geradas a partir da definição do formulário
   views/shared/                        barra lateral, menu, topo, logo e avisos
@@ -74,26 +79,37 @@ pergunta anterior é conferida quando o YAML é carregado.
 ## Modelos
 
 ```
-User 1 ── * AvaliacaoClinica * ── 1 Paciente
+Instituicao 1 ── * Setor 1 ── * Paciente 1 ── * AvaliacaoClinica * ── 1 User
+                     │                             (setor da notificação = setor do paciente)
+                     └── * FormularioHabilitado
 
-Instituicao 1 ── * Setor
+User ── * LiberacaoInstituicao, LiberacaoSetor, LiberacaoFormulario (com o papel)
 ```
 
-- **User**: conta de quem usa o sistema. O `role` é `operador`, `consultor` ou
-  `admin`, gravado como texto. O login aceita `username` ou CPF.
+- **User**: conta de quem usa o sistema. O `role` é `admin` (uma conta só,
+  garantida por índice único na coluna gerada `admin_unico`) ou `usuario`,
+  gravado como texto. Tem nome, `ativo` (desativada não entra) e
+  `deve_trocar_senha` (senha temporária). O login aceita `username` ou CPF.
+  `User#permissoes` devolve o `Permissoes` da pessoa.
 - **Paciente**: só prontuário SAH, prontuário AGHUSE e iniciais, como no
-  formulário em papel. Não há nome completo nem CPF de paciente.
-  `Paciente.identificar` localiza o cadastro sem alterá-lo.
+  formulário em papel, dentro de um setor (prontuário único por setor). Não há
+  nome completo nem CPF de paciente. `Paciente.identificar(setor:, ...)`
+  localiza o cadastro no setor sem alterá-lo.
 - **AvaliacaoClinica**: um formulário preenchido. `formulario` diz qual
   definição ele segue, `dados_formulario` guarda as respostas (JSON cifrado),
-  `user` é quem registrou e `lock_version` impede que edições simultâneas se
-  sobrescrevam.
+  `user` é quem registrou, `setor` é o do paciente (não muda depois do
+  registro) e `lock_version` impede que edições simultâneas se sobrescrevam.
 - **Instituicao** e **Setor**: a organização, cadastrada pelo admin em
   Configurações. Nome único (a sigla da instituição também), sem diferenciar
   maiúsculas; o nome de um setor só não repete dentro da mesma instituição.
-  Instituição com setores não é excluída. Por enquanto não se ligam a pessoas,
-  formulários nem pacientes: isso é a próxima fase, com liberação explícita
-  em cada nível (instituição, setor e formulário).
+  Instituição com setores não é excluída; setor com pacientes também não.
+- **FormularioHabilitado**: um formulário (chave do YAML) habilitado num setor.
+  Só nos setores em que está habilitado ele pode ser liberado e receber
+  notificações; com notificações no setor, não é desabilitado.
+- **LiberacaoInstituicao**, **LiberacaoSetor** e **LiberacaoFormulario**: o
+  que cada pessoa acessa. A de formulário tem o `papel` (`registra` ou
+  `consulta`). Só valem juntas, sem herança: ver `Permissoes` e
+  [seguranca.md](seguranca.md#permissões).
 - **PaperTrail::Version** (tabela `versions`): histórico de criação e alteração
   dos modelos acima, com o autor.
 
@@ -115,9 +131,21 @@ GET    /configuracoes/instituicoes/:instituicao_id/setores/new     novo setor
 GET    /configuracoes/instituicoes/:instituicao_id/setores/:id/edit  editar (e excluir) setor
 ```
 
-Instituições e setores também têm `POST`, `PATCH` e `DELETE` nas rotas
-correspondentes. Um setor é sempre buscado dentro da instituição da URL: o id
-de um setor de outra instituição dá 404.
+GET    /configuracoes/usuarios                                     usuários (só admin)
+GET    /configuracoes/usuarios/new                                 novo usuário (senha temporária)
+GET    /configuracoes/usuarios/:id/edit                            editar, ativar ou desativar
+GET    /configuracoes/usuarios/:usuario_id/liberacoes/edit         liberações
+GET    /configuracoes/usuarios/:usuario_id/senha/edit              senha temporária
+GET    /senha/edit                                                 trocar a própria senha
+```
+
+Instituições, setores, usuários, liberações e senhas também têm `POST` ou
+`PATCH` nas rotas correspondentes (e `DELETE` para instituição e setor). Um
+setor é sempre buscado dentro da instituição da URL: o id de um setor de outra
+instituição dá 404. Usuário não tem rota de exclusão.
+
+A lista de um formulário aceita `?setor=` para filtrar, só entre os setores
+que a pessoa vê. Uma notificação de outro setor dá 404.
 
 `:formulario` é o nome do arquivo YAML (ex.: `seguimento_tb`). Um formulário
 inexistente dá 404. Não há rota de exclusão.

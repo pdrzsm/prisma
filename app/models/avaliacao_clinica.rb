@@ -3,6 +3,9 @@
 class AvaliacaoClinica < ApplicationRecord
   belongs_to :paciente
   belongs_to :user # Quem registrou; as alterações seguintes ficam na auditoria
+  # Setor da notificação: o mesmo do paciente. É por ele que as liberações
+  # filtram quem vê e quem registra (ver Permissoes)
+  belongs_to :setor
   has_paper_trail
 
   # Respostas do formulário em JSON; o documento inteiro é criptografado
@@ -10,8 +13,12 @@ class AvaliacaoClinica < ApplicationRecord
   encrypts :dados_formulario
 
   validates :formulario, inclusion: { in: ->(_) { Formulario.chaves } }
+  # O setor nunca muda depois do registro (tiraria a notificação de quem a vê)
+  attr_readonly :setor_id
   before_validation :normalizar_respostas
   validate :respostas_conforme_formulario
+  validate :mesmo_setor_do_paciente
+  validate :formulario_habilitado_no_setor, on: :create
 
   def definicao
     Formulario.find(formulario)
@@ -38,6 +45,16 @@ class AvaliacaoClinica < ApplicationRecord
 
   def normalizar_respostas
     self.dados_formulario = definicao.normalizar(dados_formulario || {}) if formulario_conhecido?
+  end
+
+  def mesmo_setor_do_paciente
+    errors.add(:setor, "é diferente do setor do paciente") if paciente && setor_id != paciente.setor_id
+  end
+
+  def formulario_habilitado_no_setor
+    return if setor_id.nil? || FormularioHabilitado.exists?(setor_id:, formulario:)
+
+    errors.add(:formulario, "não está habilitado neste setor")
   end
 
   def respostas_conforme_formulario

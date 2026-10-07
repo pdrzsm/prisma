@@ -1,6 +1,6 @@
-# Base das telas de Configurações: tudo só para o admin. Operador e consultor
-# não veem o menu e, se tentarem pela URL, recebem "Você não tem permissão".
-# (O consultor já é barrado em qualquer escrita pelo ApplicationController.)
+# Base das telas de Configurações: tudo só para o admin (a conta única). Os
+# outros usuários não veem o menu e, se tentarem pela URL, recebem "Você não
+# tem permissão".
 class ConfiguracaoPolicy < ApplicationPolicy
   def index? = admin?
   def create? = admin?

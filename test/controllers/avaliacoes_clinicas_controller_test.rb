@@ -16,7 +16,7 @@ class AvaliacoesClinicasControllerTest < ActionDispatch::IntegrationTest
     assert_response :not_found
   end
 
-  test "todos os papéis listam e veem; só operador e admin veem botões de escrita" do
+  test "quem consulta lista e vê; só quem registra vê os botões de escrita" do
     { operador: true, admin: true, consultor: false }.each do |papel, escreve|
       sign_in users(papel)
 
@@ -53,6 +53,100 @@ class AvaliacoesClinicasControllerTest < ActionDispatch::IntegrationTest
     sign_in users(:consultor)
     get new_formulario_avaliacao_clinica_path(FORMULARIO)
     assert_redirected_to root_path
+  end
+
+  # --- Liberações por setor ---------------------------------------------------
+
+  test "a lista traz só as notificações dos setores liberados" do
+    sign_in users(:operador)
+    get formulario_avaliacoes_clinicas_path(FORMULARIO)
+    assert_includes response.body, "MFU"
+    assert_not_includes response.body, "LBX"
+
+    sign_in users(:laboratorista)
+    get formulario_avaliacoes_clinicas_path(FORMULARIO)
+    assert_includes response.body, "LBX"
+    assert_not_includes response.body, "MFU"
+  end
+
+  test "notificação de outro setor dá 404 pela URL: ver, editar e salvar" do
+    do_laboratorio = avaliacoes_clinicas(:tres)
+    # No teste, o login do sign_in vale para a próxima requisição; uma que
+    # termina em 404 não grava a sessão, então entra-se de novo antes de cada uma
+    sign_in users(:operador)
+    get formulario_avaliacao_clinica_path(FORMULARIO, do_laboratorio)
+    assert_response :not_found
+    sign_in users(:operador)
+    get edit_formulario_avaliacao_clinica_path(FORMULARIO, do_laboratorio)
+    assert_response :not_found
+    sign_in users(:operador)
+    atualizar do_laboratorio, do_laboratorio.respostas.merge("baciloscopia_escarro_mes_1" => "1")
+    assert_response :not_found
+    assert_nil do_laboratorio.reload.respostas["baciloscopia_escarro_mes_1"]
+  end
+
+  test "não registra em setor sem liberação, mesmo trocando o setor no formulário" do
+    sign_in users(:operador)
+
+    assert_no_difference [ "Paciente.count", "AvaliacaoClinica.count" ] do
+      enviar paciente: { prontuario_sah: "SAH-NOVO", iniciais: "ABC" }, setor: setores(:laboratorio)
+      enviar paciente: { prontuario_sah: "SAH-NOVO", iniciais: "ABC" }, setor: nil
+      enviar paciente: { prontuario_sah: "SAH-NOVO", iniciais: "ABC" }, setor: 0
+    end
+    assert_redirected_to root_path
+  end
+
+  test "sem liberação no formulário, a lista nem abre" do
+    sign_in users(:sem_acesso)
+
+    get formulario_avaliacoes_clinicas_path(FORMULARIO)
+    assert_redirected_to root_path
+    get new_formulario_avaliacao_clinica_path(FORMULARIO)
+    assert_redirected_to root_path
+  end
+
+  test "a busca por prontuário não cruza setores" do
+    sign_in users(:operador)
+    get formulario_avaliacoes_clinicas_path(FORMULARIO, prontuario: "SAH-0001")
+
+    assert_includes response.body, "MFU"
+    assert_not_includes response.body, "LBX"
+  end
+
+  test "a tela de nova oferece só os setores em que a pessoa registra" do
+    sign_in users(:operador)
+    get new_formulario_avaliacao_clinica_path(FORMULARIO)
+    assert_select "input[type=hidden][name='avaliacao_clinica[setor_id]'][value='#{setores(:ambulatorio).id}']"
+    assert_select "select[name='avaliacao_clinica[setor_id]']", 0
+
+    sign_in users(:admin)
+    get new_formulario_avaliacao_clinica_path(FORMULARIO)
+    assert_select "select[name='avaliacao_clinica[setor_id]'] option:not([value=''])", 2
+  end
+
+  test "o mesmo prontuário em outro setor é outro paciente" do
+    sign_in users(:laboratorista)
+
+    assert_difference [ "Paciente.count", "AvaliacaoClinica.count" ], 1 do
+      enviar paciente: { prontuario_sah: "SAH-0002", iniciais: "NOV" }, setor: setores(:laboratorio)
+    end
+    novo = AvaliacaoClinica.last
+    assert_equal setores(:laboratorio), novo.setor
+    assert_equal setores(:laboratorio), novo.paciente.setor
+    assert_not_equal pacientes(:two), novo.paciente
+  end
+
+  test "o filtro de setor só vale para setores visíveis" do
+    sign_in users(:admin)
+    get formulario_avaliacoes_clinicas_path(FORMULARIO, setor: setores(:laboratorio).id)
+    assert_includes response.body, "LBX"
+    assert_not_includes response.body, "MFU"
+
+    # Para quem não vê o Laboratório, o filtro é ignorado e não revela nada de lá
+    sign_in users(:operador)
+    get formulario_avaliacoes_clinicas_path(FORMULARIO, setor: setores(:laboratorio).id)
+    assert_includes response.body, "MFU"
+    assert_not_includes response.body, "LBX"
   end
 
   test "registra paciente novo e notificação, com autor e auditoria sem texto puro" do
@@ -175,10 +269,10 @@ class AvaliacoesClinicasControllerTest < ActionDispatch::IntegrationTest
 
   private
 
-  def enviar(paciente:, respostas: respostas_de_abertura)
+  def enviar(paciente:, respostas: respostas_de_abertura, setor: setores(:ambulatorio))
     post formulario_avaliacoes_clinicas_path(FORMULARIO), params: {
       paciente: { prontuario_sah: "", prontuario_aghuse: "", iniciais: "" }.merge(paciente),
-      avaliacao_clinica: { dados_formulario: respostas }
+      avaliacao_clinica: { setor_id: setor.respond_to?(:id) ? setor.id : setor, dados_formulario: respostas }
     }
   end
 

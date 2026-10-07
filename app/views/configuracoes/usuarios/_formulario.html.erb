@@ -1,0 +1,31 @@
+<%# locals: (usuario:) %>
+<% url = usuario.persisted? ? configuracoes_usuario_path(usuario) : configuracoes_usuarios_path %>
+<%= form_with model: usuario, scope: :usuario, url:, class: "space-y-6" do |form| %>
+  <section class="max-w-2xl space-y-5 rounded-xl border border-marca-200 bg-white p-6 shadow-sm">
+    <%= render "shared/campo", form:, atributo: :nome, rotulo: "Nome", maximo: 150,
+               ajuda: "Como a pessoa aparece nas listas de usuários." %>
+    <%= render "shared/campo", form:, atributo: :username, rotulo: "Nome de usuário", maximo: 50,
+               ajuda: "Usado no login. Letras minúsculas, números, ponto, traço e sublinhado." %>
+    <%= render "shared/campo", form:, atributo: :cpf, rotulo: "CPF", maximo: 14,
+               ajuda: "Também serve para o login. Com ou sem pontuação." %>
+
+    <% if usuario.new_record? %>
+      <%= render "shared/campo", form:, atributo: :password, rotulo: "Senha temporária", tipo: :senha, autocomplete: "new-password",
+                 ajuda: "No mínimo #{Devise.password_length.min} caracteres. A pessoa vai ter de trocá-la no primeiro acesso." %>
+      <%= render "shared/campo", form:, atributo: :password_confirmation, rotulo: "Repita a senha temporária", tipo: :senha, autocomplete: "new-password" %>
+    <% elsif usuario.usuario? %>
+      <div class="space-y-1">
+        <div class="flex items-center gap-2">
+          <%= form.check_box :ativo, class: "h-4 w-4 accent-marca-600" %>
+          <%= form.label :ativo, "Conta ativa", class: "text-sm font-semibold text-slate-900" %>
+        </div>
+        <p class="text-xs text-slate-600">Desativada, a pessoa não entra, e uma sessão aberta cai na próxima ação. Nada do que ela registrou é apagado.</p>
+      </div>
+    <% end %>
+  </section>
+
+  <div class="flex max-w-2xl flex-wrap items-center gap-3">
+    <%= form.submit usuario.persisted? ? "Salvar alterações" : "Cadastrar usuário", class: ApplicationHelper::BOTAO_PRIMARIO %>
+    <%= link_to "Cancelar", configuracoes_usuarios_path, class: ApplicationHelper::BOTAO_SECUNDARIO %>
+  </div>
+<% end %>

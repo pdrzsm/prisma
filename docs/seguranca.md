@@ -11,6 +11,7 @@ e para quem implanta o sistema.
 | Prontuários SAH e AGHUSE do paciente | `pacientes` | Cifrado, determinístico (permite busca exata) |
 | Iniciais do nome do paciente | `pacientes` | Cifrado |
 | Respostas do formulário: número SINAN, município, benefício, exames, desfecho, contatos etc. | `avaliacoes_clinicas.dados_formulario` | Cifrado (o JSON inteiro) |
+| Nome do usuário do sistema | `users` | Texto puro (aparece nas listas de Configurações) |
 | CPF do usuário do sistema | `users` | Cifrado, determinístico (usado no login) |
 | Senha do usuário | `users` | Hash bcrypt (nunca reversível) |
 | Histórico de alterações | `versions` (PaperTrail) | Campos cifrados continuam cifrados |
@@ -25,15 +26,33 @@ definir a base legal (art. 11) com o seu encarregado (DPO).
 
 ## Permissões
 
-| Ação | operador | consultor | admin |
-|------|:--------:|:---------:|:-----:|
-| Ver a visão geral e os formulários | ✅ | ✅ | ✅ |
-| Listar e visualizar registros (todos) | ✅ | ✅ | ✅ |
-| Registrar notificação | ✅ | ❌ | ✅ |
-| Editar notificação (seguimento mês a mês) | ✅ | ❌ | ✅ |
-| Excluir notificação | ❌ | ❌ | ❌ |
-| Configurações: cadastrar, editar e excluir instituições e setores | ❌ | ❌ | ✅ |
-| Qualquer escrita (POST, PATCH, PUT, DELETE) | conforme a policy | ❌ sempre | conforme a policy |
+Há dois papéis globais (`users.role`):
+
+- **admin**: uma conta só no sistema inteiro. Administra (usuários,
+  instituições, setores, formulários habilitados e liberações) e vê e registra
+  tudo. A tela nunca cria nem promove um admin.
+- **usuario**: faz só o que o admin liberar, por instituição, setor e
+  formulário.
+
+Um usuário usa um formulário num setor só com as **três liberações**, sem
+herança entre níveis:
+
+1. da instituição do setor (`liberacoes_instituicao`);
+2. do setor (`liberacoes_setor`);
+3. do formulário naquele setor, com o papel: **registra** (registra, atualiza
+   e consulta) ou **consulta** (só consulta) (`liberacoes_formulario`);
+
+e com o formulário **habilitado** no setor pelo admin
+(`formularios_habilitados`). Tirar qualquer nível corta o acesso aos de baixo.
+
+| Ação | admin | usuário que registra | usuário que só consulta | usuário sem liberação |
+|------|:-----:|:--------------------:|:-----------------------:|:---------------------:|
+| Ver a visão geral | ✅ | ✅ | ✅ | ✅ |
+| Ver o formulário no menu e a lista dele | ✅ (todos os setores) | ✅ (setores liberados) | ✅ (setores liberados) | ❌ |
+| Ver uma notificação | ✅ | ✅ (do setor liberado) | ✅ (do setor liberado) | ❌ |
+| Registrar e editar notificação | ✅ (onde o formulário está habilitado) | ✅ (no setor liberado) | ❌ | ❌ |
+| Excluir notificação | ❌ | ❌ | ❌ | ❌ |
+| Configurações: usuários, liberações, instituições, setores | ✅ | ❌ | ❌ | ❌ |
 
 Como isso é garantido:
 
@@ -42,22 +61,38 @@ Como isso é garantido:
   `skip_before_action` explícito. O health check `/up` não passa por esse
   controller e não expõe dados.
 - **Pundit fechado por padrão.** O `ApplicationPolicy` nega tudo e rejeita
-  usuário nulo. Cada policy libera ações com listas explícitas de papéis, então
-  um papel novo começa sem acesso.
+  usuário nulo. Cada policy libera só o que precisa.
+- **Uma fonte só para o RBAC.** `Permissoes` (em `app/models`) lê as
+  liberações uma vez por requisição e responde se a pessoa consulta ou registra
+  um formulário num setor. As policies usam essa classe; nenhuma tela decide
+  acesso sozinha.
+- **Dados filtrados na consulta.** A lista, a busca por prontuário, os números
+  da visão geral e a página de Formulários usam o escopo do Pundit, que só traz
+  as notificações dos pares (setor, formulário) liberados. A notificação de
+  outro setor, aberta pela URL, dá **404**, como se não existisse.
+- **O setor decide antes de qualquer leitura.** Ao registrar, o setor escolhido
+  é autorizado antes de procurar ou gravar paciente; um setor trocado no
+  formulário (ou sem setor) é recusado. O paciente é procurado só dentro do
+  setor, e o setor de uma notificação não muda depois do registro.
 - **`authorize` antes de gravar.** O `verify_pundit_authorization` (um
   `after_action`) quebra a requisição se a action esquecer o `authorize`, mas
-  ele roda *depois* da action. A proteção real é chamar `authorize` na primeira
-  linha.
-- **Consultor somente leitura no sistema inteiro.** O
-  `deny_writes_for_consultor` barra qualquer requisição que não seja GET ou HEAD
-  vinda de um consultor, independente das policies. A exceção é o logout, que é
-  do Devise.
+  ele roda *depois* da action. A proteção real é chamar `authorize` antes de
+  ler ou gravar.
+- **Admin único garantido pelo banco.** A coluna gerada `users.admin_unico`
+  vale 1 só para o admin e tem índice único: uma segunda conta admin é
+  recusada mesmo com acesso direto ao banco. O papel nunca vem de formulário,
+  e a conta admin não pode ser desativada.
+- **Liberações coerentes.** A tela de liberações manda o estado inteiro, e
+  `LiberacoesDoUsuario` só grava o que respeita a hierarquia: setor sem a
+  instituição marcada, formulário sem o setor marcado ou não habilitado, e
+  papel fora de "registra"/"consulta" são ignorados. Desmarcar um nível apaga
+  os de baixo.
 - **Configurações só para o admin.** A `ConfiguracaoPolicy` (base de
-  `InstituicaoPolicy` e `SetorPolicy`) libera só o papel `admin`. O menu nem
-  aparece para os outros papéis, mas a proteção é no servidor: a URL digitada
-  à mão também é barrada.
+  `InstituicaoPolicy`, `SetorPolicy` e `UserPolicy`) libera só o admin. O menu
+  nem aparece para os outros, mas a proteção é no servidor: a URL digitada à
+  mão também é barrada.
 - **Rotas mínimas.** Cada recurso declara `only:` ou `except:` com as actions
-  que existem. Sem rota, o Rails não renderiza uma view órfã.
+  que existem. Usuário e notificação não têm rota de exclusão.
 
 ## Controles implementados
 
@@ -73,7 +108,14 @@ Como isso é garantido:
 - Modo `paranoid`: login inexistente, senha errada e conta bloqueada recebem a
   mesma resposta, no mesmo tempo. Ninguém descobre quem tem conta.
 - Não há cadastro público nem recuperação de senha por e-mail. As contas são
-  criadas pela administração.
+  criadas pelo admin em Configurações > Usuários, sempre como usuário comum.
+- **Senha temporária**: a conta nova (e a senha redefinida pelo admin) vem com
+  uma senha temporária, e nenhuma tela abre antes de a pessoa trocá-la por uma
+  só dela (o admin nunca sabe a senha final). A troca exige a senha atual e
+  recusa a nova em branco ou igual à atual. Redefinir a senha derruba as
+  sessões abertas da pessoa e desbloqueia a conta.
+- **Conta desativada** não entra, e a sessão já aberta cai na próxima
+  requisição. Ninguém é excluído: a auditoria guarda o que a pessoa fez.
 
 ### Criptografia (Active Record Encryption)
 
@@ -95,8 +137,10 @@ um formulário novo já nasce coberto. Os testes conferem isso com
 
 ### Auditoria (PaperTrail)
 
-- Criação e alteração de pacientes, avaliações e usuários ficam na tabela
-  `versions`, com o autor em `whodunnit`.
+- Criação, alteração e exclusão de pacientes, avaliações, usuários,
+  instituições, setores, formulários habilitados e liberações ficam na tabela
+  `versions`, com o autor em `whodunnit`: dá para saber quem liberou o quê e
+  quando.
 - Campos cifrados continuam cifrados na auditoria. O hash da senha não é
   gravado.
 - Leituras (quem visualizou o quê) ainda **não** são registradas; ver
@@ -111,7 +155,9 @@ um formulário novo já nasce coberto. Os testes conferem isso com
   - os dois prontuários apontam para pacientes diferentes;
   - um dos prontuários não confere com o cadastro;
   - as iniciais não conferem com as do cadastro.
-- Um índice único impede dois pacientes com o mesmo prontuário.
+- Cada setor tem os seus pacientes: um índice único impede dois pacientes com
+  o mesmo prontuário no mesmo setor (o mesmo número em outro setor é outro
+  cadastro). A notificação é sempre do setor do paciente.
 - As respostas seguem a definição do formulário (`config/formularios/*.yml`):
   só perguntas declaradas, só códigos de opção existentes, textos e números
   dentro dos limites, datas válidas e não futuras. Qualquer outra chave é
@@ -120,7 +166,8 @@ um formulário novo já nasce coberto. Os testes conferem isso com
   mesma notificação ao mesmo tempo, a segunda é avisada do conflito em vez de
   apagar a alteração da primeira (bloqueio otimista, `lock_version`).
 - Paciente com notificações não pode ser apagado, notificação não tem exclusão,
-  e nada é apagado em cascata. A Lei 13.787/2018 prevê guarda mínima de 20 anos
+  setor com pacientes não é excluído, um formulário com notificações num setor
+  não é desabilitado nele, e nada clínico é apagado em cascata. A Lei 13.787/2018 prevê guarda mínima de 20 anos
   do prontuário.
 
 ### Navegador
@@ -214,13 +261,11 @@ Em ordem aproximada de prioridade:
 3. **Correção da identificação do paciente.** A edição de uma notificação não
    altera prontuários nem iniciais (por segurança). Corrigir um prontuário
    digitado errado ainda exige o console.
-4. **Gestão de usuários pela interface.** Hoje as contas são criadas pelo
-   console.
-5. **Segundo fator de autenticação** para admin.
-6. **Rotação de chaves.** O Active Record Encryption aceita várias chaves
+4. **Segundo fator de autenticação** para admin.
+5. **Rotação de chaves.** O Active Record Encryption aceita várias chaves
    primárias (a última cifra, as anteriores ainda decifram), mas o Prisma lê só
    uma por variável. O modo determinístico não suporta rotação.
-7. **Mensagens em português.** As telas e as mensagens de login e de validação
+6. **Mensagens em português.** As telas e as mensagens de login e de validação
    já estão em português (`config/locales/pt-BR.yml`); o que não tem tradução
    ainda aparece em inglês.
-8. **Licença** do projeto.
+7. **Licença** do projeto.

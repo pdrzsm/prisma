@@ -2,6 +2,12 @@
 <% trilha ["Formulários"] %>
 <h1 class="sr-only">Formulários</h1>
 
+<% if @formularios.empty? %>
+  <div class="bg-white rounded-xl border border-marca-200 p-8 text-center text-sm text-slate-600">
+    Nenhum formulário liberado para você ainda. Fale com a administração do sistema.
+  </div>
+<% end %>
+
 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
   <% @formularios.each do |formulario| %>
     <% total = @totais.fetch(formulario.chave, 0) %>
@@ -14,7 +20,7 @@
         <%= formulario.perguntas.size %> perguntas · <%= pluralize(total, "registro", plural: "registros") %>
       </p>
       <div class="flex flex-wrap gap-3 mt-auto">
-        <% if policy(AvaliacaoClinica).create? %>
+        <% if policy(AvaliacaoClinica.new(formulario: formulario.chave)).new? %>
           <%= link_to "Nova notificação", new_formulario_avaliacao_clinica_path(formulario), class: ApplicationHelper::BOTAO_PRIMARIO %>
         <% end %>
         <%= link_to "Ver registros", formulario_avaliacoes_clinicas_path(formulario), class: ApplicationHelper::BOTAO_SECUNDARIO %>

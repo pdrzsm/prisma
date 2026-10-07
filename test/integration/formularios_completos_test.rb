@@ -14,7 +14,7 @@ class FormulariosCompletosTest < ActionDispatch::IntegrationTest
       assert_difference "AvaliacaoClinica.count", 1 do
         post formulario_avaliacoes_clinicas_path(formulario), params: {
           paciente: { prontuario_sah: "SAH-COMPLETO", prontuario_aghuse: "AGH-COMPLETO", iniciais: "ABC" },
-          avaliacao_clinica: { dados_formulario: respostas }
+          avaliacao_clinica: { setor_id: setores(:ambulatorio).id, dados_formulario: respostas }
         }
       end
       avaliacao = AvaliacaoClinica.last

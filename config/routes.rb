@@ -17,7 +17,16 @@ Rails.application.routes.draw do
     resources :instituicoes, except: [ :show ] do
       resources :setores, except: [ :index, :show ]
     end
+    # Usuários não são excluídos (desativa-se). Cada um tem as suas liberações
+    # e a senha temporária que o admin define (/configuracoes/usuarios/3/senha/edit).
+    resources :usuarios, except: [ :show, :destroy ] do
+      resource :liberacoes, only: [ :edit, :update ]
+      resource :senha, only: [ :edit, :update ], controller: "senhas_temporarias"
+    end
   end
+
+  # Troca da própria senha (obrigatória com senha temporária)
+  resource :senha, only: [ :edit, :update ]
 
   # Health check do Kamal/balanceador. Não passa pelo ApplicationController,
   # então não exige login e não expõe dados.

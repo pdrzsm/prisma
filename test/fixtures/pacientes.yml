@@ -1,12 +1,20 @@
 # Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
 
-# Dados fictícios (encrypt_fixtures cifra ao carregar)
+# Dados fictícios (encrypt_fixtures cifra ao carregar). O prontuário é único
+# por setor: "tres" tem o mesmo SAH de "one", mas é outro paciente, de outro setor.
 one:
+  setor: ambulatorio
   iniciais: MFU
   prontuario_sah: SAH-0001
   prontuario_aghuse: AGH-0001
 
 two:
+  setor: ambulatorio
   iniciais: JPD
   prontuario_sah: SAH-0002
   prontuario_aghuse: AGH-0002
+
+tres:
+  setor: laboratorio
+  iniciais: LBX
+  prontuario_sah: SAH-0001

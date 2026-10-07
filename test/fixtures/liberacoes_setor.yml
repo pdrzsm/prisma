@@ -1,0 +1,14 @@
+_fixture:
+  model_class: LiberacaoSetor
+
+operador_ambulatorio:
+  user: operador
+  setor: ambulatorio
+
+consultor_ambulatorio:
+  user: consultor
+  setor: ambulatorio
+
+laboratorista_laboratorio:
+  user: laboratorista
+  setor: laboratorio

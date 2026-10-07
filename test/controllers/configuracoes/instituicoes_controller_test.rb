@@ -45,7 +45,7 @@ module Configuracoes
       get configuracoes_instituicoes_path
 
       assert_response :success
-      assert_select "nav a[aria-current='page']", text: "Configurações"
+      assert_select "nav a[aria-current='page']", text: "Instituições e setores"
       assert_select "article#instituicao_#{instituicoes(:centro).id}" do
         assert_select "h2", "Centro de Referência Fictício"
         assert_select "li", 2

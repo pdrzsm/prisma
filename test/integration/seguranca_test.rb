@@ -51,7 +51,7 @@ class SegurancaTest < ActionDispatch::IntegrationTest
 
     post formulario_avaliacoes_clinicas_path(FORMULARIO), params: {
       paciente: { prontuario_sah: "<b>SAH</b>", prontuario_aghuse: "", iniciais: "ABC" },
-      avaliacao_clinica: { dados_formulario: respostas_de_abertura("municipio_residencia" => ataque[0, 100], "numero_sinan" => "<i>1</i>",
+      avaliacao_clinica: { setor_id: setores(:ambulatorio).id, dados_formulario: respostas_de_abertura("municipio_residencia" => ataque[0, 100], "numero_sinan" => "<i>1</i>",
                                                                    "motivo_mudanca_esquema" => ataque) }
     }
     avaliacao = AvaliacaoClinica.last
@@ -74,7 +74,7 @@ class SegurancaTest < ActionDispatch::IntegrationTest
 
     post formulario_avaliacoes_clinicas_path(FORMULARIO), params: {
       paciente: { prontuario_sah: "SAH-NOVO", prontuario_aghuse: "", iniciais: "ABC", id: outro_paciente.id },
-      avaliacao_clinica: { user_id: users(:admin).id, paciente_id: outro_paciente.id, formulario: "outro", lock_version: 99,
+      avaliacao_clinica: { setor_id: setores(:ambulatorio).id, user_id: users(:admin).id, paciente_id: outro_paciente.id, formulario: "outro", lock_version: 99,
                            created_at: 1.year.ago, dados_formulario: respostas_de_abertura }
     }
     avaliacao = AvaliacaoClinica.last
@@ -100,7 +100,7 @@ class SegurancaTest < ActionDispatch::IntegrationTest
     assert_no_difference "AvaliacaoClinica.count" do
       post formulario_avaliacoes_clinicas_path(FORMULARIO), params: {
         paciente: { prontuario_sah: "SAH-NOVO", prontuario_aghuse: "", iniciais: "ABC" },
-        avaliacao_clinica: { dados_formulario: respostas_de_abertura("gestante" => { "x" => "1" }, "campo_inventado" => "1") }
+        avaliacao_clinica: { setor_id: setores(:ambulatorio).id, dados_formulario: respostas_de_abertura("gestante" => { "x" => "1" }, "campo_inventado" => "1") }
       }
     end
     assert_response :unprocessable_content
@@ -131,7 +131,7 @@ class SegurancaTest < ActionDispatch::IntegrationTest
     assert_no_difference "AvaliacaoClinica.count" do
       post formulario_avaliacoes_clinicas_path(FORMULARIO), params: {
         paciente: { prontuario_sah: "SAH-NOVO", prontuario_aghuse: "", iniciais: "ABC" },
-        avaliacao_clinica: { dados_formulario: respostas_de_abertura }
+        avaliacao_clinica: { setor_id: setores(:ambulatorio).id, dados_formulario: respostas_de_abertura }
       }
     end
     assert_response :unprocessable_content
@@ -153,7 +153,7 @@ class SegurancaTest < ActionDispatch::IntegrationTest
     [ "' OR '1'='1", "%", "SAH-0001' --" ].each do |prontuario|
       get formulario_avaliacoes_clinicas_path(FORMULARIO, prontuario:)
       assert_response :success, prontuario
-      assert_includes response.body, "Nenhum registro com esse prontuário", prontuario
+      assert_includes response.body, "Nenhum registro com esse filtro", prontuario
     end
 
     [ "-3", "abc" ].each do |pagina|

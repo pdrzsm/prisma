@@ -1,0 +1,14 @@
+_fixture:
+  model_class: LiberacaoInstituicao
+
+operador_centro:
+  user: operador
+  instituicao: centro
+
+consultor_centro:
+  user: consultor
+  instituicao: centro
+
+laboratorista_centro:
+  user: laboratorista
+  instituicao: centro

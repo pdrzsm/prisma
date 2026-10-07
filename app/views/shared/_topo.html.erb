@@ -19,10 +19,15 @@
     </div>
 
     <div class="flex items-center gap-3 shrink-0">
-      <p class="hidden sm:flex h-8 items-center gap-2 border border-marca-300 bg-white px-3 text-sm">
+      <%# A caixa do usuário leva à troca da própria senha %>
+      <%= link_to edit_senha_path, title: "Trocar senha",
+                  class: "hidden sm:flex h-8 items-center gap-2 border border-marca-300 bg-white px-3 text-sm transition hover:bg-marca-50" do %>
         <span class="font-semibold text-slate-900">@<%= current_user.username %></span>
-        <span class="text-xs font-semibold uppercase tracking-wide text-marca-700"><%= current_user.role %></span>
-      </p>
+        <% if current_user.admin? %>
+          <span class="text-xs font-semibold uppercase tracking-wide text-marca-700">admin</span>
+        <% end %>
+        <span class="sr-only">, trocar senha</span>
+      <% end %>
       <%= button_to "Sair", destroy_user_session_path, method: :delete,
                     class: "botao-prisma botao-prisma-secundario inline-flex h-8 cursor-pointer items-center pl-4 pr-16 text-sm font-semibold uppercase tracking-wide" %>
     </div>

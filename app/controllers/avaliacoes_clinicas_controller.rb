@@ -1,5 +1,7 @@
 # Registros de um formulário clínico (ex.: notificações de seguimento de TB).
 # O formulário vem da URL e define quais respostas existem e são válidas.
+# Cada notificação é de um setor: a pessoa só vê e registra nos setores em que
+# foi liberada para o formulário (AvaliacaoClinicaPolicy e Permissoes).
 class AvaliacoesClinicasController < ApplicationController
   POR_PAGINA = 50
 
@@ -7,13 +9,18 @@ class AvaliacoesClinicasController < ApplicationController
   before_action :carregar_avaliacao, only: %i[show edit update]
 
   def index
-    authorize AvaliacaoClinica
+    authorize AvaliacaoClinica.new(formulario: @formulario.chave)
     registros = policy_scope(AvaliacaoClinica).where(formulario: @formulario.chave)
     registros = registros.where(paciente: Paciente.com_prontuario(params[:prontuario])) if params[:prontuario].present?
 
+    # Filtro por setor, só entre os setores que a pessoa vê
+    @setores = setores_do_formulario(permissoes.setores_que_consultam(@formulario.chave))
+    @setor_filtrado = @setores.find { |setor| setor.id.to_s == params[:setor] }
+    registros = registros.where(setor: @setor_filtrado) if @setor_filtrado
+
     @pagina = [ params[:pagina].to_i, 1 ].max
     # Um a mais que a página, só para saber se existe a próxima
-    @avaliacoes = registros.includes(:paciente, :user).order(updated_at: :desc)
+    @avaliacoes = registros.includes(:paciente, :user, setor: :instituicao).order(updated_at: :desc)
                            .limit(POR_PAGINA + 1).offset((@pagina - 1) * POR_PAGINA).to_a
     @tem_proxima = @avaliacoes.size > POR_PAGINA
     @avaliacoes = @avaliacoes.first(POR_PAGINA)
@@ -26,23 +33,27 @@ class AvaliacoesClinicasController < ApplicationController
   end
 
   def new
-    authorize AvaliacaoClinica
+    authorize AvaliacaoClinica.new(formulario: @formulario.chave)
+    carregar_setores_para_registro
     @paciente = Paciente.new
-    @avaliacao = AvaliacaoClinica.new(formulario: @formulario.chave)
+    @avaliacao = AvaliacaoClinica.new(formulario: @formulario.chave, setor: (@setores.first if @setores.one?))
   end
 
   def create
-    # Antes de qualquer escrita: o verify_authorized só roda depois da action
-    authorize AvaliacaoClinica
+    # O setor escolhido decide a permissão: autoriza antes de ler ou gravar
+    # qualquer paciente (o verify_authorized só roda depois da action)
+    @setor = Setor.find_by(id: params.dig(:avaliacao_clinica, :setor_id))
+    @avaliacao = AvaliacaoClinica.new(formulario: @formulario.chave, setor: @setor, user: current_user,
+                                      dados_formulario: dados_formulario_params)
+    authorize @avaliacao
 
-    # Paciente já cadastrado é só vinculado: o formulário nunca altera cadastro
-    @paciente = Paciente.identificar(prontuario_sah: paciente_params[:prontuario_sah],
+    # Paciente já cadastrado no setor é só vinculado: o formulário nunca altera cadastro
+    @paciente = Paciente.identificar(setor: @setor, prontuario_sah: paciente_params[:prontuario_sah],
                                      prontuario_aghuse: paciente_params[:prontuario_aghuse],
                                      iniciais: paciente_params[:iniciais])
     paciente_existente = @paciente.present?
-    @paciente ||= Paciente.new(paciente_params)
-    @avaliacao = @paciente.avaliacoes_clinicas.build(formulario: @formulario.chave, user: current_user,
-                                                     dados_formulario: dados_formulario_params)
+    @paciente ||= Paciente.new(paciente_params.merge(setor: @setor))
+    @avaliacao.paciente = @paciente
 
     # Valida os dois antes de gravar, para mostrar todos os erros de uma vez
     unless [ paciente_existente || @paciente.valid?, @avaliacao.valid? ].all?
@@ -93,14 +104,30 @@ class AvaliacoesClinicasController < ApplicationController
     @formulario = Formulario.find(params[:formulario_id])
   end
 
+  # Notificação de outro setor (ou de outro formulário) dá 404, como se não existisse
   def carregar_avaliacao
     @avaliacao = policy_scope(AvaliacaoClinica).where(formulario: @formulario.chave).find(params[:id])
   end
 
+  def permissoes
+    current_user.permissoes
+  end
+
+  # Setores com o formulário habilitado, entre os ids dados, em ordem de nome
+  def setores_do_formulario(ids)
+    Setor.joins(:formularios_habilitados).where(id: ids, formularios_habilitados: { formulario: @formulario.chave })
+         .includes(:instituicao).sort_by(&:nome_completo)
+  end
+
+  # Onde a pessoa pode registrar este formulário (é o que a tela oferece)
+  def carregar_setores_para_registro
+    @setores = setores_do_formulario(permissoes.setores_que_registram(@formulario.chave))
+  end
+
   def renderizar_novo(mensagem)
+    carregar_setores_para_registro
     # O formulário volta com o que foi digitado, nunca com o cadastro existente
-    @paciente = Paciente.new(paciente_params) if @paciente.nil? || @paciente.persisted?
-    @avaliacao ||= AvaliacaoClinica.new(formulario: @formulario.chave, dados_formulario: dados_formulario_params)
+    @paciente = Paciente.new(paciente_params.merge(setor: @setor)) if @paciente.nil? || @paciente.persisted?
     flash.now[:alert] = mensagem
     render :new, status: :unprocessable_content
   end
@@ -109,9 +136,11 @@ class AvaliacoesClinicasController < ApplicationController
     @paciente_params ||= params.require(:paciente).permit(:prontuario_sah, :prontuario_aghuse, :iniciais)
   end
 
-  # Só as perguntas declaradas no formulário; o model valida tipos e opções
+  # Só as perguntas declaradas no formulário; o model valida tipos e opções.
+  # Sem respostas na requisição, um hash vazio (o fetch com padrão devolveria
+  # parâmetros não permitidos, que não viram hash)
   def dados_formulario_params
-    params.fetch(:avaliacao_clinica, {}).permit(dados_formulario: @formulario.parametros_permitidos)
-          .fetch(:dados_formulario, {}).to_h
+    permitidos = params.fetch(:avaliacao_clinica, {}).permit(:setor_id, dados_formulario: @formulario.parametros_permitidos)
+    permitidos[:dados_formulario]&.to_h || {}
   end
 end

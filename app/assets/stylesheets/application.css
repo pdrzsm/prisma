@@ -30,3 +30,12 @@
 .pergunta:has(input[data-revela]:checked) + .pergunta-condicional {
   display: block;
 }
+
+/*
+ * Liberações (Configurações > Usuários > Liberações): com a caixa de um nível
+ * desmarcada, o que está dentro dele fica apagado, porque deixa de valer (o
+ * servidor também ignora). Só CSS, como a pergunta condicional.
+ */
+.liberacao:has(> label input[type="checkbox"]:not(:checked)) > .liberacao-dentro {
+  opacity: 0.45;
+}

@@ -8,7 +8,8 @@
       Notificação · <%= paciente.iniciais %> <%= selo_da_situacao(@avaliacao) %>
     </h1>
     <p class="text-sm text-slate-600">
-      Registrada por @<%= @avaliacao.user.username %> em <%= data_e_hora(@avaliacao.created_at) %>
+      <%= @avaliacao.setor.nome_completo %> ·
+      registrada por @<%= @avaliacao.user.username %> em <%= data_e_hora(@avaliacao.created_at) %>
       · atualizada em <%= data_e_hora(@avaliacao.updated_at) %>
     </p>
   </div>

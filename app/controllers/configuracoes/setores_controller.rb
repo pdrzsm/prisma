@@ -15,10 +15,10 @@ module Configuracoes
       @setor = @instituicao.setores.build(setor_params)
       authorize @setor
 
-      if @setor.save
+      if @setor.save && @setor.habilitar_formularios(formularios_param)
         redirect_to volta_para_instituicao, notice: "Setor cadastrado."
       else
-        flash.now[:alert] = "Não foi possível salvar. Revise os campos destacados."
+        flash.now[:alert] = mensagem_de_erro
         render :new, status: :unprocessable_content
       end
     end
@@ -27,17 +27,22 @@ module Configuracoes
     end
 
     def update
-      if @setor.update(setor_params)
+      if @setor.update(setor_params) && @setor.habilitar_formularios(formularios_param)
         redirect_to volta_para_instituicao, notice: "Setor atualizado."
       else
-        flash.now[:alert] = "Não foi possível salvar. Revise os campos destacados."
+        flash.now[:alert] = mensagem_de_erro
         render :edit, status: :unprocessable_content
       end
     end
 
+    # Setor com pacientes não sai (registro clínico é preservado)
     def destroy
-      @setor.destroy!
-      redirect_to volta_para_instituicao, notice: "Setor excluído.", status: :see_other
+      if @setor.destroy
+        redirect_to volta_para_instituicao, notice: "Setor excluído.", status: :see_other
+      else
+        redirect_to edit_configuracoes_instituicao_setor_path(@instituicao, @setor),
+                    alert: @setor.errors.full_messages.to_sentence, status: :see_other
+      end
     end
 
     private
@@ -53,6 +58,18 @@ module Configuracoes
 
     def setor_params
       params.expect(setor: [ :nome ])
+    end
+
+    # Chaves dos formulários marcados; a lista vazia (tudo desmarcado) chega
+    # pelo campo escondido do formulário
+    def formularios_param
+      Array(params.dig(:setor, :formularios)).compact_blank
+    end
+
+    # O erro que não é de um campo (ex.: formulário com notificações que não
+    # pode ser desabilitado) vai no aviso; senão, o aviso aponta os campos
+    def mensagem_de_erro
+      @setor.errors[:base].to_sentence.presence || "Não foi possível salvar. Revise os campos destacados."
     end
 
     # A lista, já rolada até o cartão da instituição

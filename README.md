@@ -27,14 +27,17 @@ faz parte de cada mudança: antes de contribuir, leia
 
 ## Papéis
 
-| Papel       | Visualiza registros | Registra e atualiza | Configurações (instituições e setores) | Grava qualquer coisa |
-|-------------|:-------------------:|:-------------------:|:--------------------------------------:|:--------------------:|
-| `operador`  | sim                 | sim                 | não                                    | conforme as policies |
-| `consultor` | sim                 | não                 | não                                    | **nunca**            |
-| `admin`     | sim                 | sim                 | sim                                    | conforme as policies |
+- **admin**: uma conta só no sistema. Cadastra usuários, instituições e
+  setores, habilita formulários nos setores, define as liberações e vê e
+  registra tudo.
+- **usuário**: vê e registra só o que o admin liberar. A liberação é explícita
+  em três níveis (instituição, setor e formulário), e cada formulário diz se a
+  pessoa **registra** ou **só consulta** naquele setor. Conta nova recebe senha
+  temporária, trocada no primeiro acesso.
 
-Toda alteração fica na auditoria, e ninguém apaga um registro clínico. Detalhes
-em [docs/seguranca.md](docs/seguranca.md#permissões).
+Toda alteração fica na auditoria, e ninguém apaga um registro clínico nem um
+usuário (quem sai é desativado). Detalhes em
+[docs/seguranca.md](docs/seguranca.md#permissões).
 
 ## Rodando em desenvolvimento
 
@@ -59,19 +62,22 @@ docker compose run --rm web bin/rails db:prepare db:seed
 docker compose up
 ```
 
-Abra <http://localhost:3000> e entre como `admin`, `operador` ou `consultor`,
-com a senha `prisma-dev-senha`. Essas contas só existem em desenvolvimento
-(ver [db/seeds.rb](db/seeds.rb)); o seed se recusa a rodar em produção.
+Abra <http://localhost:3000> e entre como `admin`, `operador` (registra) ou
+`consultor` (só consulta), com a senha `prisma-dev-senha`. O seed cria também
+uma instituição e um setor de desenvolvimento, com as liberações dos dois.
+Essas contas só existem em desenvolvimento (ver [db/seeds.rb](db/seeds.rb)); o
+seed se recusa a rodar em produção.
 
 Para ver as telas com dados, gere notificações fictícias de seguimento de TB,
 abertas em datas variadas, atualizadas mês a mês e parte delas encerradas:
 
 ```bash
-docker compose exec web bin/rails dev:notificacoes               # 50
-docker compose exec web bin/rails dev:notificacoes QUANTIDADE=120
+docker compose exec web bin/rails dev:notificacoes                   # 50
+docker compose exec web bin/rails dev:notificacoes QUANTIDADE=120 SETOR=2
 ```
 
-Os prontuários começam com `TESTE-`, e rodar de novo não duplica nada. A
+Sem `SETOR`, as notificações vão para o primeiro setor com o seguimento de TB
+habilitado. Os prontuários começam com `TESTE-`, e rodar de novo não duplica nada. A
 tarefa também se recusa a rodar em produção.
 
 O banco e o servidor ficam acessíveis só na sua máquina (`127.0.0.1`). Em

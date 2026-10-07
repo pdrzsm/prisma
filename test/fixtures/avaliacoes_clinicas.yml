@@ -1,8 +1,10 @@
 # Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
 
-# Notificações de seguimento de TB com dados fictícios, só com a abertura
+# Notificações de seguimento de TB com dados fictícios, só com a abertura.
+# "one" e "two" são do Ambulatório; "tres" é do Laboratório.
 one:
   formulario: seguimento_tb
+  setor: ambulatorio
   paciente: one
   user: operador
   dados_formulario:
@@ -15,6 +17,7 @@ one:
 
 two:
   formulario: seguimento_tb
+  setor: ambulatorio
   paciente: two
   user: admin
   dados_formulario:
@@ -25,3 +28,16 @@ two:
     municipio_residencia: Outra Cidade
     forma_clinica: "2"
     tb_extrapulmonar: ["1", "2"]
+
+tres:
+  formulario: seguimento_tb
+  setor: laboratorio
+  paciente: tres
+  user: laboratorista
+  dados_formulario:
+    numero_sinan: "0000003"
+    gestante: "6"
+    populacoes_especiais: ["0"]
+    recebe_beneficio: "2"
+    municipio_residencia: Cidade do Laboratório
+    forma_clinica: "1"

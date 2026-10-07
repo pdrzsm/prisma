@@ -49,6 +49,43 @@ module Configuracoes
       end
     end
 
+    test "o admin habilita os formulários do setor" do
+      sign_in users(:admin)
+      hospital = instituicoes(:hospital)
+      post configuracoes_instituicao_setores_path(hospital), params: { setor: { nome: "Enfermaria", formularios: [ "", "seguimento_tb" ] } }
+
+      assert_equal [ "seguimento_tb" ], hospital.setores.find_by!(nome: "Enfermaria").formularios
+    end
+
+    test "desabilitar um formulário tira as liberações dele no setor" do
+      sign_in users(:admin)
+      laboratorio = setores(:laboratorio)
+      patch configuracoes_instituicao_setor_path(instituicoes(:centro), laboratorio), params: { setor: { nome: "Laboratório", formularios: [ "" ] } }
+
+      # O Laboratório tem a notificação "tres": o formulário não sai
+      assert_response :unprocessable_content
+      assert_includes response.body, "tem notificações neste setor e não pode ser desabilitado"
+      assert_equal [ "seguimento_tb" ], laboratorio.reload.formularios
+
+      sem_notificacoes = instituicoes(:centro).setores.create!(nome: "Vazio")
+      sem_notificacoes.habilitar_formularios([ "seguimento_tb" ])
+      users(:operador).liberacoes_setor.create!(setor: sem_notificacoes)
+      users(:operador).liberacoes_formulario.create!(setor: sem_notificacoes, formulario: "seguimento_tb", papel: "registra")
+
+      patch configuracoes_instituicao_setor_path(instituicoes(:centro), sem_notificacoes), params: { setor: { nome: "Vazio", formularios: [ "" ] } }
+      assert_empty sem_notificacoes.reload.formularios
+      assert_not users(:operador).liberacoes_formulario.exists?(setor: sem_notificacoes)
+    end
+
+    test "setor com pacientes não é excluído" do
+      sign_in users(:admin)
+      delete configuracoes_instituicao_setor_path(instituicoes(:centro), setores(:ambulatorio))
+
+      assert_redirected_to edit_configuracoes_instituicao_setor_path(instituicoes(:centro), setores(:ambulatorio))
+      assert_match "Não é possível excluir enquanto houver", flash[:alert]
+      assert Setor.exists?(setores(:ambulatorio).id)
+    end
+
     test "setor de outra instituição na URL dá 404" do
       sign_in users(:admin)
       get edit_configuracoes_instituicao_setor_path(instituicoes(:hospital), setores(:ambulatorio))

@@ -8,9 +8,9 @@ class ApplicationController < ActionController::Base
   # Páginas públicas devem usar `skip_before_action :authenticate_user!` explicitamente.
   before_action :authenticate_user!
   before_action :configure_permitted_parameters, if: :devise_controller?
-  # Consultor é somente leitura em todo o sistema, independente das policies.
-  # Fora do Devise para ele conseguir fazer logout (DELETE).
-  before_action :deny_writes_for_consultor, unless: :devise_controller?
+  # Senha temporária (conta nova ou senha redefinida pelo admin): nenhuma tela
+  # abre antes da troca. Fora do Devise para o logout continuar funcionando.
+  before_action :exigir_troca_de_senha, unless: :devise_controller?
   # Páginas com dados de saúde não ficam no cache do navegador: o "voltar"
   # depois do logout não mostra nada num computador compartilhado
   before_action :no_store
@@ -34,11 +34,11 @@ class ApplicationController < ActionController::Base
 
   private
 
-  def deny_writes_for_consultor
-    return unless current_user&.consultor?
-    return if request.get? || request.head?
+  def exigir_troca_de_senha
+    return unless current_user&.deve_trocar_senha?
+    return if controller_path == "senhas"
 
-    raise Pundit::NotAuthorizedError, "consultor é somente leitura"
+    redirect_to edit_senha_path, alert: "Antes de continuar, troque a senha temporária por uma só sua."
   end
 
   def verify_pundit_authorization

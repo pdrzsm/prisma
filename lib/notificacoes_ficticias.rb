@@ -5,7 +5,8 @@
 #
 # Nada aqui é de paciente real: os prontuários começam com TESTE- e os
 # municípios são inventados. A mesma semente gera sempre os mesmos dados, e
-# rodar de novo não duplica (o prontuário identifica cada notificação).
+# rodar de novo não duplica (o prontuário identifica cada notificação no setor).
+# Tudo vai para um setor, com o formulário habilitado nele.
 class NotificacoesFicticias
   FORMULARIO = "seguimento_tb".freeze
   MUNICIPIOS = [ "Cidade Fictícia", "Vila Exemplo", "Porto Modelo", "Campo Simulado", "Serra de Teste", "Lagoa Imaginária" ].freeze
@@ -16,11 +17,12 @@ class NotificacoesFicticias
   # Local da TB extrapulmonar -> material examinado (pergunta 26)
   MATERIAL_DO_LOCAL = { "1" => "3", "2" => "2", "3" => "6", "4" => "7", "7" => "1", "8" => "8" }.freeze
 
-  def initialize(quantidade:, autores:, semente: 2026, hoje: Date.current)
+  def initialize(quantidade:, autores:, setor:, semente: 2026, hoje: Date.current)
     raise "Notificações fictícias não são geradas em produção." if Rails.env.production?
 
     @quantidade = quantidade
     @autores = autores
+    @setor = setor
     @hoje = hoje
     @sorteio = Random.new(semente)
   end
@@ -33,8 +35,8 @@ class NotificacoesFicticias
       prontuario_sah = format("TESTE-SAH-%04d", numero)
       prontuario_aghuse = format("TESTE-AGH-%04d", numero) if @sorteio.rand < 0.6
       iniciais = Array.new(@sorteio.rand(2..4)) { ("A".."Z").to_a.sample(random: @sorteio) }.join
-      autor = @sorteio.rand < 0.8 ? operadores.sample(random: @sorteio) : @autores.sample(random: @sorteio)
-      next false if Paciente.exists?(prontuario_sah:)
+      autor = @autores.sample(random: @sorteio)
+      next false if Paciente.exists?(setor: @setor, prontuario_sah:)
 
       gravar(etapas, autor, prontuario_sah:, prontuario_aghuse:, iniciais:)
       true
@@ -43,18 +45,14 @@ class NotificacoesFicticias
 
   private
 
-  def operadores
-    @operadores ||= @autores.select { |autor| autor.role == "operador" }.presence || @autores
-  end
-
   # A primeira etapa cria a notificação; as outras são as atualizações, cada
   # uma com o seu horário (e a sua versão na auditoria)
   def gravar(etapas, autor, **identificacao)
     (momento, respostas), *atualizacoes = etapas
     ActiveRecord::Base.transaction do
       PaperTrail.request(whodunnit: autor.id.to_s) do
-        paciente = Paciente.create!(**identificacao, created_at: momento, updated_at: momento)
-        avaliacao = AvaliacaoClinica.create!(paciente:, user: autor, formulario: FORMULARIO,
+        paciente = Paciente.create!(**identificacao, setor: @setor, created_at: momento, updated_at: momento)
+        avaliacao = AvaliacaoClinica.create!(paciente:, setor: @setor, user: autor, formulario: FORMULARIO,
                                              dados_formulario: respostas, created_at: momento, updated_at: momento)
         atualizacoes.each do |momento_da_etapa, novas|
           avaliacao.update!(dados_formulario: avaliacao.respostas.merge(novas), updated_at: momento_da_etapa)

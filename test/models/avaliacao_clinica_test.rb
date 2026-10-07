@@ -53,9 +53,30 @@ class AvaliacaoClinicaTest < ActiveSupport::TestCase
     assert_not_includes registro.versions.last.object_changes, "Cidade Fictícia"
   end
 
+  test "o setor é o mesmo do paciente" do
+    registro = avaliacao(respostas_de_abertura)
+    registro.setor = setores(:laboratorio)
+
+    assert_not registro.valid?
+    assert_includes registro.errors[:setor], "é diferente do setor do paciente"
+  end
+
+  test "só registra em setor com o formulário habilitado" do
+    formularios_habilitados(:tb_ambulatorio).delete
+    registro = avaliacao(respostas_de_abertura)
+
+    assert_not registro.valid?
+    assert_includes registro.errors[:formulario], "não está habilitado neste setor"
+  end
+
+  test "o setor não muda depois do registro" do
+    assert_raises(ActiveRecord::ReadonlyAttributeError) { avaliacoes_clinicas(:one).setor = setores(:laboratorio) }
+  end
+
   private
 
   def avaliacao(respostas)
-    AvaliacaoClinica.new(formulario: "seguimento_tb", paciente: pacientes(:one), user: users(:operador), dados_formulario: respostas)
+    AvaliacaoClinica.new(formulario: "seguimento_tb", setor: setores(:ambulatorio), paciente: pacientes(:one),
+                         user: users(:operador), dados_formulario: respostas)
   end
 end

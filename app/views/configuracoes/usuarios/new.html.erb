@@ -1,0 +1,8 @@
+<% content_for :title, "Novo usuário · Configurações · Prisma" %>
+<% trilha ["Configurações", configuracoes_instituicoes_path], ["Usuários", configuracoes_usuarios_path], ["Novo usuário"] %>
+<div>
+  <h1 class="text-2xl font-bold text-slate-900">Novo usuário</h1>
+  <p class="text-sm text-slate-600">Depois de cadastrar, defina o que a pessoa pode acessar.</p>
+</div>
+
+<%= render "formulario", usuario: @usuario %>
