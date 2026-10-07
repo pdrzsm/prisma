@@ -34,6 +34,24 @@ class ApplicationController < ActionController::Base
 
   private
 
+  # Auditoria de leitura (LGPD, art. 37 e 46): grava quem viu quais registros
+  # com dado sensível, quando, de qual IP e com qual navegador. Uma linha por
+  # registro exibido, numa única inserção. Chame depois do authorize e antes de
+  # a página ser montada: se a gravação falhar, a exceção sobe e os dados não
+  # são mostrados (falha fechada; leitura sem registro não acontece).
+  def log_read_access(registros)
+    registros = Array(registros)
+    return if registros.empty?
+    raise ArgumentError, "action sem auditoria de leitura: #{action_name}" unless AuditLog::ACOES.include?(action_name)
+
+    agora = Time.current
+    AuditLog.insert_all!(registros.map do |registro|
+      { user_id: current_user.id, auditable_type: registro.class.polymorphic_name, auditable_id: registro.id,
+        action: action_name, ip_address: request.remote_ip, user_agent: request.user_agent.to_s.first(255),
+        created_at: agora }
+    end)
+  end
+
   def exigir_troca_de_senha
     return unless current_user&.deve_trocar_senha?
     return if controller_path == "senhas"

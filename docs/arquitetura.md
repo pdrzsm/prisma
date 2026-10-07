@@ -32,6 +32,7 @@ app/
     liberacao_*.rb                     liberações por instituição, setor e formulário
     permissoes.rb                      o RBAC: o que cada pessoa pode em cada setor e formulário
     liberacoes_do_usuario.rb           grava as liberações de uma pessoa mantendo a hierarquia
+    audit_log.rb                       auditoria de leitura: quem viu qual registro (imutável)
   policies/                            regras de permissão (Pundit)
   views/avaliacoes_clinicas/           telas geradas a partir da definição do formulário
   views/shared/                        barra lateral, menu, topo, logo e avisos
@@ -112,6 +113,10 @@ User ── * LiberacaoInstituicao, LiberacaoSetor, LiberacaoFormulario (com o p
   [seguranca.md](seguranca.md#permissões).
 - **PaperTrail::Version** (tabela `versions`): histórico de criação e alteração
   dos modelos acima, com o autor.
+- **AuditLog** (tabela `audit_logs`): auditoria de leitura. Uma linha por
+  notificação exibida na lista, nos detalhes ou na edição, com usuário, IP e
+  navegador; gravada por `ApplicationController#log_read_access` antes de a
+  página ser montada. Só se cria: alterar ou apagar levanta erro.
 
 ## Rotas
 

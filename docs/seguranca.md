@@ -15,6 +15,7 @@ e para quem implanta o sistema.
 | CPF do usuário do sistema | `users` | Cifrado, determinístico (usado no login) |
 | Senha do usuário | `users` | Hash bcrypt (nunca reversível) |
 | Histórico de alterações | `versions` (PaperTrail) | Campos cifrados continuam cifrados |
+| Quem visualizou o quê: usuário, registro, IP e navegador | `audit_logs` | Texto puro, sem dado do paciente (só o id do registro visto) |
 
 O Prisma **não guarda nome completo nem CPF de paciente**: como no formulário
 em papel, a identificação é feita por prontuário e iniciais (minimização,
@@ -135,16 +136,32 @@ login, senha, iniciais, prontuário e município. Todos os formulários de
 um formulário novo já nasce coberto. Os testes conferem isso com
 `request.filtered_parameters`.
 
-### Auditoria (PaperTrail)
+### Auditoria
 
-- Criação, alteração e exclusão de pacientes, avaliações, usuários,
-  instituições, setores, formulários habilitados e liberações ficam na tabela
-  `versions`, com o autor em `whodunnit`: dá para saber quem liberou o quê e
-  quando.
-- Campos cifrados continuam cifrados na auditoria. O hash da senha não é
-  gravado.
-- Leituras (quem visualizou o quê) ainda **não** são registradas; ver
-  pendências.
+- **Alterações (PaperTrail):** criação, alteração e exclusão de pacientes,
+  avaliações, usuários, instituições, setores, formulários habilitados e
+  liberações ficam na tabela `versions`, com o autor em `whodunnit`: dá para
+  saber quem liberou o quê e quando. Campos cifrados continuam cifrados na
+  auditoria, e o hash da senha não é gravado.
+- **Leituras (LGPD, art. 37 e 46):** a lista, os detalhes e a tela de edição de
+  uma notificação (inclusive a que volta sem salvar, por resposta inválida ou
+  conflito) gravam em `audit_logs` uma linha por notificação exibida:
+  quem viu, quando, qual registro, de qual IP e com qual navegador
+  (`ApplicationController#log_read_access`). Na lista, cada linha exibida conta,
+  porque mostra iniciais e prontuários; uma busca sem resultado não grava nada.
+  Acesso negado (404, sem liberação) não vira leitura.
+- **Falha fechada:** a leitura é gravada antes de a página ser montada. Se a
+  gravação falhar, os dados não são mostrados.
+- **Imutável:** o model `AuditLog` só cria; alterar ou apagar levanta erro. Em
+  produção, o usuário do banco da aplicação também não deve ter `UPDATE` nem
+  `DELETE` em `audit_logs` e `versions` (ver o checklist).
+- **Consulta:** quem viu uma notificação, `AuditLog.do_registro(avaliacao)`;
+  quem viu qualquer notificação de um paciente (pedido de um titular),
+  `AuditLog.do_paciente(paciente)`. Por enquanto, pelo console.
+- **IP confiável:** o IP sai do `X-Forwarded-For` pulando só os proxies de
+  `PROXIES_CONFIAVEIS`. Com o padrão do Rails (toda a rede privada), qualquer
+  computador da rede interna forjaria o próprio IP, na auditoria e no limite de
+  tentativas de login.
 
 ### Integridade dos registros clínicos
 
@@ -182,7 +199,8 @@ um formulário novo já nasce coberto. Os testes conferem isso com
 ### Infraestrutura e processo
 
 - Em produção, HTTPS é obrigatório (`force_ssl`, com HSTS e cookies seguros) e
-  só os domínios de `APP_HOSTS` são aceitos.
+  só os domínios de `APP_HOSTS` são aceitos. Sem `PROXIES_CONFIAVEIS` (o IP do
+  proxy reverso), a aplicação nem sobe.
 - No `docker-compose.yml`, o banco e o servidor de desenvolvimento só escutam
   em `127.0.0.1`.
 - O CI roda Brakeman, bundler-audit, RuboCop, os testes e os testes de
@@ -238,6 +256,19 @@ Antes de colocar dados reais:
       aberto sem nenhum aviso. Em rede interna sem DNS público, use um
       certificado da instituição em vez de Let's Encrypt.
 - [ ] `APP_HOSTS` com o domínio do sistema.
+- [ ] `PROXIES_CONFIAVEIS` com o IP (ou a faixa) do proxy reverso, e a porta da
+      aplicação **inacessível** sem passar por ele (o Rails confia no
+      `X-Forwarded-For` de quem chegar direto). Com o Kamal, a faixa da rede
+      Docker `kamal` (ver `config/deploy.yml`).
+- [ ] Usuário do banco da aplicação **sem `UPDATE` nem `DELETE`** em
+      `audit_logs` e `versions`, para as duas auditorias serem imutáveis de
+      verdade. No MariaDB, um `GRANT` no banco inteiro não pode ser retirado de
+      uma tabela só: dê os privilégios tabela a tabela, por exemplo
+      `GRANT SELECT, INSERT ON prisma.audit_logs TO 'prisma_app'@'%'` e
+      `GRANT SELECT, INSERT, UPDATE, DELETE ON prisma.pacientes TO 'prisma_app'@'%'`,
+      e rode as migrações com outro usuário, que tem permissão de alterar tabelas.
+- [ ] Política de retenção para `audit_logs` (contém IP e navegador de quem
+      acessou), definida com o encarregado (DPO).
 - [ ] Chaves de criptografia próprias, com cópia segura.
 - [ ] `secret_key_base` próprio: crie as suas credenciais com
       `bin/rails credentials:edit` ou defina `SECRET_KEY_BASE`. Não reaproveite
@@ -255,9 +286,9 @@ Em ordem aproximada de prioridade:
 1. **Dockerfile de produção.** O `Dockerfile` atual é só de desenvolvimento:
    roda como root e não instala gems nem compila assets na imagem. O deploy com
    Kamal (`config/deploy.yml`) ainda não funciona.
-2. **Auditoria de leitura.** A auditoria registra criação e edição, mas não
-   quem visualizou qual notificação. Agora que existem lista e visualização,
-   esse é o próximo passo para a LGPD.
+2. **Tela de consulta da auditoria de leitura.** As leituras já são gravadas,
+   mas consultar (ex.: responder a um titular quem viu os dados dele) ainda é
+   pelo console. Falta também o descarte automático pela política de retenção.
 3. **Correção da identificação do paciente.** A edição de uma notificação não
    altera prontuários nem iniciais (por segurança). Corrigir um prontuário
    digitado errado ainda exige o console.

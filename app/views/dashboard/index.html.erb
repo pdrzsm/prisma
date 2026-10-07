@@ -89,7 +89,7 @@
     <% [
          [ "Identificação mínima", "O Prisma não guarda nome completo, CPF nem endereço do paciente: só os prontuários e as iniciais, como no formulário em papel." ],
          [ "Dados cifrados", "Prontuários, iniciais e respostas são cifrados antes de chegar ao banco de dados. Quem abre o banco diretamente vê só texto embaralhado." ],
-         [ "Histórico de alterações", "Toda criação e alteração fica registrada com autor e horário, e nada é apagado: o prontuário é preservado, como exige a Lei 13.787/2018." ],
+         [ "Histórico de alterações e acessos", "Toda criação, alteração e visualização fica registrada com autor e horário, e nada é apagado: o prontuário é preservado, como exige a Lei 13.787/2018." ],
          [ "Acesso por liberação", "Cada pessoa só vê e registra o que o admin liberou, em três níveis (instituição, setor e formulário), conferido a cada ação no servidor. Tirar um nível corta os de baixo." ],
          [ "Login protegido", "Senha com no mínimo #{Devise.password_length.min} caracteres; conta nova recebe uma senha temporária, trocada no primeiro acesso. Depois de #{Devise.maximum_attempts} senhas erradas, a conta fica bloqueada por #{em_minutos(Devise.unlock_in)}. A sessão expira após #{em_minutos(Devise.timeout_in)} sem uso." ],
          [ "Sem rastros no computador", "As páginas não ficam guardadas no navegador e não existe “lembrar de mim”. Os registros do servidor não guardam o que é digitado nos formulários. Em computador compartilhado, saia ao terminar." ]

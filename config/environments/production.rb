@@ -84,6 +84,20 @@ Rails.application.configure do
   # (ex.: "prisma.hospital.gov.br"). Sem a variável, qualquer Host é aceito.
   config.hosts = ENV.fetch("APP_HOSTS", "").split(",").map(&:strip).compact_blank
 
+  # Prisma: IPs do proxy reverso (o que termina o TLS) na frente da aplicação,
+  # separados por vírgula; aceita faixas (ex.: "172.20.0.2" ou "10.0.5.0/24").
+  # O IP de quem acessa, gravado na auditoria de leitura e usado no limite de
+  # tentativas de login, sai do X-Forwarded-For pulando só esses proxies. O
+  # padrão do Rails confiaria em toda a rede privada, e qualquer computador da
+  # rede interna poderia forjar o próprio IP. Obrigatório: sem ele, a aplicação
+  # não sobe (exceto no build dos assets). A aplicação também não pode ser
+  # alcançada sem passar pelo proxy (docs/seguranca.md, checklist de produção).
+  proxies = ENV.fetch("PROXIES_CONFIAVEIS", "").split(",").map(&:strip).compact_blank
+  if proxies.empty? && ENV["SECRET_KEY_BASE_DUMMY"].blank?
+    raise "PROXIES_CONFIAVEIS ausente: informe o IP do proxy reverso. Ver docs/seguranca.md."
+  end
+  config.action_dispatch.trusted_proxies = proxies.map { |proxy| IPAddr.new(proxy) }
+
   # Skip DNS rebinding protection for the default health check endpoint.
   config.host_authorization = { exclude: ->(request) { request.path == "/up" } }
 end

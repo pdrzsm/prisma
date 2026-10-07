@@ -2,6 +2,9 @@
 # O formulário vem da URL e define quais respostas existem e são válidas.
 # Cada notificação é de um setor: a pessoa só vê e registra nos setores em que
 # foi liberada para o formulário (AvaliacaoClinicaPolicy e Permissoes).
+# Lista, detalhes e edição (inclusive a que volta sem salvar) mostram dado
+# sensível: cada notificação exibida fica na auditoria de leitura
+# (log_read_access, em ApplicationController).
 class AvaliacoesClinicasController < ApplicationController
   POR_PAGINA = 50
 
@@ -24,10 +27,13 @@ class AvaliacoesClinicasController < ApplicationController
                            .limit(POR_PAGINA + 1).offset((@pagina - 1) * POR_PAGINA).to_a
     @tem_proxima = @avaliacoes.size > POR_PAGINA
     @avaliacoes = @avaliacoes.first(POR_PAGINA)
+    # Cada linha da lista mostra iniciais e prontuários: todas são lidas
+    log_read_access(@avaliacoes)
   end
 
   def show
     authorize @avaliacao
+    log_read_access(@avaliacao)
     @historico = @avaliacao.versions.reorder(created_at: :desc, id: :desc).limit(20)
     @autores = User.where(id: @historico.filter_map(&:whodunnit)).index_by { |user| user.id.to_s }
   end
@@ -77,6 +83,8 @@ class AvaliacoesClinicasController < ApplicationController
 
   def edit
     authorize @avaliacao
+    # A tela de edição também mostra todos os dados da notificação
+    log_read_access(@avaliacao)
   end
 
   def update
@@ -88,14 +96,14 @@ class AvaliacoesClinicasController < ApplicationController
       redirect_to formulario_avaliacao_clinica_path(@formulario, @avaliacao), notice: "Notificação atualizada."
     else
       flash.now[:alert] = "Não foi possível salvar. Revise as perguntas destacadas."
-      render :edit, status: :unprocessable_content
+      renderizar_edicao :unprocessable_content
     end
   rescue ActiveRecord::StaleObjectError
     # Mantém o que a pessoa digitou, com a versão atual: salvar de novo
     # sobrescreve a alteração da outra pessoa conscientemente
     @avaliacao.lock_version = AvaliacaoClinica.where(id: @avaliacao.id).pick(:lock_version)
     flash.now[:alert] = "Outra pessoa salvou esta notificação enquanto você editava. Abra-a em outra aba para conferir antes de salvar de novo."
-    render :edit, status: :conflict
+    renderizar_edicao :conflict
   end
 
   private
@@ -130,6 +138,14 @@ class AvaliacoesClinicasController < ApplicationController
     @paciente = Paciente.new(paciente_params.merge(setor: @setor)) if @paciente.nil? || @paciente.persisted?
     flash.now[:alert] = mensagem
     render :new, status: :unprocessable_content
+  end
+
+  # A edição que não foi salva volta com a identificação do paciente e os
+  # dados da notificação: é uma leitura, mesmo sem passar pela action edit
+  # (um PATCH inválido de propósito não pode ver os dados sem deixar rastro)
+  def renderizar_edicao(status)
+    log_read_access(@avaliacao)
+    render :edit, status:
   end
 
   def paciente_params

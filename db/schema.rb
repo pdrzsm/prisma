@@ -10,7 +10,20 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_07_130200) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_07_140000) do
+  create_table "audit_logs", charset: "utf8mb4", collation: "utf8mb4_general_ci", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.string "auditable_type", limit: 64, null: false
+    t.bigint "auditable_id", null: false
+    t.string "action", limit: 20, null: false
+    t.string "ip_address", limit: 45
+    t.string "user_agent"
+    t.datetime "created_at", null: false
+    t.index ["auditable_type", "auditable_id", "created_at"], name: "index_audit_logs_on_registro_e_data"
+    t.index ["created_at"], name: "index_audit_logs_on_created_at"
+    t.index ["user_id", "created_at"], name: "index_audit_logs_on_user_id_and_created_at"
+  end
+
   create_table "avaliacoes_clinicas", charset: "utf8mb4", collation: "utf8mb4_general_ci", force: :cascade do |t|
     t.bigint "paciente_id", null: false
     t.bigint "user_id", null: false
@@ -122,6 +135,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_07_130200) do
     t.index ["item_type", "item_id"], name: "index_versions_on_item_type_and_item_id"
   end
 
+  add_foreign_key "audit_logs", "users"
   add_foreign_key "avaliacoes_clinicas", "pacientes"
   add_foreign_key "avaliacoes_clinicas", "setores"
   add_foreign_key "avaliacoes_clinicas", "users"
