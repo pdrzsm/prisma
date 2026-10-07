@@ -1,0 +1,10 @@
+<% content_for :title, "Novo setor · Configurações · Prisma" %>
+<% trilha ["Configurações", configuracoes_instituicoes_path],
+          [@instituicao.nome, configuracoes_instituicoes_path(anchor: dom_id(@instituicao))],
+          ["Novo setor"] %>
+<div>
+  <h1 class="text-2xl font-bold text-slate-900">Novo setor</h1>
+  <p class="text-sm text-slate-600">Em <%= @instituicao.nome %>.</p>
+</div>
+
+<%= render "formulario", setor: @setor %>

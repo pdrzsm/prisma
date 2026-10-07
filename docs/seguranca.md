@@ -8,13 +8,18 @@ e para quem implanta o sistema.
 
 | Dado | Onde | Como fica no banco |
 |------|------|--------------------|
-| CPF, prontuários SAH e AGHUse, número SINAN do paciente | `pacientes` | Cifrado, determinístico (permite busca exata) |
-| Nome e telefones do paciente | `pacientes` | Cifrado |
-| Município de residência, recebe benefício social | `pacientes` | Texto puro (permite agrupar em estatísticas) |
-| Respostas do formulário clínico | `avaliacoes_clinicas.dados_formulario` | Cifrado (o JSON inteiro) |
+| Prontuários SAH e AGHUSE do paciente | `pacientes` | Cifrado, determinístico (permite busca exata) |
+| Iniciais do nome do paciente | `pacientes` | Cifrado |
+| Respostas do formulário: número SINAN, município, benefício, exames, desfecho, contatos etc. | `avaliacoes_clinicas.dados_formulario` | Cifrado (o JSON inteiro) |
+| Nome do usuário do sistema | `users` | Texto puro (aparece nas listas de Configurações) |
 | CPF do usuário do sistema | `users` | Cifrado, determinístico (usado no login) |
 | Senha do usuário | `users` | Hash bcrypt (nunca reversível) |
 | Histórico de alterações | `versions` (PaperTrail) | Campos cifrados continuam cifrados |
+| Quem visualizou o quê: usuário, registro, IP e navegador | `audit_logs` | Texto puro, sem dado do paciente (só o id do registro visto) |
+
+O Prisma **não guarda nome completo nem CPF de paciente**: como no formulário
+em papel, a identificação é feita por prontuário e iniciais (minimização,
+LGPD art. 6º, III).
 
 Dados de saúde são dados pessoais sensíveis (LGPD, art. 5º, II). Cada
 instituição que implanta o Prisma é a controladora desses dados e precisa
@@ -22,13 +27,34 @@ definir a base legal (art. 11) com o seu encarregado (DPO).
 
 ## Permissões
 
-| Ação | operador | consultor | admin |
-|------|:--------:|:---------:|:-----:|
-| Ver o painel | ✅ | ✅ | ✅ |
-| Registrar avaliação | ✅ | ❌ | ✅ |
-| Visualizar avaliações (todas) | ✅ | ✅ | ✅ |
-| Editar ou excluir avaliação | ❌ | ❌ | ❌ |
-| Qualquer escrita (POST, PATCH, PUT, DELETE) | conforme a policy | ❌ sempre | conforme a policy |
+Há dois papéis globais (`users.role`):
+
+- **admin**: uma conta só no sistema inteiro. Administra (usuários,
+  instituições, setores, formulários habilitados e liberações) e vê e registra
+  tudo. A tela nunca cria nem promove um admin.
+- **usuario**: faz só o que o admin liberar, por instituição, setor e
+  formulário.
+
+Um usuário usa um formulário num setor só com as **três liberações**, sem
+herança entre níveis:
+
+1. da instituição do setor (`liberacoes_instituicao`);
+2. do setor (`liberacoes_setor`);
+3. do formulário naquele setor, com o papel: **registra** (registra, atualiza
+   e consulta) ou **consulta** (só consulta) (`liberacoes_formulario`);
+
+e com o formulário **habilitado** no setor pelo admin
+(`formularios_habilitados`). Tirar qualquer nível corta o acesso aos de baixo.
+
+| Ação | admin | usuário que registra | usuário que só consulta | usuário sem liberação |
+|------|:-----:|:--------------------:|:-----------------------:|:---------------------:|
+| Ver a visão geral | ✅ | ✅ | ✅ | ✅ |
+| Ver o formulário no menu e a lista dele | ✅ (todos os setores) | ✅ (setores liberados) | ✅ (setores liberados) | ❌ |
+| Ver uma notificação | ✅ | ✅ (do setor liberado) | ✅ (do setor liberado) | ❌ |
+| Registrar e editar notificação | ✅ (onde o formulário está habilitado) | ✅ (no setor liberado) | ❌ | ❌ |
+| Corrigir a identificação do paciente (prontuários e iniciais) | ✅ | ✅ (se registra todos os formulários em que o paciente tem notificação) | ❌ | ❌ |
+| Excluir notificação | ❌ | ❌ | ❌ | ❌ |
+| Configurações: usuários, liberações, instituições, setores | ✅ | ❌ | ❌ | ❌ |
 
 Como isso é garantido:
 
@@ -37,18 +63,43 @@ Como isso é garantido:
   `skip_before_action` explícito. O health check `/up` não passa por esse
   controller e não expõe dados.
 - **Pundit fechado por padrão.** O `ApplicationPolicy` nega tudo e rejeita
-  usuário nulo. Cada policy libera ações com listas explícitas de papéis, então
-  um papel novo começa sem acesso.
+  usuário nulo. Cada policy libera só o que precisa.
+- **Uma fonte só para o RBAC.** `Permissoes` (em `app/models`) lê as
+  liberações uma vez por requisição e responde se a pessoa consulta ou registra
+  um formulário num setor. As policies usam essa classe; nenhuma tela decide
+  acesso sozinha.
+- **Dados filtrados na consulta.** A lista, a busca por prontuário, os números
+  da visão geral e a página de Formulários usam o escopo do Pundit, que só traz
+  as notificações dos pares (setor, formulário) liberados. A notificação de
+  outro setor, aberta pela URL, dá **404**, como se não existisse.
+- **O setor decide antes de qualquer leitura.** Ao registrar, o setor escolhido
+  é autorizado antes de procurar ou gravar paciente; um setor trocado no
+  formulário (ou sem setor) é recusado. O paciente é procurado só dentro do
+  setor, e o setor de uma notificação não muda depois do registro.
 - **`authorize` antes de gravar.** O `verify_pundit_authorization` (um
   `after_action`) quebra a requisição se a action esquecer o `authorize`, mas
-  ele roda *depois* da action. A proteção real é chamar `authorize` na primeira
-  linha.
-- **Consultor somente leitura no sistema inteiro.** O
-  `deny_writes_for_consultor` barra qualquer requisição que não seja GET ou HEAD
-  vinda de um consultor, independente das policies. A exceção é o logout, que é
-  do Devise.
-- **Rotas mínimas.** Cada recurso declara `only:` com as actions que existem.
-  Sem rota, o Rails não renderiza uma view órfã.
+  ele roda *depois* da action. A proteção real é chamar `authorize` antes de
+  ler ou gravar.
+- **Admin único garantido pelo banco.** A coluna gerada `users.admin_unico`
+  vale 1 só para o admin e tem índice único: uma segunda conta admin é
+  recusada mesmo com acesso direto ao banco. O papel nunca vem de formulário,
+  e a conta admin não pode ser desativada.
+- **Liberações coerentes.** A tela de liberações manda o estado inteiro, e
+  `LiberacoesDoUsuario` só grava o que respeita a hierarquia: setor sem a
+  instituição marcada, formulário sem o setor marcado ou não habilitado, e
+  papel fora de "registra"/"consulta" são ignorados. Desmarcar um nível apaga
+  os de baixo.
+- **Correção da identificação por quem responde por todas as notificações.**
+  Corrigir prontuário ou iniciais muda o que aparece em todas as notificações
+  do paciente. Por isso a `PacientePolicy` exige registrar cada formulário em
+  que ele tem notificação, no setor delas: ninguém altera o que aparece numa
+  notificação que não pode editar. Paciente que a pessoa não vê dá 404.
+- **Configurações só para o admin.** A `ConfiguracaoPolicy` (base de
+  `InstituicaoPolicy`, `SetorPolicy` e `UserPolicy`) libera só o admin. O menu
+  nem aparece para os outros, mas a proteção é no servidor: a URL digitada à
+  mão também é barrada.
+- **Rotas mínimas.** Cada recurso declara `only:` ou `except:` com as actions
+  que existem. Usuário e notificação não têm rota de exclusão.
 
 ## Controles implementados
 
@@ -64,13 +115,21 @@ Como isso é garantido:
 - Modo `paranoid`: login inexistente, senha errada e conta bloqueada recebem a
   mesma resposta, no mesmo tempo. Ninguém descobre quem tem conta.
 - Não há cadastro público nem recuperação de senha por e-mail. As contas são
-  criadas pela administração.
+  criadas pelo admin em Configurações > Usuários, sempre como usuário comum.
+- **Senha temporária**: a conta nova (e a senha redefinida pelo admin) vem com
+  uma senha temporária, e nenhuma tela abre antes de a pessoa trocá-la por uma
+  só dela (o admin nunca sabe a senha final). A troca exige a senha atual e
+  recusa a nova em branco ou igual à atual. Redefinir a senha derruba as
+  sessões abertas da pessoa e desbloqueia a conta.
+- **Conta desativada** não entra, e a sessão já aberta cai na próxima
+  requisição. Ninguém é excluído: a auditoria guarda o que a pessoa fez.
 
 ### Criptografia (Active Record Encryption)
 
 - Campos sensíveis são cifrados antes de ir para o banco (tabela acima).
-- O modo determinístico só é usado onde é preciso buscar por igualdade (CPF,
-  prontuários, SINAN). Os demais campos usam o modo padrão, mais forte.
+- O modo determinístico só é usado onde é preciso buscar por igualdade
+  (prontuários do paciente, CPF do usuário). Os demais campos usam o modo
+  padrão, mais forte.
 - Colunas cifradas têm 510 caracteres, porque o texto cifrado ocupa bem mais
   que o original. Os models limitam o tamanho do valor original para caber.
 
@@ -78,31 +137,87 @@ Como isso é garantido:
 
 [config/initializers/filter_parameter_logging.rb](../config/initializers/filter_parameter_logging.rb)
 esconde os objetos `paciente` e `avaliacao_clinica` inteiros, além de CPF,
-login, senha, nome, prontuário e município. **Cada formulário novo precisa
-acrescentar ali a sua chave raiz.** Os testes conferem isso com
+login, senha, iniciais, prontuário e município. Todos os formulários de
+`config/formularios` enviam as respostas dentro de `avaliacao_clinica`, então
+um formulário novo já nasce coberto. Os testes conferem isso com
 `request.filtered_parameters`.
 
-### Auditoria (PaperTrail)
+### Auditoria
 
-- Criação e alteração de pacientes, avaliações e usuários ficam na tabela
-  `versions`, com o autor em `whodunnit`.
-- Campos cifrados continuam cifrados na auditoria. O hash da senha não é
-  gravado.
-- Leituras (quem visualizou o quê) ainda **não** são registradas; ver
-  pendências.
+- **Alterações (PaperTrail):** criação, alteração e exclusão de pacientes,
+  avaliações, usuários, instituições, setores, formulários habilitados e
+  liberações ficam na tabela `versions`, com o autor em `whodunnit`: dá para
+  saber quem liberou o quê e quando. Campos cifrados continuam cifrados na
+  auditoria, e o hash da senha não é gravado.
+- **Leituras (LGPD, art. 37 e 46):** a lista, os detalhes e a tela de edição de
+  uma notificação (inclusive a que volta sem salvar, por resposta inválida ou
+  conflito) gravam em `audit_logs` uma linha por notificação exibida, e a tela
+  de correção da identificação, uma linha do paciente:
+  quem viu, quando, qual registro, de qual IP e com qual navegador
+  (`ApplicationController#log_read_access`). Na lista, cada linha exibida conta,
+  porque mostra iniciais e prontuários; uma busca sem resultado não grava nada.
+  Acesso negado (404, sem liberação) não vira leitura.
+- **Falha fechada:** a leitura é gravada antes de a página ser montada. Se a
+  gravação falhar, os dados não são mostrados.
+- **Imutável:** o model `AuditLog` só cria; alterar ou apagar levanta erro. Em
+  produção, o usuário do banco da aplicação também não deve ter `UPDATE` nem
+  `DELETE` em `audit_logs` e `versions` (ver o checklist).
+- **Consulta:** quem viu uma notificação, `AuditLog.do_registro(avaliacao)`;
+  quem viu os dados de um paciente (pedido de um titular), na tela de correção
+  ou em qualquer notificação dele, `AuditLog.do_paciente(paciente)`. Por
+  enquanto, pelo console.
+- **IP confiável:** o IP sai do `X-Forwarded-For` pulando só os proxies de
+  `PROXIES_CONFIAVEIS`. Com o padrão do Rails (toda a rede privada), qualquer
+  computador da rede interna forjaria o próprio IP, na auditoria e no limite de
+  tentativas de login.
+
+### Transparência: finalidade e base legal
+
+- Cada formulário declara no YAML a **finalidade** da coleta e a **base legal**
+  (LGPD, art. 6º, I e X, e art. 11). O formulário sem as duas não carrega.
+- A tela de registro mostra as duas **antes das perguntas**, com a guarda
+  mínima de 20 anos (Lei 13.787/2018). A edição e os detalhes de uma
+  notificação mostram as gravadas nela.
+- Cada notificação **grava** a finalidade e a base legal em vigor no registro
+  (`avaliacoes_clinicas.finalidade` e `base_legal`). Elas vêm sempre do
+  formulário, nunca da tela, e não mudam depois: se a definição mudar, as
+  notificações antigas continuam dizendo para que foram coletadas.
+- A página **Privacidade e proteção de dados** (`/privacidade`, no rodapé de
+  todas as telas) resume para quem usa o sistema o que o art. 9º pede: quem
+  responde pelos dados, finalidade e base legal de cada formulário, quais
+  dados, quem acessa, por quanto tempo e os direitos dos pacientes, com o
+  contato do encarregado (`PRISMA_ENCARREGADO`). Ela exige login: os
+  pacientes não usam o Prisma, e a política para eles é publicada pela
+  instituição (ver o checklist).
 
 ### Integridade dos registros clínicos
 
-- Registrar uma avaliação **nunca altera o cadastro** de um paciente que já
-  existe; ela só é vinculada a ele. O paciente é localizado pelo CPF ou, sem
-  CPF, pelo prontuário SAH. Se os dois apontarem para pacientes diferentes, o
-  registro é recusado.
-- CPF tem pontuação removida e dígitos verificadores conferidos. Um índice
-  único no banco impede paciente duplicado.
-- Paciente com avaliações não pode ser apagado, e nada é apagado em cascata.
-  A Lei 13.787/2018 prevê guarda mínima de 20 anos do prontuário.
-- O JSON do formulário aceita só campos simples (texto, número, booleano, nulo
-  ou listas deles), com no máximo 300 campos e 64 KB.
+- Registrar ou editar uma notificação **nunca altera a identificação** de um
+  paciente que já existe; ela só é vinculada a ele. Prontuário ou iniciais
+  digitados errado são corrigidos só em "Corrigir identificação", nos detalhes
+  da notificação (direito do titular à correção, LGPD, art. 18, III): a tela
+  aceita estritamente os dois prontuários e as iniciais (o setor não muda), com
+  as mesmas regras do cadastro, e a correção fica no PaperTrail com o autor e
+  aparece no histórico das notificações do paciente. O paciente é localizado pelo prontuário
+  SAH ou AGHUSE. Para um prontuário digitado errado não pôr a notificação no
+  paciente errado, o registro é recusado quando:
+  - os dois prontuários apontam para pacientes diferentes;
+  - um dos prontuários não confere com o cadastro;
+  - as iniciais não conferem com as do cadastro.
+- Cada setor tem os seus pacientes: um índice único impede dois pacientes com
+  o mesmo prontuário no mesmo setor (o mesmo número em outro setor é outro
+  cadastro). A notificação é sempre do setor do paciente.
+- As respostas seguem a definição do formulário (`config/formularios/*.yml`):
+  só perguntas declaradas, só códigos de opção existentes, textos e números
+  dentro dos limites, datas válidas e não futuras. Qualquer outra chave é
+  recusada, no controller (strong params) e no model.
+- Toda edição fica na auditoria com autor e horário. Se duas pessoas editam a
+  mesma notificação ao mesmo tempo, a segunda é avisada do conflito em vez de
+  apagar a alteração da primeira (bloqueio otimista, `lock_version`).
+- Paciente com notificações não pode ser apagado, notificação não tem exclusão,
+  setor com pacientes não é excluído, um formulário com notificações num setor
+  não é desabilitado nele, e nada clínico é apagado em cascata. A Lei 13.787/2018 prevê guarda mínima de 20 anos
+  do prontuário.
 
 ### Navegador
 
@@ -116,11 +231,15 @@ acrescentar ali a sua chave raiz.** Os testes conferem isso com
 ### Infraestrutura e processo
 
 - Em produção, HTTPS é obrigatório (`force_ssl`, com HSTS e cookies seguros) e
-  só os domínios de `APP_HOSTS` são aceitos.
+  só os domínios de `APP_HOSTS` são aceitos. Sem `PROXIES_CONFIAVEIS` (o IP do
+  proxy reverso), a aplicação nem sobe.
 - No `docker-compose.yml`, o banco e o servidor de desenvolvimento só escutam
   em `127.0.0.1`.
-- O CI roda Brakeman, bundler-audit, RuboCop e os testes, contra MariaDB, com
-  token do GitHub somente leitura.
+- O CI roda Brakeman, bundler-audit, RuboCop, os testes e os testes de
+  navegador, contra MariaDB, com token do GitHub somente leitura. Os controles
+  desta página têm testes próprios (`test/integration/seguranca_test.rb`,
+  `autenticacao_test.rb` e os de permissão), e um deles ficar quebrado
+  derruba o CI.
 - O Dependabot atualiza gems e actions.
 
 ## Valores configuráveis
@@ -131,7 +250,10 @@ acrescentar ali a sua chave raiz.** Os testes conferem isso com
 | Tentativas até bloquear / tempo de bloqueio | 5 / 15 min | `devise.rb` (`maximum_attempts`, `unlock_in`) |
 | Tentativas de login por IP | 20 a cada 3 min | `app/controllers/users/sessions_controller.rb` |
 | Sessão ociosa | 30 min | `devise.rb` (`timeout_in`) |
-| Limites do JSON do formulário | 300 campos, 64 KB | `app/models/avaliacao_clinica.rb` |
+| Perguntas, opções, obrigatoriedade e limites de cada formulário | por pergunta | `config/formularios/*.yml` |
+| Fuso horário | America/Sao_Paulo | variável `PRISMA_FUSO_HORARIO` |
+| Finalidade e base legal de cada formulário | por formulário | `finalidade` e `base_legal` em `config/formularios/*.yml` |
+| Contato do encarregado de dados (DPO) | não definido | variável `PRISMA_ENCARREGADO` (ex.: "Maria Souza · dpo@hospital.gov.br") |
 
 Ao mexer nesses valores, considere os efeitos colaterais:
 
@@ -168,6 +290,27 @@ Antes de colocar dados reais:
       aberto sem nenhum aviso. Em rede interna sem DNS público, use um
       certificado da instituição em vez de Let's Encrypt.
 - [ ] `APP_HOSTS` com o domínio do sistema.
+- [ ] `PROXIES_CONFIAVEIS` com o IP (ou a faixa) do proxy reverso, e a porta da
+      aplicação **inacessível** sem passar por ele (o Rails confia no
+      `X-Forwarded-For` de quem chegar direto). Com o Kamal, a faixa da rede
+      Docker `kamal` (ver `config/deploy.yml`).
+- [ ] Usuário do banco da aplicação **sem `UPDATE` nem `DELETE`** em
+      `audit_logs` e `versions`, para as duas auditorias serem imutáveis de
+      verdade. No MariaDB, um `GRANT` no banco inteiro não pode ser retirado de
+      uma tabela só: dê os privilégios tabela a tabela, por exemplo
+      `GRANT SELECT, INSERT ON prisma.audit_logs TO 'prisma_app'@'%'` e
+      `GRANT SELECT, INSERT, UPDATE, DELETE ON prisma.pacientes TO 'prisma_app'@'%'`,
+      e rode as migrações com outro usuário, que tem permissão de alterar tabelas.
+- [ ] Política de retenção para `audit_logs` (contém IP e navegador de quem
+      acessou), definida com o encarregado (DPO).
+- [ ] Finalidade e base legal de cada formulário (`config/formularios/*.yml`)
+      validadas com o encarregado (DPO). As do seguimento de TB são uma
+      proposta: obrigação legal (notificação compulsória) e políticas públicas
+      de saúde, art. 11, II, "a" e "b".
+- [ ] `PRISMA_ENCARREGADO` com o nome e o contato do encarregado (DPO), e a
+      política de privacidade para os pacientes publicada pela instituição
+      (LGPD, art. 9º e art. 41, § 1º); o texto de `/privacidade` pode servir de
+      base.
 - [ ] Chaves de criptografia próprias, com cópia segura.
 - [ ] `secret_key_base` próprio: crie as suas credenciais com
       `bin/rails credentials:edit` ou defina `SECRET_KEY_BASE`. Não reaproveite
@@ -185,21 +328,14 @@ Em ordem aproximada de prioridade:
 1. **Dockerfile de produção.** O `Dockerfile` atual é só de desenvolvimento:
    roda como root e não instala gems nem compila assets na imagem. O deploy com
    Kamal (`config/deploy.yml`) ainda não funciona.
-2. **Tela do formulário de TB.** O `avaliacoes_clinicas/new.html.erb` ainda é
-   um placeholder.
-3. **Schema por formulário.** Hoje `dados_formulario` aceita qualquer campo
-   dentro dos limites. Cada formulário deve declarar seus campos, tipos e
-   respostas válidas ([novo-formulario.md](novo-formulario.md)).
-4. **Telas de consulta** (`index`/`show`) com `policy_scope` e `authorize`, e
-   **auditoria de leitura** (quem visualizou qual paciente).
-5. **Gestão de usuários pela interface.** Hoje as contas são criadas pelo
-   console.
-6. **Minimização para o consultor.** Avaliar se ele precisa ver nome e CPF ou
-   se basta ver dados pseudonimizados (LGPD, art. 6º, III).
-7. **Segundo fator de autenticação** para admin.
-8. **Rotação de chaves.** O Active Record Encryption aceita várias chaves
+2. **Tela de consulta da auditoria de leitura.** As leituras já são gravadas,
+   mas consultar (ex.: responder a um titular quem viu os dados dele) ainda é
+   pelo console. Falta também o descarte automático pela política de retenção.
+3. **Segundo fator de autenticação** para admin.
+4. **Rotação de chaves.** O Active Record Encryption aceita várias chaves
    primárias (a última cifra, as anteriores ainda decifram), mas o Prisma lê só
    uma por variável. O modo determinístico não suporta rotação.
-9. **Mensagens em português.** As mensagens padrão do Rails e do Devise ainda
-   estão em inglês.
-10. **Licença** do projeto.
+5. **Mensagens em português.** As telas e as mensagens de login e de validação
+   já estão em português (`config/locales/pt-BR.yml`); o que não tem tradução
+   ainda aparece em inglês.
+6. **Licença** do projeto.

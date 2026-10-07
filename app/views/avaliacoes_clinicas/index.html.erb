@@ -1,0 +1,102 @@
+<% content_for :title, "#{@formulario.titulo} · Prisma" %>
+<%# Só os setores em que a pessoa consulta este formulário (o controller filtra);
+    com mais de um, a lista ganha o filtro e a coluna de setor %>
+<% varios_setores = @setores.size > 1 %>
+<% filtros = { prontuario: params[:prontuario].presence, setor: @setor_filtrado&.id } %>
+<% trilha ["Formulários", formularios_path], [@formulario.titulo] %>
+<h1 class="sr-only"><%= @formulario.titulo %></h1>
+
+<div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+  <%= form_with url: formulario_avaliacoes_clinicas_path(@formulario), method: :get, html: { role: "search" }, class: "flex flex-col gap-4 sm:flex-row sm:items-center" do |busca| %>
+    <%= busca.label :prontuario, "Buscar por prontuário (SAH ou AGHUSE)", class: "sr-only" %>
+    <%= busca.search_field :prontuario, value: params[:prontuario], autocomplete: "off",
+                           placeholder: "Prontuário SAH ou AGHUSE",
+                           class: "#{ApplicationHelper::CAMPO} h-12 sm:w-92 placeholder:text-slate-500" %>
+    <% if varios_setores %>
+      <%= busca.label :setor, "Setor", class: "sr-only" %>
+      <%= busca.select :setor, @setores.map { |setor| [ setor.nome_completo, setor.id ] },
+                       { include_blank: "Todos os setores", selected: @setor_filtrado&.id },
+                       class: "#{ApplicationHelper::CAMPO} h-12 sm:w-64" %>
+    <% end %>
+    <div class="flex items-center gap-4">
+      <%= busca.submit "Buscar", name: nil, class: "#{ApplicationHelper::BOTAO_SECUNDARIO} h-12" %>
+      <% if filtros.values.any? %>
+        <%= link_to "Limpar", formulario_avaliacoes_clinicas_path(@formulario), class: "text-sm text-slate-600 hover:text-slate-900 hover:underline" %>
+      <% end %>
+    </div>
+  <% end %>
+  <% if policy(AvaliacaoClinica.new(formulario: @formulario.chave)).new? %>
+    <%= link_to "Nova notificação", new_formulario_avaliacao_clinica_path(@formulario), class: "#{ApplicationHelper::BOTAO_PRIMARIO} h-12 sm:w-50" %>
+  <% end %>
+</div>
+
+<% if @avaliacoes.empty? %>
+  <div class="bg-white rounded-xl border border-marca-200 p-8 text-center text-sm text-slate-600">
+    <% if filtros.values.any? %>
+      Nenhum registro com esse filtro.
+    <% elsif @pagina > 1 %>
+      Não há registros nesta página. <%= link_to "Voltar à primeira página", formulario_avaliacoes_clinicas_path(@formulario), class: "font-semibold text-marca-700 hover:underline" %>
+    <% else %>
+      Nenhum registro ainda.
+    <% end %>
+  </div>
+<% else %>
+  <%# relative: segura dentro da rolagem o "Ações" só para leitores de tela (sr-only é absolute) %>
+  <div class="relative bg-white rounded-xl border border-marca-200 shadow-sm overflow-x-auto">
+    <table class="min-w-full divide-y divide-marca-200 text-sm">
+      <thead class="bg-marca-50 text-left text-xs font-semibold uppercase tracking-wider text-slate-600">
+        <tr>
+          <th scope="col" class="px-4 py-3">Iniciais</th>
+          <th scope="col" class="px-4 py-3">Prontuário SAH</th>
+          <th scope="col" class="px-4 py-3">Prontuário AGHUSE</th>
+          <% if varios_setores %>
+            <th scope="col" class="px-4 py-3">Setor</th>
+          <% end %>
+          <% @formulario.perguntas_da_lista.each do |pergunta| %>
+            <th scope="col" class="px-4 py-3"><%= pergunta.texto %></th>
+          <% end %>
+          <th scope="col" class="px-4 py-3">Situação</th>
+          <th scope="col" class="px-4 py-3">Atualizada em</th>
+          <th scope="col" class="px-4 py-3"><span class="sr-only">Ações</span></th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100">
+        <% @avaliacoes.each do |avaliacao| %>
+          <tr class="hover:bg-marca-50/60">
+            <td class="px-4 py-3 font-semibold text-slate-900"><%= avaliacao.paciente.iniciais %></td>
+            <td class="px-4 py-3"><%= avaliacao.paciente.prontuario_sah || "—" %></td>
+            <td class="px-4 py-3"><%= avaliacao.paciente.prontuario_aghuse || "—" %></td>
+            <% if varios_setores %>
+              <td class="px-4 py-3 whitespace-nowrap"><%= avaliacao.setor.nome_completo %></td>
+            <% end %>
+            <% @formulario.perguntas_da_lista.each do |pergunta| %>
+              <% valor = avaliacao.respostas[pergunta.chave] %>
+              <td class="px-4 py-3"><%= valor.nil? ? "—" : @formulario.resposta_formatada(pergunta, valor) %></td>
+            <% end %>
+            <td class="px-4 py-3"><%= selo_da_situacao(avaliacao) %></td>
+            <td class="px-4 py-3 whitespace-nowrap text-slate-600"><%= data_e_hora(avaliacao.updated_at) %></td>
+            <td class="px-4 py-3 whitespace-nowrap text-right">
+              <%= link_to "Ver", formulario_avaliacao_clinica_path(@formulario, avaliacao), class: "font-semibold text-marca-700 hover:text-marca-900 hover:underline" %>
+              <% if policy(avaliacao).update? %>
+                <%= link_to "Editar", edit_formulario_avaliacao_clinica_path(@formulario, avaliacao), class: "ml-3 font-semibold text-marca-700 hover:text-marca-900 hover:underline" %>
+              <% end %>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+
+  <nav aria-label="Páginas" class="flex justify-between text-sm">
+    <span>
+      <% if @pagina > 1 %>
+        <%= link_to "← Anterior", formulario_avaliacoes_clinicas_path(@formulario, **filtros, pagina: @pagina - 1), class: "font-semibold text-marca-700 hover:underline" %>
+      <% end %>
+    </span>
+    <span>
+      <% if @tem_proxima %>
+        <%= link_to "Próxima →", formulario_avaliacoes_clinicas_path(@formulario, **filtros, pagina: @pagina + 1), class: "font-semibold text-marca-700 hover:underline" %>
+      <% end %>
+    </span>
+  </nav>
+<% end %>

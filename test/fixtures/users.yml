@@ -1,21 +1,44 @@
 # Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
 
-# CPFs gerados a cada carga: nenhum CPF fica versionado
+# CPFs gerados a cada carga: nenhum CPF fica versionado. Acessos de cada um
+# em liberacoes_*.yml:
+#   admin:         a conta única; vê e registra tudo
+#   operador:      registra o seguimento de TB no Ambulatório (CRF)
+#   consultor:     só consulta o seguimento de TB no Ambulatório (CRF)
+#   laboratorista: registra o seguimento de TB só no Laboratório (CRF)
+#   sem_acesso:    nenhuma liberação
 <% senha = Devise::Encryptor.digest(User, ActiveSupport::TestCase::SENHA_DE_TESTE) %>
 admin:
   username: admin_teste
+  nome: Admin de Teste
   cpf: <%= Cpf.gerar %>
   role: admin
   encrypted_password: <%= senha %>
 
 operador:
   username: operador_teste
+  nome: Operador de Teste
   cpf: <%= Cpf.gerar %>
-  role: operador
+  role: usuario
   encrypted_password: <%= senha %>
 
 consultor:
   username: consultor_teste
+  nome: Consultor de Teste
   cpf: <%= Cpf.gerar %>
-  role: consultor
+  role: usuario
+  encrypted_password: <%= senha %>
+
+laboratorista:
+  username: laboratorista_teste
+  nome: Laboratorista de Teste
+  cpf: <%= Cpf.gerar %>
+  role: usuario
+  encrypted_password: <%= senha %>
+
+sem_acesso:
+  username: sem_acesso_teste
+  nome: Sem Acesso de Teste
+  cpf: <%= Cpf.gerar %>
+  role: usuario
   encrypted_password: <%= senha %>

@@ -1,3 +1,11 @@
-<svg width="512" height="512" xmlns="http://www.w3.org/2000/svg">
-  <circle cx="256" cy="256" r="256" fill="red"/>
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <rect width="512" height="512" rx="96" fill="#6d7da2"/>
+  <g fill="#e9edf7" transform="translate(12.73 56.00) scale(0.46382)">
+    <polygon points="703 803.37 703 862.4 479.25 683.26 480 647.04 480 188.27 517 225.27 517 653.15 703 803.37"/>
+    <path d="M453.88,686.12l-143.71,143.71c-2.08-2.08-4.76-292.18-4.76-292.18l148.47,148.47Z"/>
+    <polygon points="454 185.12 454 412.72 305 227.58 305 0 454 185.12"/>
+    <polygon points="744 453.67 744 837.96 703 805.23 703 413.15 744 453.67"/>
+    <polyline points="694 584.87 694 785.26 527 646.91 527 442.87"/>
+    <polyline points="527 370.87 527 177.25 694 351.06 694 513.87"/>
+  </g>
 </svg>

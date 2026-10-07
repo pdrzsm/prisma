@@ -1,4 +1,11 @@
+<% content_for :title, "Nova notificação · #{@formulario.titulo} · Prisma" %>
+<% trilha ["Formulários", formularios_path], [@formulario.titulo, formulario_avaliacoes_clinicas_path(@formulario)], ["Nova notificação"] %>
+
 <div>
-  <h1 class="font-bold text-4xl">AvaliacoesClinicas#new</h1>
-  <p>Find me in app/views/avaliacoes_clinicas/new.html.erb</p>
+  <h1 class="text-2xl font-bold text-slate-900">Nova notificação</h1>
+  <p class="text-sm text-slate-600"><%= @formulario.descricao %></p>
 </div>
+
+<%= render "finalidade", finalidade: @formulario.finalidade, base_legal: @formulario.base_legal %>
+
+<%= render "formulario", url: formulario_avaliacoes_clinicas_path(@formulario), metodo: :post %>

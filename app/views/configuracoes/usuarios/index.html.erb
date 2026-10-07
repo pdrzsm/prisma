@@ -1,0 +1,73 @@
+<% content_for :title, "Usuários · Configurações · Prisma" %>
+<% trilha ["Configurações", configuracoes_instituicoes_path], ["Usuários"] %>
+<h1 class="sr-only">Usuários</h1>
+<% selo = "inline-flex whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-semibold" %>
+
+<div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+  <p class="max-w-2xl text-sm text-slate-600">
+    Toda conta nova é de usuário comum, com senha temporária trocada no primeiro acesso. O que cada
+    pessoa acessa vem das liberações. Ninguém é excluído: quem sai é desativado.
+  </p>
+  <%= link_to "Novo usuário", new_configuracoes_usuario_path, class: "#{ApplicationHelper::BOTAO_PRIMARIO} h-12" %>
+</div>
+
+<%# relative: segura dentro da rolagem o "Ações" só para leitores de tela (sr-only é absolute) %>
+<div class="relative overflow-x-auto rounded-xl border border-marca-200 bg-white shadow-sm">
+  <table class="min-w-full divide-y divide-marca-200 text-sm">
+    <thead class="bg-marca-50 text-left text-xs font-semibold uppercase tracking-wider text-slate-600">
+      <tr>
+        <th scope="col" class="px-4 py-3">Nome</th>
+        <th scope="col" class="px-4 py-3">Usuário</th>
+        <th scope="col" class="px-4 py-3">Situação</th>
+        <th scope="col" class="px-4 py-3">Acesso</th>
+        <th scope="col" class="px-4 py-3"><span class="sr-only">Ações</span></th>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-slate-100">
+      <% @usuarios.each do |usuario| %>
+        <tr class="hover:bg-marca-50/60">
+          <td class="px-4 py-3 font-semibold text-slate-900"><%= usuario.nome %></td>
+          <td class="px-4 py-3">@<%= usuario.username %></td>
+          <td class="px-4 py-3">
+            <div class="flex flex-wrap gap-1">
+              <% if usuario.admin? %>
+                <span class="<%= selo %> bg-marca-700 text-white">Admin</span>
+              <% elsif usuario.ativo? %>
+                <span class="<%= selo %> bg-emerald-50 text-emerald-700">Ativo</span>
+              <% else %>
+                <span class="<%= selo %> bg-slate-100 text-slate-700">Desativado</span>
+              <% end %>
+              <% if usuario.deve_trocar_senha? %>
+                <span class="<%= selo %> bg-amber-50 text-amber-700">Senha temporária</span>
+              <% end %>
+              <% if usuario.access_locked? %>
+                <span class="<%= selo %> bg-rose-50 text-rose-700">Bloqueado</span>
+              <% end %>
+            </div>
+          </td>
+          <td class="px-4 py-3 text-slate-700">
+            <% if usuario.admin? %>
+              Tudo
+            <% else %>
+              <% acessos = usuario.permissoes.acessos %>
+              <% if acessos.empty? %>
+                <span class="text-slate-500">Nenhum</span>
+              <% else %>
+                <%= pluralize(acessos.size, "formulário", plural: "formulários") %> em
+                <%= pluralize(acessos.keys.map(&:first).uniq.size, "setor", plural: "setores") %>
+              <% end %>
+            <% end %>
+          </td>
+          <td class="whitespace-nowrap px-4 py-3 text-right">
+            <%= link_to "Editar", edit_configuracoes_usuario_path(usuario),
+                        class: "font-semibold text-marca-700 hover:underline", aria: { label: "Editar #{usuario.nome}" } %>
+            <% if policy(usuario).liberar? %>
+              <%= link_to "Liberações", edit_configuracoes_usuario_liberacoes_path(usuario),
+                          class: "ml-3 font-semibold text-marca-700 hover:underline", aria: { label: "Liberações de #{usuario.nome}" } %>
+            <% end %>
+          </td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+</div>

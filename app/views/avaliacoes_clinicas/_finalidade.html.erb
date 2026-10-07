@@ -1,0 +1,11 @@
+<%# locals: (finalidade:, base_legal:) %>
+<%# Para que os dados são coletados e com qual base legal (LGPD, art. 6º, I e
+    X, e art. 9º). No registro e na edição, aparece antes das perguntas. %>
+<aside aria-label="Finalidade da coleta" class="max-w-3xl space-y-1 rounded-lg border border-marca-200 bg-marca-50 px-4 py-3 text-sm text-slate-700">
+  <p><strong class="font-semibold text-slate-900">Dados coletados para</strong> <%= finalidade.chomp(".") %>.</p>
+  <p><strong class="font-semibold text-slate-900">Base legal:</strong> <%= base_legal.chomp(".") %>.</p>
+  <p class="text-xs text-slate-600">
+    Guardados por no mínimo 20 anos após o último registro, como o prontuário (Lei 13.787/2018).
+    <%= link_to "Privacidade e proteção de dados", privacidade_path, class: "font-semibold text-marca-700 hover:underline" %>
+  </p>
+</aside>

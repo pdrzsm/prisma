@@ -1,0 +1,307 @@
+# Seguimento do tratamento de tuberculose. Transcrito do formulário usado no
+# ambulatório, com os mesmos números de pergunta e os mesmos códigos de
+# resposta (padrão SINAN). Formato: docs/novo-formulario.md.
+#
+# A notificação é aberta no início do tratamento e atualizada a cada mês.
+# "obrigatoria: abertura" vale sempre; "obrigatoria: encerramento" passa a
+# valer quando a data de encerramento (pergunta 46) é preenchida.
+
+# Listas de opções repetidas (âncoras YAML), referenciadas abaixo com *nome
+_opcoes:
+  baciloscopia: &baciloscopia
+    "1": Positiva
+    "2": Negativa
+    "3": Não realizada
+    "4": Não se aplica
+  trm: &trm
+    "1": Detectável, sensível à rifampicina
+    "2": Detectável, resistente à rifampicina
+    "3": Não detectável
+    "4": Inconclusivo
+    "5": Não realizado
+  cultura: &cultura
+    "1": Resistente somente à isoniazida
+    "2": Resistente somente à rifampicina
+    "3": Resistente à isoniazida e à rifampicina
+    "4": Resistente a outras drogas de 1ª linha
+    "5": Sensível
+    "6": Em andamento
+    "7": Não realizada
+  imagem: &imagem
+    "1": Suspeito
+    "2": Normal
+    "3": Outra patologia
+    "4": Não realizada
+  nao_sim: &nao_sim
+    "0": Não
+    "1": Sim
+
+titulo: Seguimento de TB
+descricao: Acompanhamento do tratamento de tuberculose, da abertura ao encerramento, com exames mensais e desfecho.
+# Para que os dados são coletados e com qual base legal (LGPD, art. 6º, I e X,
+# e art. 11). Aparecem na tela de registro e ficam gravados em cada
+# notificação. A finalidade completa a frase "Dados coletados para ...".
+# Texto a validar com o encarregado de dados (DPO) da instituição.
+finalidade: acompanhar o tratamento da tuberculose até o desfecho e notificar o caso à vigilância epidemiológica (SINAN)
+base_legal: >-
+  cumprimento de obrigação legal, porque a tuberculose é de notificação compulsória (Lei 6.259/1975),
+  e execução de políticas públicas de saúde (LGPD, art. 11, II, “a” e “b”)
+encerramento: data_encerramento
+lista: [numero_sinan, forma_clinica]
+
+secoes:
+  - titulo: Identificação
+    perguntas:
+      - numero: 1
+        chave: prontuario_sah
+        texto: Prontuário SAH
+        tipo: texto
+        maximo: 30
+        paciente: true
+      - numero: 2
+        chave: prontuario_aghuse
+        texto: Prontuário AGHUSE
+        tipo: texto
+        maximo: 30
+        paciente: true
+      - numero: 3
+        chave: numero_sinan
+        texto: Número SINAN
+        tipo: texto
+        maximo: 30
+      - numero: 4
+        chave: iniciais
+        texto: Primeiras iniciais do nome
+        tipo: texto
+        # Limite do campo na tela. O cadastro aceita até 10 letras, depois de
+        # tirar pontos e espaços (Paciente), então "M. S. S." cabe inteiro.
+        maximo: 30
+        obrigatoria: abertura
+        paciente: true
+        ajuda: "Até 10 letras, por exemplo: MSS. Pontos e espaços são ignorados."
+
+  - titulo: Dados do paciente
+    perguntas:
+      - numero: 5
+        chave: gestante
+        texto: Gestante?
+        tipo: unica
+        obrigatoria: abertura
+        opcoes:
+          "1": 1º trimestre
+          "2": 2º trimestre
+          "3": 3º trimestre
+          "4": Idade gestacional ignorada
+          "5": Não
+          "6": Não se aplica
+          "9": Ignorado
+      - numero: 6
+        chave: populacoes_especiais
+        texto: Populações especiais
+        tipo: multipla
+        obrigatoria: abertura
+        exclusivas: ["0"]
+        opcoes:
+          "0": Não
+          "1": População privada de liberdade
+          "2": População em situação de rua
+          "3": Profissional de saúde
+          "4": Imigrante
+          "5": Profissionais do sexo
+      - numero: 7
+        chave: recebe_beneficio
+        texto: Recebe algum benefício?
+        tipo: unica
+        obrigatoria: abertura
+        opcoes:
+          "0": Não
+          "1": Sim
+          "2": Ignorado
+      - numero: 8
+        chave: municipio_residencia
+        texto: Município de residência
+        tipo: texto
+        maximo: 100
+        obrigatoria: abertura
+
+  - titulo: Forma clínica
+    perguntas:
+      - numero: 9
+        chave: forma_clinica
+        texto: Forma clínica
+        tipo: unica
+        obrigatoria: abertura
+        opcoes:
+          "1": Pulmonar
+          "2": Extrapulmonar
+          "3": Pulmonar + extrapulmonar
+      # No original, "pulmonar" pula esta pergunta. Aqui ela só aparece (e só
+      # é guardada) para as formas 2 e 3; por isso não tem "0 - Não se aplica".
+      - numero: 10
+        chave: tb_extrapulmonar
+        texto: Se extrapulmonar, qual?
+        tipo: multipla
+        obrigatoria: abertura
+        condicao: { pergunta: forma_clinica, valores: ["2", "3"] }
+        opcoes:
+          "1": Pleural
+          "2": Ganglionar
+          "3": Geniturinária
+          "4": Óssea/articular
+          "5": Ocular
+          "6": Miliar
+          "7": Meningoencefálica
+          "8": Cutânea
+          "9": Laríngea
+          "10": Outra
+
+  - titulo: Laboratório
+    perguntas:
+      - { numero: 11, chave: baciloscopia_escarro_mes_1, texto: Baciloscopia de escarro – 1º mês, tipo: unica, obrigatoria: encerramento, opcoes: *baciloscopia }
+      - { numero: 12, chave: baciloscopia_escarro_mes_2, texto: Baciloscopia de escarro – 2º mês, tipo: unica, obrigatoria: encerramento, opcoes: *baciloscopia }
+      - { numero: 13, chave: baciloscopia_escarro_mes_3, texto: Baciloscopia de escarro – 3º mês, tipo: unica, obrigatoria: encerramento, opcoes: *baciloscopia }
+      - { numero: 14, chave: baciloscopia_escarro_mes_4, texto: Baciloscopia de escarro – 4º mês, tipo: unica, obrigatoria: encerramento, opcoes: *baciloscopia }
+      - { numero: 15, chave: baciloscopia_escarro_mes_5, texto: Baciloscopia de escarro – 5º mês, tipo: unica, obrigatoria: encerramento, opcoes: *baciloscopia }
+      - { numero: 16, chave: baciloscopia_escarro_mes_6, texto: Baciloscopia de escarro – 6º mês, tipo: unica, obrigatoria: encerramento, opcoes: *baciloscopia }
+      - { numero: 17, chave: baciloscopia_escarro_apos_6_meses, texto: Baciloscopia de escarro – após 6 meses, tipo: unica, obrigatoria: encerramento, opcoes: *baciloscopia }
+      # No original, "3 - Não detectável" e "4 - Inconclusivo" ficaram juntas
+      # numa opção só nas perguntas 18 a 24; aqui estão separadas, como na 28.
+      - { numero: 18, chave: trm_escarro_mes_1, texto: TRM-TB de escarro – 1º mês, tipo: unica, obrigatoria: encerramento, opcoes: *trm }
+      - { numero: 19, chave: trm_escarro_mes_2, texto: TRM-TB de escarro – 2º mês, tipo: unica, obrigatoria: encerramento, opcoes: *trm }
+      - { numero: 20, chave: trm_escarro_mes_3, texto: TRM-TB de escarro – 3º mês, tipo: unica, obrigatoria: encerramento, opcoes: *trm }
+      - { numero: 21, chave: trm_escarro_mes_4, texto: TRM-TB de escarro – 4º mês, tipo: unica, obrigatoria: encerramento, opcoes: *trm }
+      - { numero: 22, chave: trm_escarro_mes_5, texto: TRM-TB de escarro – 5º mês, tipo: unica, obrigatoria: encerramento, opcoes: *trm }
+      - { numero: 23, chave: trm_escarro_mes_6, texto: TRM-TB de escarro – 6º mês, tipo: unica, obrigatoria: encerramento, opcoes: *trm }
+      - { numero: 24, chave: trm_escarro_apos_6_meses, texto: TRM-TB de escarro – após 6 meses, tipo: unica, obrigatoria: encerramento, opcoes: *trm }
+      - { numero: 25, chave: cultura_escarro, texto: Cultura para BK de escarro, tipo: unica, opcoes: *cultura }
+      - numero: 26
+        chave: outro_material
+        texto: Outro material?
+        tipo: unica
+        obrigatoria: encerramento
+        opcoes:
+          "0": Não
+          "1": Líquor
+          "2": Linfonodo
+          "3": Líquido pleural
+          "4": Líquido abdominal
+          "5": Pericárdio
+          "6": Urina
+          "7": Osso
+          "8": Pele
+          "9": Outro
+      - { numero: 27, chave: baciloscopia_outro_material, texto: Baciloscopia de outro material, tipo: unica, obrigatoria: encerramento, opcoes: *baciloscopia }
+      - { numero: 28, chave: trm_outro_material, texto: TRM-TB de outro material, tipo: unica, obrigatoria: encerramento, opcoes: *trm }
+      - { numero: 29, chave: cultura_outro_material, texto: Cultura de outro material, tipo: unica, opcoes: *cultura }
+
+  - titulo: Exame de imagem
+    perguntas:
+      - { numero: 30, chave: rx_torax, texto: Raio-X de tórax, tipo: unica, obrigatoria: encerramento, opcoes: *imagem }
+      # Múltipla escolha como no original; "Normal" e "Não realizada" excluem as demais
+      - { numero: 31, chave: tomografia, texto: Tomografia, tipo: multipla, exclusivas: ["2", "4"], opcoes: *imagem }
+
+  - titulo: Anatomia patológica
+    perguntas:
+      - numero: 32
+        chave: histopatologico
+        texto: Histopatológico
+        tipo: unica
+        obrigatoria: encerramento
+        opcoes:
+          "1": BAAR positivo
+          "2": Sugestivo de TB
+          "3": Não sugestivo de TB
+          "4": Em andamento
+          "5": Não realizado
+      - { numero: 33, chave: trm_histopatologico, texto: TRM-TB de histopatológico, tipo: unica, opcoes: *trm }
+      - numero: 34
+        chave: cultura_histopatologico
+        texto: Cultura para BK de histopatológico
+        tipo: unica
+        opcoes:
+          "1": Positivo
+          "2": Negativo
+          "3": Em andamento
+          "4": Não realizado
+
+  - titulo: HIV
+    perguntas:
+      - numero: 35
+        chave: cd4_final_tratamento
+        texto: CD4 no final do tratamento
+        tipo: numero
+        maximo: 5000
+        ajuda: Em células/mm³.
+      - numero: 36
+        chave: carga_viral_final_tratamento
+        texto: Carga viral no final do tratamento
+        tipo: texto
+        maximo: 50
+        ajuda: Em cópias/mL, ou "indetectável".
+      - numero: 37
+        chave: doencas_oportunistas
+        texto: Outras doenças oportunistas no diagnóstico da tuberculose?
+        tipo: multipla
+        exclusivas: ["0", "1"]
+        opcoes:
+          "0": Não
+          "1": Não sabe
+          "2": Histoplasmose
+          "3": Neurotoxoplasmose
+          "4": Criptococose
+          "5": Pneumocistose
+          "6": Candidíase esofágica
+          "7": Outras
+
+  - titulo: Sobre o tratamento
+    perguntas:
+      - { numero: 38, chave: tratamento_diretamente_observado, texto: Tratamento diretamente observado (TDO/DOT), tipo: unica, opcoes: *nao_sim }
+      - { numero: 39, chave: mudanca_esquema, texto: Mudança de esquema, tipo: unica, obrigatoria: encerramento, opcoes: *nao_sim }
+      - { numero: 40, chave: motivo_mudanca_esquema, texto: Motivo da mudança de esquema, tipo: texto, maximo: 500 }
+
+  - titulo: Comorbidades
+    perguntas:
+      - numero: 41
+        chave: comorbidades
+        texto: Comorbidades
+        tipo: multipla
+        exclusivas: ["0"]
+        opcoes:
+          "0": Não
+          "1": Alcoolismo
+          "2": Diabetes
+          "3": Doença mental
+          "4": Tabagismo
+          "5": Uso de substâncias psicoativas
+          "6": Doença oncológica
+          "7": Uso de imunobiológico
+
+  - titulo: Desfecho do tratamento
+    perguntas:
+      - numero: 42
+        chave: desfecho
+        texto: Desfecho do tratamento
+        tipo: unica
+        opcoes:
+          "1": Cura
+          "2": Abandono
+          "3": Óbito por TB
+          "4": Óbito por outras causas
+          "5": Transferência
+          "6": Mudança de diagnóstico
+          "7": TB-DR
+          "8": Mudança de esquema
+          "9": Falência
+          "10": Abandono primário
+      - numero: 43
+        chave: motivo_mudanca_diagnostico
+        texto: Motivo da mudança de diagnóstico
+        tipo: unica
+        opcoes:
+          "1": TRM falso positivo
+          "2": LF-LAM falso positivo
+          "3": Outro diagnóstico
+      - { numero: 44, chave: numero_contatos, texto: Número de contatos, tipo: numero, maximo: 1000 }
+      - { numero: 45, chave: numero_contatos_avaliados, texto: Número de contatos avaliados, tipo: numero, maximo: 1000, nao_maior_que: numero_contatos }
+      - { numero: 46, chave: data_encerramento, texto: Encerramento, tipo: data, ajuda: "Ao preencher, as perguntas marcadas “para encerrar” passam a ser obrigatórias." }
+      - { numero: 47, chave: data_revisao_encerramento, texto: Revisão do encerramento, tipo: data, nao_antes_de: data_encerramento }

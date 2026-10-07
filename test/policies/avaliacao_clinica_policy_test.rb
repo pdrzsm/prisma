@@ -1,30 +1,54 @@
 require "test_helper"
 
+# Quem vê e quem registra cada notificação vem das liberações (Permissoes)
 class AvaliacaoClinicaPolicyTest < ActiveSupport::TestCase
-  PAPEIS = %i[operador consultor admin].freeze
+  TB = "seguimento_tb".freeze
 
-  test "operador e admin registram avaliações" do
-    assert policy(:operador).create?
-    assert policy(:admin).create?
+  test "lista e tela de nova: consulta ou registra em algum setor" do
+    assert policy(:operador, nova).index?
+    assert policy(:operador, nova).new?
+    assert policy(:consultor, nova).index?
+    assert_not policy(:consultor, nova).new?
+    assert_not policy(:sem_acesso, nova).index?
+    assert_not policy(:sem_acesso, nova).new?
   end
 
-  test "consultor não registra avaliações" do
-    assert_not policy(:consultor).new?
-    assert_not policy(:consultor).create?
+  test "gravar: só registra no setor escolhido" do
+    assert policy(:operador, nova(:ambulatorio)).create?
+    assert_not policy(:operador, nova(:laboratorio)).create?
+    assert_not policy(:consultor, nova(:ambulatorio)).create?
+    assert_not policy(:operador, nova(nil)).create?, "sem setor não grava"
   end
 
-  test "todos os papéis visualizam todas as avaliações" do
-    PAPEIS.each do |papel|
-      assert policy(papel).index?, "#{papel} deveria listar"
-      assert policy(papel).show?, "#{papel} deveria visualizar"
-      assert_equal AvaliacaoClinica.count, scope(papel).count, "#{papel} deveria ver todas"
-    end
+  test "ver e editar: no setor da notificação" do
+    do_ambulatorio = avaliacoes_clinicas(:one)
+    do_laboratorio = avaliacoes_clinicas(:tres)
+
+    assert policy(:operador, do_ambulatorio).show?
+    assert policy(:operador, do_ambulatorio).update?
+    assert policy(:consultor, do_ambulatorio).show?
+    assert_not policy(:consultor, do_ambulatorio).update?
+    assert_not policy(:operador, do_laboratorio).show?
+    assert_not policy(:operador, do_laboratorio).update?
+    assert policy(:laboratorista, do_laboratorio).update?
   end
 
-  test "ninguém edita nem exclui avaliações" do
-    PAPEIS.each do |papel|
-      assert_not policy(papel).update?, "#{papel} não deveria editar"
-      assert_not policy(papel).destroy?, "#{papel} não deveria excluir"
+  test "o admin vê e registra tudo" do
+    assert policy(:admin, avaliacoes_clinicas(:tres)).update?
+    assert policy(:admin, nova(:laboratorio)).create?
+    assert_equal AvaliacaoClinica.count, scope(:admin).count
+  end
+
+  test "o escopo traz só os setores liberados" do
+    assert_equal avaliacoes_clinicas(:one, :two).sort, scope(:operador).sort
+    assert_equal avaliacoes_clinicas(:one, :two).sort, scope(:consultor).sort
+    assert_equal [ avaliacoes_clinicas(:tres) ], scope(:laboratorista).to_a
+    assert_empty scope(:sem_acesso)
+  end
+
+  test "ninguém exclui notificações" do
+    %i[admin operador consultor laboratorista].each do |papel|
+      assert_not policy(papel, avaliacoes_clinicas(:one)).destroy?, papel
     end
   end
 
@@ -35,8 +59,12 @@ class AvaliacaoClinicaPolicyTest < ActiveSupport::TestCase
 
   private
 
-  def policy(papel)
-    AvaliacaoClinicaPolicy.new(users(papel), AvaliacaoClinica)
+  def nova(setor = :ambulatorio)
+    AvaliacaoClinica.new(formulario: TB, setor: setor && setores(setor))
+  end
+
+  def policy(papel, record)
+    AvaliacaoClinicaPolicy.new(users(papel), record)
   end
 
   def scope(papel)

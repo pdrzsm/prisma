@@ -1,37 +1,51 @@
 class Paciente < ApplicationRecord
-  class IdentificadoresConflitantes < StandardError; end
+  class IdentificacaoInvalida < StandardError; end
 
+  # Cada setor tem os seus pacientes: o prontuário é único dentro do setor, e
+  # o mesmo número em outro setor é outro cadastro
+  belongs_to :setor
   # O prontuário precisa ser preservado (Lei 13.787/2018): paciente com
   # avaliações não pode ser apagado, e nada é apagado em cascata
   has_many :avaliacoes_clinicas, dependent: :restrict_with_error
   has_paper_trail
 
-  # Identificadores: determinístico permite busca exata (find_by) no banco
-  encrypts :cpf, :prontuario_sah, :prontuario_aghuse, :numero_sinan, deterministic: true
-  encrypts :nome, :numero_contatos
+  # Identificação mínima, como no formulário: prontuários e iniciais, sem nome
+  # completo nem CPF. Prontuários em modo determinístico para a busca exata.
+  encrypts :prontuario_sah, :prontuario_aghuse, deterministic: true
+  encrypts :iniciais
 
-  normalizes :cpf, with: ->(cpf) { Cpf.normalizar(cpf) }
-  normalizes :nome, :prontuario_sah, :prontuario_aghuse, :numero_sinan, :municipio_residencia, :numero_contatos,
-             with: ->(valor) { valor.squish.presence }
+  # Sem espaços e em maiúsculas: "sah 001" e "SAH001" são o mesmo prontuário,
+  # e não viram dois pacientes. A pontuação é mantida.
+  normalizes :prontuario_sah, :prontuario_aghuse, with: ->(prontuario) { prontuario.gsub(/\s+/, "").upcase.presence }
+  normalizes :iniciais, with: ->(iniciais) { iniciais.gsub(/[^\p{L}]/, "").upcase.presence }
 
-  # Os limites garantem que o texto cifrado caiba nas colunas
-  validates :nome, presence: true, length: { maximum: 150 }
-  validates :cpf, cpf: true, uniqueness: true, allow_nil: true
-  validates :prontuario_sah, :prontuario_aghuse, :numero_sinan, length: { maximum: 30 }
-  validates :municipio_residencia, length: { maximum: 100 }
-  validates :numero_contatos, length: { maximum: 120 }
+  validates :iniciais, presence: true, length: { maximum: 10 }
+  validates :prontuario_sah, :prontuario_aghuse, length: { maximum: 30 }, uniqueness: { scope: :setor_id }, allow_nil: true
 
-  # Localiza o paciente pelo CPF ou, sem CPF, pelo prontuário SAH, sem alterar
-  # o cadastro encontrado. Se os dois identificadores apontarem para pacientes
-  # diferentes, levanta IdentificadoresConflitantes em vez de escolher um.
-  def self.identificar(cpf:, prontuario_sah:)
-    cpf = normalize_value_for(:cpf, cpf)
-    prontuario_sah = normalize_value_for(:prontuario_sah, prontuario_sah)
+  scope :com_prontuario, ->(prontuario) { where(prontuario_sah: prontuario).or(where(prontuario_aghuse: prontuario)) }
 
-    por_cpf = find_by(cpf:) if cpf
-    por_prontuario = find_by(prontuario_sah:) if prontuario_sah
-    raise IdentificadoresConflitantes if por_cpf && por_prontuario && por_cpf != por_prontuario
+  # Localiza o paciente do setor pelos prontuários, sem alterar o cadastro
+  # encontrado (paciente de outro setor nunca é encontrado). Recusa
+  # (IdentificacaoInvalida) quando os dados informados não batem com o
+  # cadastro: assim uma notificação não vai parar no paciente errado por causa
+  # de um prontuário digitado errado.
+  def self.identificar(setor:, prontuario_sah:, prontuario_aghuse:, iniciais:)
+    informados = {
+      prontuario_sah: normalize_value_for(:prontuario_sah, prontuario_sah),
+      prontuario_aghuse: normalize_value_for(:prontuario_aghuse, prontuario_aghuse)
+    }.compact
+    encontrados = informados.filter_map { |campo, valor| find_by(setor:, campo => valor) }.uniq
+    raise IdentificacaoInvalida, "Os prontuários SAH e AGHUSE pertencem a pacientes diferentes." if encontrados.size > 1
 
-    por_cpf || por_prontuario
+    paciente = encontrados.first or return
+    if informados.any? { |campo, valor| paciente[campo].present? && paciente[campo] != valor }
+      raise IdentificacaoInvalida, "Um dos prontuários não confere com o cadastro do paciente. Confira os dados."
+    end
+    iniciais = normalize_value_for(:iniciais, iniciais)
+    if paciente.iniciais != iniciais
+      raise IdentificacaoInvalida, iniciais ? "As iniciais não conferem com o paciente desse prontuário. Confira os dados." : "Informe as iniciais do paciente."
+    end
+
+    paciente
   end
 end

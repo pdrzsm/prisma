@@ -1,0 +1,35 @@
+<header class="px-4 sm:px-8 lg:px-16 pt-6 lg:pt-12">
+  <div class="flex items-start justify-between gap-4">
+    <div class="flex items-start gap-3 min-w-0">
+      <%# Celular: o menu da barra lateral recolhido num botão, sem JavaScript %>
+      <details class="lg:hidden relative shrink-0">
+        <%# aria-label: o leitor de tela anuncia "Abrir menu", e não o nome do logo %>
+        <summary aria-label="Abrir menu" class="list-none [&::-webkit-details-marker]:hidden cursor-pointer bg-marca-700 p-2 text-marca-100">
+          <%= render "shared/logo", classe: "h-8 w-8" %>
+        </summary>
+        <div class="absolute left-0 z-20 mt-2 w-64 bg-marca-700 py-3 shadow-lg">
+          <%= render "shared/menu" %>
+        </div>
+      </details>
+
+      <div class="min-w-0">
+        <p class="py-2 text-xs leading-4 uppercase tracking-widest text-slate-600">Central de Formulários Clínicos</p>
+        <%= yield :trilha %>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-3 shrink-0">
+      <%# A caixa do usuário leva à troca da própria senha %>
+      <%= link_to edit_senha_path, title: "Trocar senha",
+                  class: "hidden sm:flex h-8 items-center gap-2 border border-marca-300 bg-white px-3 text-sm transition hover:bg-marca-50" do %>
+        <span class="font-semibold text-slate-900">@<%= current_user.username %></span>
+        <% if current_user.admin? %>
+          <span class="text-xs font-semibold uppercase tracking-wide text-marca-700">admin</span>
+        <% end %>
+        <span class="sr-only">, trocar senha</span>
+      <% end %>
+      <%= button_to "Sair", destroy_user_session_path, method: :delete,
+                    class: "botao-prisma botao-prisma-secundario inline-flex h-8 cursor-pointer items-center pl-4 pr-16 text-sm font-semibold uppercase tracking-wide" %>
+    </div>
+  </div>
+</header>

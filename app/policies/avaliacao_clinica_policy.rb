@@ -1,26 +1,46 @@
+# Notificações: quem vê e quem registra vem das liberações (Permissoes), por
+# setor e formulário. O record é uma notificação gravada ou uma nova, montada
+# com o formulário (e o setor, ao gravar) para as telas de lista e de registro:
+#   authorize AvaliacaoClinica.new(formulario: "seguimento_tb")
 class AvaliacaoClinicaPolicy < ApplicationPolicy
-  # Listas explícitas em vez de `true`: um papel novo começa sem acesso
-  LEITURA = %w[operador consultor admin].freeze
-  ESCRITA = %w[operador admin].freeze
-
+  # Lista do formulário: consulta em pelo menos um setor
   def index?
-    LEITURA.include?(user.role)
+    permissoes.consulta_o_formulario?(record.formulario)
   end
 
+  # Ver: consulta no setor da notificação
   def show?
-    index?
+    permissoes.consulta?(record.setor_id, record.formulario)
   end
 
+  # Tela de nova notificação: registra o formulário em pelo menos um setor
+  def new?
+    permissoes.registra_o_formulario?(record.formulario)
+  end
+
+  # Gravar: registra o formulário no setor escolhido
   def create?
-    ESCRITA.include?(user.role)
+    permissoes.registra?(record.setor_id, record.formulario)
   end
 
-  # update? e destroy? continuam negados (herdados): avaliação registrada não é
-  # alterada nem apagada, para preservar o histórico clínico
+  # O seguimento é atualizado ao longo do tratamento por quem registra no setor;
+  # cada alteração fica na auditoria (PaperTrail). edit? segue update?.
+  def update?
+    create?
+  end
 
+  # destroy? continua negado (herdado): registro clínico não é apagado
+
+  # Só as notificações dos pares (setor, formulário) liberados
   class Scope < ApplicationPolicy::Scope
     def resolve
-      LEITURA.include?(user.role) ? scope.all : scope.none
+      user.permissoes.escopo_de_avaliacoes(scope)
     end
+  end
+
+  private
+
+  def permissoes
+    user.permissoes
   end
 end

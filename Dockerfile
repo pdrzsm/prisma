@@ -8,7 +8,12 @@ RUN apt-get update -qq && \
       default-mysql-client \
       git \
       pkg-config \
-      libvips && \
+      libvips \
+      chromium \
+      chromium-driver && \
     rm -rf /var/lib/apt/lists/*
+
+# Chromium sem janela para os testes de navegador (bin/rails test:system)
+ENV CHROME_BIN=/usr/bin/chromium
 
 WORKDIR /rails

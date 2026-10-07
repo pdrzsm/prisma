@@ -1,7 +1,13 @@
 # Prisma
 
-Sistema web de código aberto para formulários de análises clínicas. O primeiro
-formulário em construção é a notificação de seguimento de tuberculose (TB).
+Sistema web de código aberto para formulários de análises clínicas. Cada
+formulário é descrito num arquivo YAML; o sistema gera a tela, valida as
+respostas, cifra os dados e registra quem alterou o quê.
+
+O primeiro formulário é o **seguimento de tuberculose (TB)**: 47 perguntas com
+os códigos do SINAN. A notificação é aberta no início do tratamento e
+atualizada mês a mês até o encerramento. Os formulários ficam na seção
+**Formulários** do menu lateral.
 
 > **Estado:** desenvolvimento inicial. Ainda **não está pronto para produção**;
 > veja as [pendências conhecidas](docs/seguranca.md#pendências-conhecidas).
@@ -17,17 +23,20 @@ faz parte de cada mudança: antes de contribuir, leia
   [Pundit](https://github.com/varvet/pundit) para permissões e
   [PaperTrail](https://github.com/paper-trail-gem/paper_trail) para auditoria
 - Active Record Encryption para os dados sensíveis no banco
-- Tailwind CSS; ainda sem JavaScript
+- Tailwind CSS; sem JavaScript
 
 ## Papéis
 
-| Papel       | Registra formulários | Visualiza registros | Grava qualquer coisa |
-|-------------|:--------------------:|:-------------------:|:--------------------:|
-| `operador`  | sim                  | sim                 | conforme as policies |
-| `consultor` | não                  | sim                 | **nunca**            |
-| `admin`     | sim                  | sim                 | conforme as policies |
+- **admin**: uma conta só no sistema. Cadastra usuários, instituições e
+  setores, habilita formulários nos setores, define as liberações e vê e
+  registra tudo.
+- **usuário**: vê e registra só o que o admin liberar. A liberação é explícita
+  em três níveis (instituição, setor e formulário), e cada formulário diz se a
+  pessoa **registra** ou **só consulta** naquele setor. Conta nova recebe senha
+  temporária, trocada no primeiro acesso.
 
-Ninguém edita ou apaga um registro clínico. Detalhes em
+Toda alteração fica na auditoria, e ninguém apaga um registro clínico nem um
+usuário (quem sai é desativado). Detalhes em
 [docs/seguranca.md](docs/seguranca.md#permissões).
 
 ## Rodando em desenvolvimento
@@ -53,9 +62,23 @@ docker compose run --rm web bin/rails db:prepare db:seed
 docker compose up
 ```
 
-Abra <http://localhost:3000> e entre como `admin`, `operador` ou `consultor`,
-com a senha `prisma-dev-senha`. Essas contas só existem em desenvolvimento
-(ver [db/seeds.rb](db/seeds.rb)); o seed se recusa a rodar em produção.
+Abra <http://localhost:3000> e entre como `admin`, `operador` (registra) ou
+`consultor` (só consulta), com a senha `prisma-dev-senha`. O seed cria também
+uma instituição e um setor de desenvolvimento, com as liberações dos dois.
+Essas contas só existem em desenvolvimento (ver [db/seeds.rb](db/seeds.rb)); o
+seed se recusa a rodar em produção.
+
+Para ver as telas com dados, gere notificações fictícias de seguimento de TB,
+abertas em datas variadas, atualizadas mês a mês e parte delas encerradas:
+
+```bash
+docker compose exec web bin/rails dev:notificacoes                   # 50
+docker compose exec web bin/rails dev:notificacoes QUANTIDADE=120 SETOR=2
+```
+
+Sem `SETOR`, as notificações vão para o primeiro setor com o seguimento de TB
+habilitado. Os prontuários começam com `TESTE-`, e rodar de novo não duplica nada. A
+tarefa também se recusa a rodar em produção.
 
 O banco e o servidor ficam acessíveis só na sua máquina (`127.0.0.1`). Em
 sistemas com SELinux (Fedora, RHEL), os volumes usam `:z`; não troque por `:Z`,
@@ -65,24 +88,29 @@ porque isso tira o acesso dos outros containers aos arquivos.
 
 ```bash
 docker compose exec web bin/rails db:test:prepare test
+docker compose exec web bin/rails test:system   # navegador de verdade (Chromium)
 docker compose exec web bin/brakeman
 docker compose exec web bin/bundler-audit
 docker compose exec web bin/rubocop
 ```
 
 Os testes usam um banco separado (`prisma_test`) e chaves de criptografia
-próprias, públicas e fictícias. Eles nunca tocam no banco de desenvolvimento. O
-CI ([.github/workflows/ci.yml](.github/workflows/ci.yml)) roda tudo isso a cada
-pull request.
+próprias, públicas e fictícias. Eles nunca tocam no banco de desenvolvimento.
+Os testes de navegador precisam do Chromium que vem na imagem de
+desenvolvimento: depois de atualizar o `Dockerfile`, rode `docker compose build`.
+O CI ([.github/workflows/ci.yml](.github/workflows/ci.yml)) roda tudo isso a
+cada pull request.
 
 ## Documentação
 
-- [docs/arquitetura.md](docs/arquitetura.md): organização do código, modelos e
-  convenções
+- [docs/arquitetura.md](docs/arquitetura.md): organização do código, motor de
+  formulários, modelos e convenções
 - [docs/seguranca.md](docs/seguranca.md): controles, permissões, chaves,
   checklist de produção e pendências
-- [docs/novo-formulario.md](docs/novo-formulario.md): passo a passo para
-  adicionar um formulário clínico com segurança
+- [docs/novo-formulario.md](docs/novo-formulario.md): como criar um formulário
+  clínico novo em YAML
+- [docs/identidade-visual.md](docs/identidade-visual.md): cores, fonte, logo e
+  layout das telas
 - [SECURITY.md](SECURITY.md): como relatar uma vulnerabilidade
 
 ## Contribuindo

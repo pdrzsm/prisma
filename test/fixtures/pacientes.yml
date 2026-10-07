@@ -1,22 +1,20 @@
 # Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
 
-# Dados fictícios; CPFs gerados a cada carga
+# Dados fictícios (encrypt_fixtures cifra ao carregar). O prontuário é único
+# por setor: "tres" tem o mesmo SAH de "one", mas é outro paciente, de outro setor.
 one:
-  nome: Paciente Fictício Um
-  cpf: <%= Cpf.gerar %>
+  setor: ambulatorio
+  iniciais: MFU
   prontuario_sah: SAH-0001
   prontuario_aghuse: AGH-0001
-  numero_sinan: "0000001"
-  recebe_beneficio_social: false
-  municipio_residencia: Porto Alegre
-  numero_contatos: (51) 90000-0001
 
 two:
-  nome: Paciente Fictício Dois
-  cpf: <%= Cpf.gerar %>
+  setor: ambulatorio
+  iniciais: JPD
   prontuario_sah: SAH-0002
   prontuario_aghuse: AGH-0002
-  numero_sinan: "0000002"
-  recebe_beneficio_social: true
-  municipio_residencia: Viamão
-  numero_contatos: (51) 90000-0002
+
+tres:
+  setor: laboratorio
+  iniciais: LBX
+  prontuario_sah: SAH-0001

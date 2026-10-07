@@ -1,10 +1,41 @@
 /*
- * This is a manifest file that'll be compiled into application.css.
- *
- * With Propshaft, assets are served efficiently without preprocessing steps. You can still include
- * application-wide styles in this file, but keep in mind that CSS precedence will follow the standard
- * cascading order, meaning styles declared later in the document or manifest will override earlier ones,
- * depending on specificity.
- *
- * Consider organizing styles into separate files for maintainability.
+ * Estilos que o Tailwind (app/assets/tailwind) não cobre.
+ * Sem atributo style nem <style> nas views: a CSP só aceita CSS deste site.
  */
+
+/*
+ * Source Sans 3 (Adobe, licença SIL OFL 1.1: app/assets/fonts/OFL-source-sans-3.txt).
+ * Arquivo variável com todos os pesos e os caracteres latinos do português.
+ */
+@font-face {
+  font-family: "Source Sans 3";
+  font-style: normal;
+  font-weight: 200 900;
+  font-display: swap;
+  src: url("source-sans-3-latin-wght-normal.woff2") format("woff2");
+}
+
+/*
+ * Pergunta condicional dos formulários clínicos (ex.: a pergunta 10 do
+ * seguimento de TB só vale para forma clínica extrapulmonar). Ela fica logo
+ * depois da pergunta que a controla e só aparece quando uma opção marcada
+ * com data-revela está selecionada. Funciona sem JavaScript: :has() existe em
+ * todos os navegadores aceitos pelo allow_browser :modern. O servidor aplica a
+ * mesma regra (Formulario#condicao_atendida?) de qualquer forma.
+ */
+.pergunta-condicional {
+  display: none;
+}
+
+.pergunta:has(input[data-revela]:checked) + .pergunta-condicional {
+  display: block;
+}
+
+/*
+ * Liberações (Configurações > Usuários > Liberações): com a caixa de um nível
+ * desmarcada, o que está dentro dele fica apagado, porque deixa de valer (o
+ * servidor também ignora). Só CSS, como a pergunta condicional.
+ */
+.liberacao:has(> label input[type="checkbox"]:not(:checked)) > .liberacao-dentro {
+  opacity: 0.45;
+}

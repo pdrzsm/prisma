@@ -1,0 +1,20 @@
+<% content_for :title, "Editar setor · Configurações · Prisma" %>
+<% trilha ["Configurações", configuracoes_instituicoes_path],
+          [@instituicao.nome, configuracoes_instituicoes_path(anchor: dom_id(@instituicao))],
+          ["Editar #{@setor.nome_was}"] %>
+<div>
+  <h1 class="text-2xl font-bold text-slate-900">Editar setor</h1>
+  <p class="text-sm text-slate-600">Em <%= @instituicao.nome %>.</p>
+</div>
+
+<%# Excluir, na ponta direita da linha do Salvar. Um formulário não pode ficar
+    dentro de outro: o botão fica na linha, mas envia o formulário
+    excluir_setor, mais abaixo, pelo atributo form (sem JavaScript). %>
+<% content_for :excluir do %>
+  <button type="submit" form="excluir_setor" class="<%= ApplicationHelper::BOTAO_PERIGO %>">Excluir setor</button>
+<% end %>
+
+<%= render "formulario", setor: @setor %>
+
+<%= form_with url: configuracoes_instituicao_setor_path(@instituicao, @setor), method: :delete, id: "excluir_setor", html: { hidden: true } do %>
+<% end %>

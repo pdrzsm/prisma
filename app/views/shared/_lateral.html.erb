@@ -1,0 +1,25 @@
+<%# Barra lateral (desktop), no desenho do sistema: as três faces de um
+    prisma, como no login. A face escura (marca-700) leva o símbolo, o nome e
+    o menu. Embaixo, dois cortes se encontram num ponto: um sobe para a
+    direita (como a segunda quebra do login) e abre a face do meio
+    (marca-600); o outro desce para a direita (como a primeira diagonal) e
+    abre a face mais clara (marca-400) no canto. No celular, o mesmo menu fica
+    no topo (shared/_topo). %>
+<aside class="hidden lg:block w-38 shrink-0 bg-marca-700">
+  <div class="sticky top-0 h-screen">
+    <%# As faces de baixo ficam atrás do menu, que passa por cima se for comprido.
+        Os dois cortes se encontram em (35%, 26%) do bloco. %>
+    <div class="pointer-events-none absolute inset-x-0 bottom-0 h-64" aria-hidden="true">
+      <div class="absolute inset-0 bg-marca-600 [clip-path:polygon(0_40%,100%_0,100%_100%,0_100%)]"></div>
+      <div class="absolute inset-0 bg-marca-400 [clip-path:polygon(35%_26%,100%_0,100%_100%,70%_100%)]"></div>
+    </div>
+
+    <div class="relative">
+      <%= link_to root_path, class: "flex items-center gap-2 px-4 pt-6 pb-12 text-marca-100", aria: { label: "Prisma, visão geral" } do %>
+        <%= render "shared/logo", classe: "h-10 w-auto" %>
+        <%= render "shared/logo", versao: :nome, classe: "h-4 w-auto" %>
+      <% end %>
+      <%= render "shared/menu" %>
+    </div>
+  </div>
+</aside>

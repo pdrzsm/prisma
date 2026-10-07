@@ -1,0 +1,45 @@
+/*
+ * Avisos do sistema (app/views/shared/_avisos.html.erb): entram descendo um
+ * pouco do alto da tela; o de sucesso some sozinho depois de 6 s, com uma
+ * barra mostrando o tempo, e pausa enquanto o mouse ou o foco estão nele. O
+ * de erro fica até ser fechado: some sozinho só o que não faz falta ler.
+ */
+.aviso {
+  animation: aviso-entra 0.35s ease-out both;
+}
+.aviso-ok {
+  animation:
+    aviso-entra 0.35s ease-out both,
+    aviso-sai 0.4s ease-in 6s forwards;
+}
+.aviso-tempo {
+  transform-origin: left;
+  animation: aviso-tempo 6s linear forwards;
+}
+.aviso-ok:hover,
+.aviso-ok:focus-within,
+.aviso-ok:hover .aviso-tempo,
+.aviso-ok:focus-within .aviso-tempo {
+  animation-play-state: paused;
+}
+
+@keyframes aviso-entra {
+  from { opacity: 0; transform: translateY(-8px); }
+}
+/* visibility no fim: invisível, o aviso também deixa de receber cliques */
+@keyframes aviso-sai {
+  to { opacity: 0; transform: translateY(-8px); visibility: hidden; }
+}
+@keyframes aviso-tempo {
+  to { transform: scaleX(0); }
+}
+
+/* "Reduzir movimento": aparece e some sem deslizar, e sem a barra */
+@media (prefers-reduced-motion: reduce) {
+  .aviso { animation: none; }
+  .aviso-ok { animation: aviso-some 0s linear 6s forwards; }
+  .aviso-tempo { display: none; }
+}
+@keyframes aviso-some {
+  to { opacity: 0; visibility: hidden; }
+}

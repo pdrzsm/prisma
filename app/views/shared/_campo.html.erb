@@ -1,0 +1,21 @@
+<%# locals: (form:, atributo:, rotulo:, maximo: nil, ajuda: nil, tipo: :texto, autocomplete: "off") %>
+<%# Um campo de texto (ou de senha, com tipo: :senha), com a ajuda e os erros
+    ligados ao campo (aria-describedby): o leitor de tela lê junto. %>
+<% erros = form.object.errors[atributo] %>
+<% descricoes = [ (form.field_id(atributo, :ajuda) if ajuda), (form.field_id(atributo, :erros) if erros.any?) ].compact %>
+<% opcoes = { maxlength: maximo, autocomplete:, class: "#{ApplicationHelper::CAMPO} sm:max-w-md",
+              aria: { invalid: erros.any?, describedby: descricoes.join(" ").presence } } %>
+<div class="space-y-1">
+  <%= form.label atributo, rotulo, class: "block text-sm font-semibold text-slate-900" %>
+  <% if tipo == :senha %>
+    <%= form.password_field atributo, **opcoes %>
+  <% else %>
+    <%= form.text_field atributo, **opcoes %>
+  <% end %>
+  <% if ajuda %>
+    <p id="<%= form.field_id(atributo, :ajuda) %>" class="text-xs text-slate-600"><%= ajuda %></p>
+  <% end %>
+  <% if erros.any? %>
+    <p id="<%= form.field_id(atributo, :erros) %>" class="text-sm font-medium text-rose-600"><%= erros.to_sentence %></p>
+  <% end %>
+</div>

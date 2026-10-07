@@ -1,0 +1,7 @@
+<%# locals: (pergunta:) %>
+<span class="font-semibold text-slate-900"><%= pergunta.numero %>. <%= pergunta.texto %></span>
+<% if pergunta.obrigatoria == "abertura" %>
+  <span class="ml-1 rounded bg-rose-50 px-1.5 py-0.5 text-xs font-semibold text-rose-700">Obrigatória</span>
+<% elsif pergunta.obrigatoria == "encerramento" %>
+  <span class="ml-1 rounded bg-amber-50 px-1.5 py-0.5 text-xs font-semibold text-amber-700">Para encerrar</span>
+<% end %>

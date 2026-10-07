@@ -1,0 +1,77 @@
+<% content_for :title, "Liberações · Configurações · Prisma" %>
+<% trilha ["Configurações", configuracoes_instituicoes_path], ["Usuários", configuracoes_usuarios_path],
+          [@usuario.nome, edit_configuracoes_usuario_path(@usuario)], ["Liberações"] %>
+<div>
+  <h1 class="text-2xl font-bold text-slate-900">Liberações de <%= @usuario.nome %></h1>
+  <p class="max-w-3xl text-sm text-slate-600">
+    A pessoa só usa um formulário num setor com as três liberações: a instituição, o setor e o
+    formulário. Nada é herdado: desmarcar um nível tira o acesso a tudo o que está dentro dele.
+  </p>
+</div>
+
+<%# O estado inteiro vai de uma vez; LiberacoesDoUsuario acerta o banco. O campo
+    escondido garante o envio mesmo com tudo desmarcado (para tirar todo acesso).
+    Estilo de "desligado" dos níveis de baixo: .liberacao em application.css. %>
+<%= form_with url: configuracoes_usuario_liberacoes_path(@usuario), method: :patch, class: "space-y-6" do %>
+  <%= hidden_field_tag "liberacoes[instituicoes][]", "", id: nil %>
+
+  <% if @instituicoes.empty? %>
+    <div class="rounded-xl border border-marca-200 bg-white p-8 text-center text-sm text-slate-600">
+      Nenhuma instituição cadastrada. Cadastre em <%= link_to "Instituições e setores", configuracoes_instituicoes_path, class: "font-semibold text-marca-700 hover:underline" %>.
+    </div>
+  <% end %>
+
+  <% @instituicoes.each do |instituicao| %>
+    <section class="liberacao rounded-xl border border-marca-200 bg-white p-5 shadow-sm">
+      <label class="flex items-center gap-2 text-base font-bold text-slate-900">
+        <%= check_box_tag "liberacoes[instituicoes][]", instituicao.id, @liberadas[:instituicoes].include?(instituicao.id),
+                          id: dom_id(instituicao, :liberacao), class: "h-4 w-4 accent-marca-600" %>
+        <%= instituicao.nome %><% if instituicao.sigla %> <span class="text-xs font-semibold uppercase tracking-widest text-marca-700"><%= instituicao.sigla %></span><% end %>
+      </label>
+
+      <div class="liberacao-dentro mt-4 space-y-4 border-l-2 border-marca-100 pl-5">
+        <% if instituicao.setores.empty? %>
+          <p class="text-sm text-slate-600">Nenhum setor nesta instituição.</p>
+        <% end %>
+
+        <% instituicao.setores.each do |setor| %>
+          <div class="liberacao">
+            <label class="flex items-center gap-2 text-sm font-semibold text-slate-900">
+              <%= check_box_tag "liberacoes[setores][]", setor.id, @liberadas[:setores].include?(setor.id),
+                                id: dom_id(setor, :liberacao), class: "h-4 w-4 accent-marca-600" %>
+              Setor <%= setor.nome %>
+            </label>
+
+            <div class="liberacao-dentro mt-2 space-y-2 pl-6">
+              <% if setor.formularios.empty? %>
+                <p class="text-sm text-slate-600">Nenhum formulário habilitado neste setor.</p>
+              <% end %>
+
+              <% setor.formularios.each do |chave| %>
+                <% papel = @liberadas[:formularios][[ setor.id, chave ]].to_s %>
+                <fieldset class="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-4">
+                  <legend class="float-left text-sm text-slate-700 sm:w-56"><%= Formulario.find(chave).titulo %></legend>
+                  <div class="flex flex-wrap gap-x-4 gap-y-1 text-sm">
+                    <% [ [ "", "Sem acesso" ], [ "consulta", "Só consulta" ], [ "registra", "Registra" ] ].each do |valor, rotulo| %>
+                      <% id = "liberacao_#{setor.id}_#{chave}_#{valor.presence || "nenhum"}" %>
+                      <label for="<%= id %>" class="flex items-center gap-1.5">
+                        <%= radio_button_tag "liberacoes[formularios][#{setor.id}][#{chave}]", valor, papel == valor,
+                                             id:, class: "accent-marca-600" %>
+                        <%= rotulo %>
+                      </label>
+                    <% end %>
+                  </div>
+                </fieldset>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    </section>
+  <% end %>
+
+  <div class="flex max-w-2xl flex-wrap items-center gap-3">
+    <%= submit_tag "Salvar liberações", class: ApplicationHelper::BOTAO_PRIMARIO %>
+    <%= link_to "Cancelar", configuracoes_usuarios_path, class: ApplicationHelper::BOTAO_SECUNDARIO %>
+  </div>
+<% end %>

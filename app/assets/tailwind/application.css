@@ -1,1 +1,22 @@
 @import "tailwindcss";
+
+/*
+ * Identidade visual do Prisma (docs/identidade-visual.md).
+ * A fonte é declarada em app/assets/stylesheets/application.css (@font-face),
+ * servida pelo próprio sistema: a CSP não aceita fontes de outros sites.
+ */
+@theme {
+  --font-sans: "Source Sans 3", ui-sans-serif, system-ui, sans-serif;
+
+  /* Paleta "marca", a partir das cores do layout */
+  --color-marca-50: #f4f6fb;
+  --color-marca-100: #e9edf7; /* fundo das telas */
+  --color-marca-200: #d3daeb;
+  --color-marca-300: #b3bdd6;
+  --color-marca-400: #8f9cbd;
+  --color-marca-500: #6d7da2; /* barra lateral */
+  --color-marca-600: #586788; /* botões (5,7:1 com texto branco) */
+  --color-marca-700: #47536f; /* links e item ativo do menu */
+  --color-marca-800: #3a4459;
+  --color-marca-900: #2c3344;
+}

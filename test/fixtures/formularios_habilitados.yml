@@ -1,0 +1,10 @@
+_fixture:
+  model_class: FormularioHabilitado
+
+tb_ambulatorio:
+  setor: ambulatorio
+  formulario: seguimento_tb
+
+tb_laboratorio:
+  setor: laboratorio
+  formulario: seguimento_tb

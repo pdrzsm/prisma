@@ -1,0 +1,72 @@
+/*
+ * Logo em contorno animado, no painel da marca do login
+ * (app/views/shared/_logo_contorno.html.erb, que explica as duas etapas).
+ * O logo fica parado no lugar: só o traço e a luz se mexem.
+ *
+ * Os traços estão em unidades do viewBox do símbolo (862 de altura): no
+ * tamanho do painel, 1 unidade dá cerca de 0,75 px.
+ */
+.contorno {
+  overflow: visible; /* o brilho passa um pouco das bordas do viewBox */
+  opacity: 0.5;      /* discreto: fica atrás do texto do painel */
+}
+
+/* Por faceta: a ordem (--n) e quanto dura uma volta da luz (--ritmo). Ritmos
+   espalhados à mão para duas facetas vizinhas nunca andarem juntas. Uma
+   faceta nova no LogoHelper precisa de uma linha aqui. */
+.contorno-faceta-0 { --n: 0; --ritmo: 5s; }
+.contorno-faceta-1 { --n: 1; --ritmo: 7.3s; }
+.contorno-faceta-2 { --n: 2; --ritmo: 6.1s; }
+.contorno-faceta-3 { --n: 3; --ritmo: 8.6s; }
+.contorno-faceta-4 { --n: 4; --ritmo: 5.6s; }
+.contorno-faceta-5 { --n: 5; --ritmo: 7.9s; }
+
+/* 1. O contorno se desenhando: cada faceta começa 250 ms depois da anterior. */
+.contorno-traco {
+  stroke: rgb(255 255 255 / 0.3);
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+  stroke-dasharray: 100;
+  stroke-dashoffset: 100;
+  animation: contorno-desenha 2.2s cubic-bezier(0.6, 0.05, 0.25, 1) calc(var(--n) * 250ms) forwards;
+}
+@keyframes contorno-desenha {
+  to { stroke-dashoffset: 0; }
+}
+
+/* 2. A luz. Aparece depois que o desenho termina e corre para sempre. A fase
+   vem do atraso NEGATIVO da volta, para as facetas não saírem todas do mesmo
+   ponto; o aparecer tem o atraso dele à parte. O brilho é um segundo traço,
+   mais grosso e transparente, por baixo do núcleo: um filter (drop-shadow)
+   em traços animados a cada quadro pesa, e o efeito é quase o mesmo. */
+.contorno-luz {
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 9 91;
+  opacity: 0;
+  animation:
+    contorno-aparece 1s ease calc(2.6s + var(--n) * 250ms) forwards,
+    contorno-corre var(--ritmo) linear calc(var(--n) * -1.3s) infinite;
+}
+.contorno-brilho {
+  stroke: #d3daeb; /* marca-200 */
+  stroke-width: 10;
+  --opacidade: 0.3;
+}
+.contorno-nucleo {
+  stroke: #fff;
+  stroke-width: 3;
+  --opacidade: 1;
+}
+@keyframes contorno-aparece {
+  to { opacity: var(--opacidade); }
+}
+@keyframes contorno-corre {
+  from { stroke-dashoffset: 0; }
+  to { stroke-dashoffset: -100; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .contorno-traco { animation: none; stroke-dashoffset: 0; }
+  .contorno-luz { display: none; }
+}

@@ -1,60 +1,82 @@
 require "test_helper"
 
 class PacienteTest < ActiveSupport::TestCase
-  test "nome, CPF e telefones ficam cifrados no banco" do
-    paciente = Paciente.create!(nome: "Maria Fictícia", cpf: Cpf.gerar, numero_contatos: "(51) 99999-0000").reload
+  test "iniciais são normalizadas e, como os prontuários, ficam cifradas no banco" do
+    paciente = Paciente.create!(setor: setores(:ambulatorio), iniciais: "a. b. c. d. e. f. g. h. i. j.", prontuario_sah: " SAH-9999 ").reload
 
-    assert_not_includes paciente.ciphertext_for(:nome), "Maria"
-    assert_not_includes paciente.ciphertext_for(:cpf), paciente.cpf
-    assert_not_includes paciente.ciphertext_for(:numero_contatos), "99999"
-    assert_equal "Maria Fictícia", paciente.nome
+    assert_equal "ABCDEFGHIJ", paciente.iniciais
+    assert_equal "SAH-9999", paciente.prontuario_sah
+    assert_not_includes paciente.ciphertext_for(:iniciais), "ABCDEFGHIJ"
+    assert_not_includes paciente.ciphertext_for(:prontuario_sah), "SAH-9999"
   end
 
-  # Regressão: com varchar(255), um nome de ~130 caracteres não cabia cifrado
-  test "valores no limite cabem nas colunas cifradas" do
-    paciente = Paciente.create!(
-      nome: SecureRandom.alphanumeric(150),
-      numero_contatos: Array.new(120) { %w[á é ç ã õ 1 2 3].sample }.join
-    )
-
-    assert paciente.persisted?
+  test "iniciais são obrigatórias e curtas" do
+    assert_not Paciente.new(setor: setores(:ambulatorio), iniciais: "").valid?
+    assert_not Paciente.new(setor: setores(:ambulatorio), iniciais: "ABCDEFGHIJK").valid?
+    assert Paciente.new(setor: setores(:ambulatorio), iniciais: "MSS").valid?
   end
 
-  test "CPF é normalizado e conferido" do
-    cpf = Cpf.gerar
+  test "prontuário pertence a um só paciente do setor" do
+    duplicado = Paciente.new(setor: setores(:ambulatorio), iniciais: "XYZ", prontuario_sah: pacientes(:one).prontuario_sah)
 
-    assert_equal cpf, Paciente.new(nome: "Teste", cpf: formatar_cpf(cpf)).cpf
-    assert Paciente.new(nome: "Teste", cpf: formatar_cpf(cpf)).valid?
-    assert_not Paciente.new(nome: "Teste", cpf: "abc").valid?
-  end
-
-  test "CPF é opcional, mas único" do
-    assert Paciente.new(nome: "Sem CPF").valid?
-
-    duplicado = Paciente.new(nome: "Outro", cpf: formatar_cpf(pacientes(:one).cpf))
     assert_not duplicado.valid?
-    assert duplicado.errors.include?(:cpf)
+    assert duplicado.errors.include?(:prontuario_sah)
   end
 
-  test "identificar acha pelo CPF formatado ou pelo prontuário" do
+  test "identificar acha pelo prontuário SAH ou AGHUSE quando as iniciais conferem" do
     paciente = pacientes(:one)
 
-    assert_equal paciente, Paciente.identificar(cpf: formatar_cpf(paciente.cpf), prontuario_sah: nil)
-    assert_equal paciente, Paciente.identificar(cpf: "", prontuario_sah: " #{paciente.prontuario_sah} ")
-    assert_nil Paciente.identificar(cpf: nil, prontuario_sah: "SAH-INEXISTENTE")
+    assert_equal paciente, Paciente.identificar(setor: setores(:ambulatorio), prontuario_sah: " SAH-0001 ", prontuario_aghuse: "", iniciais: "m.f.u")
+    assert_equal paciente, Paciente.identificar(setor: setores(:ambulatorio), prontuario_sah: nil, prontuario_aghuse: "AGH-0001", iniciais: "MFU")
+    assert_nil Paciente.identificar(setor: setores(:ambulatorio), prontuario_sah: "SAH-NOVO", prontuario_aghuse: nil, iniciais: "MFU")
+    assert_nil Paciente.identificar(setor: setores(:ambulatorio), prontuario_sah: "", prontuario_aghuse: "", iniciais: "MFU")
   end
 
-  # Regressão: um CPF que normaliza para nil não pode achar paciente sem CPF
-  test "identificar não confunde CPF vazio ou inválido com paciente sem CPF" do
-    Paciente.create!(nome: "Paciente sem CPF")
+  test "prontuário digitado com outra caixa ou com espaços é o mesmo prontuário" do
+    paciente = pacientes(:one)
 
-    assert_nil Paciente.identificar(cpf: ".-", prontuario_sah: nil)
-    assert_nil Paciente.identificar(cpf: "abc", prontuario_sah: nil)
+    assert_equal paciente, Paciente.identificar(setor: setores(:ambulatorio), prontuario_sah: "sah - 0001", prontuario_aghuse: nil, iniciais: "MFU")
+    assert_not Paciente.new(setor: setores(:ambulatorio), iniciais: "XYZ", prontuario_sah: "sah-0001").valid?
   end
 
-  test "identificar recusa CPF e prontuário de pacientes diferentes" do
-    assert_raises(Paciente::IdentificadoresConflitantes) do
-      Paciente.identificar(cpf: pacientes(:one).cpf, prontuario_sah: pacientes(:two).prontuario_sah)
+  test "identificar recusa prontuários de pacientes diferentes" do
+    erro = assert_raises(Paciente::IdentificacaoInvalida) do
+      Paciente.identificar(setor: setores(:ambulatorio), prontuario_sah: "SAH-0001", prontuario_aghuse: "AGH-0002", iniciais: "MFU")
+    end
+
+    assert_match "pacientes diferentes", erro.message
+  end
+
+  test "identificar recusa prontuário que não confere com o cadastro" do
+    assert_raises(Paciente::IdentificacaoInvalida) do
+      Paciente.identificar(setor: setores(:ambulatorio), prontuario_sah: "SAH-0001", prontuario_aghuse: "AGH-DIGITADO-ERRADO", iniciais: "MFU")
+    end
+  end
+
+  test "identificar recusa iniciais que não conferem ou em branco" do
+    assert_match "não conferem", assert_raises(Paciente::IdentificacaoInvalida) {
+      Paciente.identificar(setor: setores(:ambulatorio), prontuario_sah: "SAH-0001", prontuario_aghuse: nil, iniciais: "XYZ")
+    }.message
+    assert_match "Informe as iniciais", assert_raises(Paciente::IdentificacaoInvalida) {
+      Paciente.identificar(setor: setores(:ambulatorio), prontuario_sah: "SAH-0001", prontuario_aghuse: nil, iniciais: " ")
+    }.message
+  end
+
+  test "o mesmo prontuário em outro setor é outro paciente" do
+    # "tres" é do Laboratório, com o mesmo SAH de "one", do Ambulatório
+    assert_equal pacientes(:one).prontuario_sah, pacientes(:tres).prontuario_sah
+    assert Paciente.new(setor: setores(:laboratorio), iniciais: "QWE", prontuario_aghuse: "AGH-0001").valid?
+    assert_equal pacientes(:tres), Paciente.identificar(setor: setores(:laboratorio), prontuario_sah: "SAH-0001", prontuario_aghuse: nil, iniciais: "LBX")
+    assert_equal pacientes(:one), Paciente.identificar(setor: setores(:ambulatorio), prontuario_sah: "SAH-0001", prontuario_aghuse: nil, iniciais: "MFU")
+  end
+
+  test "identificar nunca acha paciente de outro setor" do
+    assert_nil Paciente.identificar(setor: setores(:laboratorio), prontuario_sah: nil, prontuario_aghuse: "AGH-0001", iniciais: "MFU")
+  end
+
+  test "o banco também garante o prontuário único por setor" do
+    assert_raises(ActiveRecord::RecordNotUnique) do
+      Paciente.new(setor: setores(:ambulatorio), iniciais: "XYZ", prontuario_sah: "SAH-0002").save!(validate: false)
     end
   end
 

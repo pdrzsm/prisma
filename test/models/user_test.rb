@@ -1,28 +1,56 @@
 require "test_helper"
 
 class UserTest < ActiveSupport::TestCase
-  test "admin? é verdadeiro só para admin" do
-    user = users(:admin)
-
-    assert user.admin?
-    assert_not user.operador?
-    assert_not user.consultor?
+  test "o papel global é admin ou usuario" do
+    assert users(:admin).admin?
+    assert_not users(:admin).usuario?
+    assert users(:operador).usuario?
+    assert_not users(:operador).admin?
   end
 
-  test "operador? é verdadeiro só para operador" do
+  test "os papéis antigos (operador, consultor) não existem mais" do
+    %w[operador consultor recepcao].each do |papel|
+      user = User.new(role: papel)
+
+      assert_not user.valid?, papel
+      assert user.errors.include?(:role), papel
+    end
+  end
+
+  test "só existe uma conta admin: a validação recusa a segunda" do
+    segundo = usuario_novo(role: "admin")
+
+    assert_not segundo.valid?
+    assert_includes segundo.errors[:role], "admin já existe: o sistema tem uma só conta admin"
+  end
+
+  test "o banco também recusa a segunda conta admin, mesmo sem validação" do
+    assert_raises(ActiveRecord::RecordNotUnique) { usuario_novo(role: "admin").save!(validate: false) }
+    assert_raises(ActiveRecord::RecordNotUnique) { users(:operador).update_columns(role: "admin") }
+  end
+
+  test "a conta admin não pode ser desativada" do
+    admin = users(:admin)
+    admin.ativo = false
+
+    assert_not admin.valid?
+    assert_includes admin.errors[:ativo], "a conta admin não pode ser desativada"
+  end
+
+  test "conta desativada não entra" do
     user = users(:operador)
+    assert user.active_for_authentication?
 
-    assert user.operador?
-    assert_not user.admin?
-    assert_not user.consultor?
+    user.update!(ativo: false)
+    assert_not user.active_for_authentication?
+    assert_equal :desativada, user.inactive_message
   end
 
-  test "consultor? é verdadeiro só para consultor" do
-    user = users(:consultor)
+  test "nome é obrigatório" do
+    user = usuario_novo(nome: " ")
 
-    assert user.consultor?
-    assert_not user.admin?
-    assert_not user.operador?
+    assert_not user.valid?
+    assert user.errors.include?(:nome)
   end
 
   # Regressão: o mapeamento inteiro numa coluna string fazia "2" ser lido como role nil
@@ -65,7 +93,7 @@ class UserTest < ActiveSupport::TestCase
   end
 
   test "senha precisa de pelo menos 12 caracteres" do
-    user = User.new(username: "novo", cpf: Cpf.gerar, role: "operador")
+    user = usuario_novo
 
     user.password = user.password_confirmation = "curta-123"
     assert_not user.valid?
@@ -73,5 +101,12 @@ class UserTest < ActiveSupport::TestCase
 
     user.password = user.password_confirmation = "uma-senha-longa-o-bastante"
     assert user.valid?
+  end
+
+  private
+
+  def usuario_novo(**atributos)
+    User.new(nome: "Pessoa Nova", username: "novo", cpf: Cpf.gerar, role: "usuario",
+             password: "uma-senha-longa-o-bastante", **atributos)
   end
 end

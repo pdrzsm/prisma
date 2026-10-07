@@ -17,6 +17,22 @@ module ActiveSupport
     def formatar_cpf(cpf)
       cpf.sub(/\A(\d{3})(\d{3})(\d{3})(\d{2})\z/, '\1.\2.\3-\4')
     end
+
+    # Respostas mínimas válidas do seguimento de TB (só a abertura), no formato
+    # em que chegam do navegador
+    def respostas_de_abertura(**outras)
+      {
+        "numero_sinan" => "1234567", "gestante" => "6", "populacoes_especiais" => [ "", "0" ],
+        "recebe_beneficio" => "0", "municipio_residencia" => "Cidade Fictícia", "forma_clinica" => "1"
+      }.merge(outras.stringify_keys)
+    end
+
+    # Todas as obrigatórias "para encerrar" respondidas
+    def respostas_de_encerramento
+      chaves = Formulario.find("seguimento_tb").perguntas.select { |pergunta| pergunta.obrigatoria == "encerramento" }.map(&:chave)
+      chaves.index_with { |chave| chave == "mudanca_esquema" ? "0" : "3" }
+            .merge("outro_material" => "0", "data_encerramento" => Date.current.iso8601)
+    end
   end
 end
 

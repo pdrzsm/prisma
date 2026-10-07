@@ -1,0 +1,20 @@
+_fixture:
+  model_class: LiberacaoFormulario
+
+operador_tb:
+  user: operador
+  setor: ambulatorio
+  formulario: seguimento_tb
+  papel: registra
+
+consultor_tb:
+  user: consultor
+  setor: ambulatorio
+  formulario: seguimento_tb
+  papel: consulta
+
+laboratorista_tb:
+  user: laboratorista
+  setor: laboratorio
+  formulario: seguimento_tb
+  papel: registra

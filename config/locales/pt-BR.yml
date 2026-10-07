@@ -1,0 +1,89 @@
+# Traduções usadas pela interface. O que faltar aqui cai no inglês
+# (config.i18n.fallbacks em config/application.rb).
+pt-BR:
+  activerecord:
+    attributes:
+      paciente:
+        iniciais: Iniciais
+        prontuario_sah: Prontuário SAH
+        prontuario_aghuse: Prontuário AGHUSE
+      user:
+        login: CPF ou nome de usuário
+        nome: Nome
+        ativo: Conta ativa
+        current_password: Senha atual
+        username: Nome de usuário
+        cpf: CPF
+        password: Senha
+        password_confirmation: Confirmação da senha
+        role: Papel
+      avaliacao_clinica:
+        formulario: Formulário
+        dados_formulario: Respostas
+      instituicao:
+        nome: Nome
+        sigla: Sigla
+        setores: setores
+      setor:
+        nome: Nome
+        instituicao: Instituição
+    models:
+      instituicao:
+        one: Instituição
+        other: Instituições
+      setor:
+        one: Setor
+        other: Setores
+    errors:
+      messages:
+        # Sem gênero: serve para "setores" e para "avaliações clínicas"
+        restrict_dependent_destroy:
+          has_many: Não é possível excluir enquanto houver %{record}
+      models:
+        user:
+          attributes:
+            current_password:
+              invalid: não confere
+        # Mesmo texto das perguntas do formulário ("é obrigatória")
+        paciente:
+          attributes:
+            iniciais:
+              blank: é obrigatória
+              too_long: deve ter no máximo %{count} letras
+            # Prontuário único por setor (sem dizer de qual paciente é)
+            prontuario_sah:
+              taken: já é de outro paciente deste setor
+            prontuario_aghuse:
+              taken: já é de outro paciente deste setor
+
+  errors:
+    format: "%{attribute} %{message}"
+    # Frases sem gênero: servem para "senha" e "iniciais" tanto quanto para "CPF"
+    messages:
+      blank: não pode ficar em branco
+      confirmation: não confere com %{attribute}
+      inclusion: não está na lista de opções
+      invalid: tem um valor inválido
+      required: precisa existir
+      taken: já está em uso
+      too_long:
+        one: deve ter no máximo 1 caractere
+        other: deve ter no máximo %{count} caracteres
+      too_short:
+        one: deve ter pelo menos 1 caractere
+        other: deve ter pelo menos %{count} caracteres
+
+  devise:
+    failure:
+      already_authenticated: Você já entrou no sistema.
+      inactive: Sua conta ainda não está ativa.
+      desativada: Conta desativada. Fale com a administração do sistema.
+      invalid: Usuário, CPF ou senha inválidos.
+      locked: Sua conta está bloqueada.
+      not_found_in_database: Usuário, CPF ou senha inválidos.
+      timeout: Sua sessão expirou. Entre novamente para continuar.
+      unauthenticated: Para continuar, entre no sistema.
+    sessions:
+      signed_in: Login efetuado com sucesso.
+      signed_out: Você saiu do sistema.
+      already_signed_out: Você saiu do sistema.

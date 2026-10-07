@@ -1,0 +1,13 @@
+<% content_for :title, "Editar notificação · #{@formulario.titulo} · Prisma" %>
+<% trilha ["Formulários", formularios_path], [@formulario.titulo, formulario_avaliacoes_clinicas_path(@formulario)],
+         ["Notificação · #{@avaliacao.paciente.iniciais}", formulario_avaliacao_clinica_path(@formulario, @avaliacao)], ["Editar"] %>
+
+<div>
+  <h1 class="text-2xl font-bold text-slate-900">Editar notificação · <%= @avaliacao.paciente.iniciais %></h1>
+  <p class="text-sm text-slate-600">Toda alteração fica registrada na auditoria, com autor e horário.</p>
+</div>
+
+<%# A finalidade gravada no registro da notificação %>
+<%= render "finalidade", finalidade: @avaliacao.finalidade, base_legal: @avaliacao.base_legal %>
+
+<%= render "formulario", url: formulario_avaliacao_clinica_path(@formulario, @avaliacao), metodo: :patch %>

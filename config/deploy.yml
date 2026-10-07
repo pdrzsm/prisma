@@ -50,6 +50,16 @@ env:
     # Domínios aceitos (proteção contra Host header / DNS rebinding)
     APP_HOSTS: prisma.example.com
 
+    # Obrigatório: IP do proxy reverso, para o IP real de quem acessa (auditoria
+    # de leitura e limite de login) não poder ser forjado. Com o kamal-proxy, é a
+    # faixa da rede Docker "kamal", por onde o proxy fala com a aplicação. Confira
+    # no servidor (a faixa muda se já existirem outras redes Docker):
+    #   docker network inspect kamal --format '{{(index .IPAM.Config 0).Subnet}}'
+    PROXIES_CONFIAVEIS: 172.18.0.0/16
+
+    # Encarregado de dados (DPO) da instituição, mostrado em /privacidade
+    # PRISMA_ENCARREGADO: "Maria Souza · dpo@hospital.gov.br"
+
     # Run the Solid Queue Supervisor inside the web server's Puma process to do jobs.
     # When you start using multiple servers, you should split out job processing to a dedicated machine.
     # Prisma: desligado até existirem jobs (não há config/queue.yml nem tabelas do Solid Queue)
