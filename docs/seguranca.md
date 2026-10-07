@@ -52,6 +52,7 @@ e com o formulário **habilitado** no setor pelo admin
 | Ver o formulário no menu e a lista dele | ✅ (todos os setores) | ✅ (setores liberados) | ✅ (setores liberados) | ❌ |
 | Ver uma notificação | ✅ | ✅ (do setor liberado) | ✅ (do setor liberado) | ❌ |
 | Registrar e editar notificação | ✅ (onde o formulário está habilitado) | ✅ (no setor liberado) | ❌ | ❌ |
+| Corrigir a identificação do paciente (prontuários e iniciais) | ✅ | ✅ (se registra todos os formulários em que o paciente tem notificação) | ❌ | ❌ |
 | Excluir notificação | ❌ | ❌ | ❌ | ❌ |
 | Configurações: usuários, liberações, instituições, setores | ✅ | ❌ | ❌ | ❌ |
 
@@ -88,6 +89,11 @@ Como isso é garantido:
   instituição marcada, formulário sem o setor marcado ou não habilitado, e
   papel fora de "registra"/"consulta" são ignorados. Desmarcar um nível apaga
   os de baixo.
+- **Correção da identificação por quem responde por todas as notificações.**
+  Corrigir prontuário ou iniciais muda o que aparece em todas as notificações
+  do paciente. Por isso a `PacientePolicy` exige registrar cada formulário em
+  que ele tem notificação, no setor delas: ninguém altera o que aparece numa
+  notificação que não pode editar. Paciente que a pessoa não vê dá 404.
 - **Configurações só para o admin.** A `ConfiguracaoPolicy` (base de
   `InstituicaoPolicy`, `SetorPolicy` e `UserPolicy`) libera só o admin. O menu
   nem aparece para os outros, mas a proteção é no servidor: a URL digitada à
@@ -145,7 +151,8 @@ um formulário novo já nasce coberto. Os testes conferem isso com
   auditoria, e o hash da senha não é gravado.
 - **Leituras (LGPD, art. 37 e 46):** a lista, os detalhes e a tela de edição de
   uma notificação (inclusive a que volta sem salvar, por resposta inválida ou
-  conflito) gravam em `audit_logs` uma linha por notificação exibida:
+  conflito) gravam em `audit_logs` uma linha por notificação exibida, e a tela
+  de correção da identificação, uma linha do paciente:
   quem viu, quando, qual registro, de qual IP e com qual navegador
   (`ApplicationController#log_read_access`). Na lista, cada linha exibida conta,
   porque mostra iniciais e prontuários; uma busca sem resultado não grava nada.
@@ -156,8 +163,9 @@ um formulário novo já nasce coberto. Os testes conferem isso com
   produção, o usuário do banco da aplicação também não deve ter `UPDATE` nem
   `DELETE` em `audit_logs` e `versions` (ver o checklist).
 - **Consulta:** quem viu uma notificação, `AuditLog.do_registro(avaliacao)`;
-  quem viu qualquer notificação de um paciente (pedido de um titular),
-  `AuditLog.do_paciente(paciente)`. Por enquanto, pelo console.
+  quem viu os dados de um paciente (pedido de um titular), na tela de correção
+  ou em qualquer notificação dele, `AuditLog.do_paciente(paciente)`. Por
+  enquanto, pelo console.
 - **IP confiável:** o IP sai do `X-Forwarded-For` pulando só os proxies de
   `PROXIES_CONFIAVEIS`. Com o padrão do Rails (toda a rede privada), qualquer
   computador da rede interna forjaria o próprio IP, na auditoria e no limite de
@@ -165,8 +173,13 @@ um formulário novo já nasce coberto. Os testes conferem isso com
 
 ### Integridade dos registros clínicos
 
-- Registrar uma notificação **nunca altera a identificação** de um paciente que
-  já existe; ela só é vinculada a ele. O paciente é localizado pelo prontuário
+- Registrar ou editar uma notificação **nunca altera a identificação** de um
+  paciente que já existe; ela só é vinculada a ele. Prontuário ou iniciais
+  digitados errado são corrigidos só em "Corrigir identificação", nos detalhes
+  da notificação (direito do titular à correção, LGPD, art. 18, III): a tela
+  aceita estritamente os dois prontuários e as iniciais (o setor não muda), com
+  as mesmas regras do cadastro, e a correção fica no PaperTrail com o autor e
+  aparece no histórico das notificações do paciente. O paciente é localizado pelo prontuário
   SAH ou AGHUSE. Para um prontuário digitado errado não pôr a notificação no
   paciente errado, o registro é recusado quando:
   - os dois prontuários apontam para pacientes diferentes;
@@ -289,14 +302,11 @@ Em ordem aproximada de prioridade:
 2. **Tela de consulta da auditoria de leitura.** As leituras já são gravadas,
    mas consultar (ex.: responder a um titular quem viu os dados dele) ainda é
    pelo console. Falta também o descarte automático pela política de retenção.
-3. **Correção da identificação do paciente.** A edição de uma notificação não
-   altera prontuários nem iniciais (por segurança). Corrigir um prontuário
-   digitado errado ainda exige o console.
-4. **Segundo fator de autenticação** para admin.
-5. **Rotação de chaves.** O Active Record Encryption aceita várias chaves
+3. **Segundo fator de autenticação** para admin.
+4. **Rotação de chaves.** O Active Record Encryption aceita várias chaves
    primárias (a última cifra, as anteriores ainda decifram), mas o Prisma lê só
    uma por variável. O modo determinístico não suporta rotação.
-6. **Mensagens em português.** As telas e as mensagens de login e de validação
+5. **Mensagens em português.** As telas e as mensagens de login e de validação
    já estão em português (`config/locales/pt-BR.yml`); o que não tem tradução
    ainda aparece em inglês.
-7. **Licença** do projeto.
+6. **Licença** do projeto.

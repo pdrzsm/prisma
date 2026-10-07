@@ -34,7 +34,10 @@ class AvaliacoesClinicasController < ApplicationController
   def show
     authorize @avaliacao
     log_read_access(@avaliacao)
-    @historico = @avaliacao.versions.reorder(created_at: :desc, id: :desc).limit(20)
+    # Histórico da notificação, com as correções da identificação do paciente
+    # feitas depois do registro dela (a correção muda o que esta tela mostra)
+    correcoes = PaperTrail::Version.where(item: @avaliacao.paciente, event: "update", created_at: @avaliacao.created_at..)
+    @historico = PaperTrail::Version.where(item: @avaliacao).or(correcoes).order(created_at: :desc, id: :desc).limit(20)
     @autores = User.where(id: @historico.filter_map(&:whodunnit)).index_by { |user| user.id.to_s }
   end
 

@@ -25,12 +25,14 @@ class AuditLogTest < ActiveSupport::TestCase
     assert log.errors.include?(:action)
   end
 
-  test "as leituras de um paciente reúnem todas as notificações dele" do
+  test "as leituras de um paciente reúnem a tela de correção e todas as notificações dele" do
     AuditLog.create!(user: users(:operador), auditable: avaliacoes_clinicas(:one), action: "show")
+    AuditLog.create!(user: users(:admin), auditable: pacientes(:one), action: "edit")
     AuditLog.create!(user: users(:consultor), auditable: avaliacoes_clinicas(:two), action: "show")
     AuditLog.create!(user: users(:laboratorista), auditable: avaliacoes_clinicas(:tres), action: "show")
+    AuditLog.create!(user: users(:laboratorista), auditable: pacientes(:tres), action: "edit")
 
-    assert_equal [ users(:operador) ], AuditLog.do_paciente(pacientes(:one)).map(&:user)
+    assert_equal [ users(:admin), users(:operador) ], AuditLog.do_paciente(pacientes(:one)).map(&:user)
     assert_equal [ users(:laboratorista) ], AuditLog.do_registro(avaliacoes_clinicas(:tres)).map(&:user)
   end
 end

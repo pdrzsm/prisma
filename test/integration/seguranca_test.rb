@@ -14,7 +14,8 @@ class SegurancaTest < ActionDispatch::IntegrationTest
     paginas = [
       root_path, formularios_path,
       formulario_avaliacoes_clinicas_path(FORMULARIO), new_formulario_avaliacao_clinica_path(FORMULARIO),
-      formulario_avaliacao_clinica_path(FORMULARIO, avaliacao), edit_formulario_avaliacao_clinica_path(FORMULARIO, avaliacao)
+      formulario_avaliacao_clinica_path(FORMULARIO, avaliacao), edit_formulario_avaliacao_clinica_path(FORMULARIO, avaliacao),
+      edit_paciente_identificacao_path(avaliacao.paciente)
     ]
     paginas.each do |pagina|
       get pagina
@@ -24,6 +25,8 @@ class SegurancaTest < ActionDispatch::IntegrationTest
     post formulario_avaliacoes_clinicas_path(FORMULARIO)
     assert_redirected_to new_user_session_path
     patch formulario_avaliacao_clinica_path(FORMULARIO, avaliacao)
+    assert_redirected_to new_user_session_path
+    patch paciente_identificacao_path(avaliacao.paciente)
     assert_redirected_to new_user_session_path
 
     get rails_health_check_path
@@ -38,7 +41,7 @@ class SegurancaTest < ActionDispatch::IntegrationTest
     avaliacao = avaliacoes_clinicas(:one)
     [ root_path, formularios_path, formulario_avaliacoes_clinicas_path(FORMULARIO),
       new_formulario_avaliacao_clinica_path(FORMULARIO), formulario_avaliacao_clinica_path(FORMULARIO, avaliacao),
-      edit_formulario_avaliacao_clinica_path(FORMULARIO, avaliacao) ].each do |pagina|
+      edit_formulario_avaliacao_clinica_path(FORMULARIO, avaliacao), edit_paciente_identificacao_path(avaliacao.paciente) ].each do |pagina|
       get pagina
       assert_response :success
       assert_cabecalhos pagina
@@ -58,7 +61,7 @@ class SegurancaTest < ActionDispatch::IntegrationTest
     assert_redirected_to formulario_avaliacao_clinica_path(FORMULARIO, avaliacao)
 
     [ formulario_avaliacao_clinica_path(FORMULARIO, avaliacao), edit_formulario_avaliacao_clinica_path(FORMULARIO, avaliacao),
-      formulario_avaliacoes_clinicas_path(FORMULARIO) ].each do |pagina|
+      edit_paciente_identificacao_path(avaliacao.paciente), formulario_avaliacoes_clinicas_path(FORMULARIO) ].each do |pagina|
       get pagina
       [ %r{<script>alert}i, %r{<img src=x}i, %r{<b>SAH</b>}i, %r{<i>1</i>}i ].each do |trecho|
         assert_no_match trecho, response.body, pagina

@@ -50,6 +50,11 @@ pt-BR:
             iniciais:
               blank: é obrigatória
               too_long: deve ter no máximo %{count} letras
+            # Prontuário único por setor (sem dizer de qual paciente é)
+            prontuario_sah:
+              taken: já é de outro paciente deste setor
+            prontuario_aghuse:
+              taken: já é de outro paciente deste setor
 
   errors:
     format: "%{attribute} %{message}"

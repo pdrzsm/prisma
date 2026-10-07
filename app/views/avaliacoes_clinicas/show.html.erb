@@ -13,9 +13,15 @@
       · atualizada em <%= data_e_hora(@avaliacao.updated_at) %>
     </p>
   </div>
-  <% if policy(@avaliacao).update? %>
-    <%= link_to "Editar", edit_formulario_avaliacao_clinica_path(@formulario, @avaliacao), class: ApplicationHelper::BOTAO_PRIMARIO %>
-  <% end %>
+  <div class="flex flex-wrap gap-3">
+    <% if policy(paciente).update? %>
+      <%= link_to "Corrigir identificação", edit_paciente_identificacao_path(paciente, avaliacao: @avaliacao),
+                  class: ApplicationHelper::BOTAO_SECUNDARIO %>
+    <% end %>
+    <% if policy(@avaliacao).update? %>
+      <%= link_to "Editar", edit_formulario_avaliacao_clinica_path(@formulario, @avaliacao), class: ApplicationHelper::BOTAO_PRIMARIO %>
+    <% end %>
+  </div>
 </div>
 
 <% @formulario.secoes.each do |secao| %>
@@ -47,7 +53,12 @@
       <li class="flex gap-3">
         <span class="text-slate-600 whitespace-nowrap"><%= data_e_hora(versao.created_at) %></span>
         <span>
-          <%= versao.event == "create" ? "Criada" : "Alterada" %> por
+          <% if versao.item_type == Paciente.name %>
+            Identificação do paciente corrigida
+          <% else %>
+            <%= versao.event == "create" ? "Criada" : "Alterada" %>
+          <% end %>
+          por
           @<%= @autores[versao.whodunnit]&.username || "sistema" %>
         </span>
       </li>

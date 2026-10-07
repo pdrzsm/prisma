@@ -42,7 +42,10 @@
       <h2 class="text-lg font-bold text-slate-900"><%= secao.titulo %></h2>
 
       <% if @avaliacao.persisted? && secao.perguntas.any?(&:paciente) %>
-        <p class="text-xs text-slate-500">A identificação do paciente não é alterada pela edição da notificação.</p>
+        <p class="text-xs text-slate-500">
+          A identificação do paciente não é alterada pela edição da notificação. Para corrigir prontuário ou
+          iniciais, use “Corrigir identificação”, nos detalhes da notificação.
+        </p>
       <% end %>
 
       <% secao.perguntas.each do |pergunta| %>

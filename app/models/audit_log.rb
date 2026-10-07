@@ -18,9 +18,11 @@ class AuditLog < ApplicationRecord
 
   # Leituras de um registro, da mais recente para a mais antiga
   scope :do_registro, ->(registro) { where(auditable: registro).order(created_at: :desc, id: :desc) }
-  # Leituras de qualquer notificação de um paciente (pedido de um titular)
+  # Leituras de um paciente (pedido de um titular): da tela de correção da
+  # identificação e de qualquer notificação dele
   scope :do_paciente, lambda { |paciente|
-    where(auditable_type: AvaliacaoClinica.polymorphic_name, auditable_id: paciente.avaliacoes_clinicas.select(:id))
+    where(auditable: paciente)
+      .or(where(auditable_type: AvaliacaoClinica.polymorphic_name, auditable_id: paciente.avaliacoes_clinicas.select(:id)))
       .order(created_at: :desc, id: :desc)
   }
 

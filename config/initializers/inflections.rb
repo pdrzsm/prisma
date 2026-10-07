@@ -19,6 +19,7 @@ ActiveSupport::Inflector.inflections(:en) do |inflect|
   inflect.irregular "instituicao", "instituicoes"
   inflect.irregular "setor", "setores"
   inflect.irregular "formulario_habilitado", "formularios_habilitados"
+  inflect.irregular "identificacao", "identificacoes"
 end
 
 # These inflection rules are supported but not enabled by default:

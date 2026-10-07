@@ -9,6 +9,13 @@ Rails.application.routes.draw do
                                     constraints: { formulario_id: /[a-z0-9_]+/ }
   end
 
+  # Correção da identificação do paciente (prontuários e iniciais), aberta a
+  # partir de uma notificação: /pacientes/7/identificacao/edit?avaliacao=12.
+  # Paciente não tem lista nem tela própria: aparece pelas notificações.
+  resources :pacientes, only: [] do
+    resource :identificacao, only: [ :edit, :update ]
+  end
+
   # Configurações, só para o admin (ConfiguracaoPolicy): as instituições e,
   # dentro de cada uma, os setores (/configuracoes/instituicoes/1/setores/new).
   # A lista das instituições já mostra os setores, por isso não há index nem

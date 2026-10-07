@@ -19,6 +19,7 @@ app/
     dashboard_controller.rb            "Visão geral"
     formularios_controller.rb          "Formulários": formulários disponíveis
     avaliacoes_clinicas_controller.rb  registros de um formulário (lista, ver, criar, editar)
+    identificacoes_controller.rb       correção da identificação do paciente (prontuários e iniciais)
     configuracoes/                     "Configurações", só admin: instituições, setores, usuários e liberações
     senhas_controller.rb               troca da própria senha (obrigatória com senha temporária)
     users/sessions_controller.rb       login com limite por IP
@@ -95,7 +96,9 @@ User ── * LiberacaoInstituicao, LiberacaoSetor, LiberacaoFormulario (com o p
 - **Paciente**: só prontuário SAH, prontuário AGHUSE e iniciais, como no
   formulário em papel, dentro de um setor (prontuário único por setor). Não há
   nome completo nem CPF de paciente. `Paciente.identificar(setor:, ...)`
-  localiza o cadastro no setor sem alterá-lo.
+  localiza o cadastro no setor sem alterá-lo. A identificação só muda em
+  `IdentificacoesController` (Corrigir identificação), por quem registra todos
+  os formulários em que o paciente tem notificação (`PacientePolicy`).
 - **AvaliacaoClinica**: um formulário preenchido. `formulario` diz qual
   definição ele segue, `dados_formulario` guarda as respostas (JSON cifrado),
   `user` é quem registrou, `setor` é o do paciente (não muda depois do
@@ -114,8 +117,8 @@ User ── * LiberacaoInstituicao, LiberacaoSetor, LiberacaoFormulario (com o p
 - **PaperTrail::Version** (tabela `versions`): histórico de criação e alteração
   dos modelos acima, com o autor.
 - **AuditLog** (tabela `audit_logs`): auditoria de leitura. Uma linha por
-  notificação exibida na lista, nos detalhes ou na edição, com usuário, IP e
-  navegador; gravada por `ApplicationController#log_read_access` antes de a
+  notificação exibida na lista, nos detalhes ou na edição (e do paciente, na
+  tela de correção da identificação), com usuário, IP e navegador; gravada por `ApplicationController#log_read_access` antes de a
   página ser montada. Só se cria: alterar ou apagar levanta erro.
 
 ## Rotas
@@ -129,13 +132,14 @@ GET   /formularios/:formulario/avaliacoes/:id       ver
 GET   /formularios/:formulario/avaliacoes/:id/edit  editar
 PATCH /formularios/:formulario/avaliacoes/:id       salvar edição
 
+GET   /pacientes/:paciente_id/identificacao/edit    corrigir a identificação (?avaliacao= diz para onde voltar)
+PATCH /pacientes/:paciente_id/identificacao         salvar a correção
+
 GET    /configuracoes/instituicoes                                 instituições e setores (só admin)
 GET    /configuracoes/instituicoes/new                             nova instituição
 GET    /configuracoes/instituicoes/:id/edit                        editar (e excluir) instituição
 GET    /configuracoes/instituicoes/:instituicao_id/setores/new     novo setor
 GET    /configuracoes/instituicoes/:instituicao_id/setores/:id/edit  editar (e excluir) setor
-```
-
 GET    /configuracoes/usuarios                                     usuários (só admin)
 GET    /configuracoes/usuarios/new                                 novo usuário (senha temporária)
 GET    /configuracoes/usuarios/:id/edit                            editar, ativar ou desativar
@@ -150,7 +154,10 @@ setor é sempre buscado dentro da instituição da URL: o id de um setor de outr
 instituição dá 404. Usuário não tem rota de exclusão.
 
 A lista de um formulário aceita `?setor=` para filtrar, só entre os setores
-que a pessoa vê. Uma notificação de outro setor dá 404.
+que a pessoa vê. Uma notificação de outro setor dá 404, e um paciente que a
+pessoa não vê, também. Paciente não tem lista nem tela própria: aparece pelas
+notificações, e a correção volta para a notificação de onde a pessoa veio
+(um `?avaliacao=` de outro paciente é ignorado).
 
 `:formulario` é o nome do arquivo YAML (ex.: `seguimento_tb`). Um formulário
 inexistente dá 404. Não há rota de exclusão.
@@ -173,7 +180,8 @@ inexistente dá 404. Não há rota de exclusão.
 
 Na edição (`update`), as respostas são substituídas pelas enviadas, a
 identificação do paciente não muda e o `lock_version` detecta se outra pessoa
-salvou antes.
+salvou antes. Prontuário ou iniciais errados são corrigidos em
+`IdentificacoesController`, que aceita só esses três campos.
 
 ## Convenções
 
