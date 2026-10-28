@@ -317,9 +317,8 @@ confiável, mesmo vinda do admin:
 ### Infraestrutura e processo
 
 - Em produção, HTTPS é obrigatório (`force_ssl`, com HSTS e cookies seguros) e
-  só os domínios de `APP_HOSTS` são aceitos quando a variável está definida
-  (ver *Pendências conhecidas*). Sem `PROXIES_CONFIAVEIS` (o IP do proxy
-  reverso), a aplicação nem sobe.
+  só os domínios de `APP_HOSTS` são aceitos. Sem `APP_HOSTS` ou sem
+  `PROXIES_CONFIAVEIS` (o IP do proxy reverso), a aplicação nem sobe.
 - No `docker-compose.yml`, o banco e o servidor de desenvolvimento só escutam
   em `127.0.0.1`.
 - O CI roda Brakeman, bundler-audit, RuboCop, os testes e os testes de
@@ -334,6 +333,8 @@ confiável, mesmo vinda do admin:
 | Item | Valor atual | Onde mudar |
 |------|-------------|------------|
 | Tamanho mínimo da senha | 8 | `config/initializers/devise.rb` (`password_length`) |
+| Senhas recusadas por previsíveis (lista curta, repetição, login e CPF da pessoa) | ver `SENHAS_COMUNS` | `app/models/user.rb` |
+| Tentativas de troca da própria senha | 10 a cada 10 min, por usuário | `app/controllers/senhas_controller.rb` |
 | Tentativas até bloquear / tempo de bloqueio | 5 / 15 min | `devise.rb` (`maximum_attempts`, `unlock_in`) |
 | Tentativas de login por IP | 20 a cada 3 min | `app/controllers/users/sessions_controller.rb` |
 | Sessão ociosa | 30 min | `devise.rb` (`timeout_in`) |
@@ -390,7 +391,9 @@ Antes de colocar dados reais:
       `GRANT SELECT, INSERT, UPDATE, DELETE ON prisma.pacientes TO 'prisma_app'@'%'`,
       e rode as migrações com outro usuário, que tem permissão de alterar tabelas.
 - [ ] Política de retenção para `audit_logs` (contém IP e navegador de quem
-      acessou), definida com o encarregado (DPO).
+      acessou), definida com o encarregado (DPO). O descarte é manual, com um
+      usuário do banco que tenha `DELETE` na tabela: `bin/rails prisma:descartar_leituras DIAS=730`
+      só conta o que seria apagado; com `CONFIRMAR=sim`, apaga.
 - [ ] Finalidade e base legal de cada formulário validadas com o encarregado
       (DPO) antes de publicar (a publicação pede essa confirmação). Para um
       agravo de notificação compulsória, costumam ser obrigação legal e
@@ -418,37 +421,29 @@ Em ordem aproximada de prioridade:
    Kamal (`config/deploy.yml`) ainda não funciona.
 2. **Tela de consulta da auditoria de leitura.** As leituras já são gravadas,
    mas consultar (ex.: responder a um titular quem viu os dados dele) ainda é
-   pelo console. Falta também o descarte automático pela política de retenção.
+   pelo console. O descarte pela política de retenção é manual
+   (`prisma:descartar_leituras`); falta agendá-lo.
 3. **Segundo fator de autenticação** para admin.
 4. **Rotação de chaves.** O Active Record Encryption aceita várias chaves
    primárias (a última cifra, as anteriores ainda decifram), mas o Prisma lê só
    uma por variável. O modo determinístico não suporta rotação.
-5. **`APP_HOSTS` deveria falhar fechado.** Sem a variável, `config.hosts` fica
-   vazio e **qualquer `Host` é aceito** (a proteção contra DNS-rebinding e
-   Host-header fica desligada), em
-   [config/environments/production.rb](../config/environments/production.rb).
-   É incoerente com `PROXIES_CONFIAVEIS` e com as chaves de criptografia, que
-   derrubam o boot quando faltam: o certo é a aplicação não subir em produção
-   com `APP_HOSTS` vazio (fora do build de assets, como as chaves). Risco real
-   baixo atrás de um proxy que roteia por host e com a app usando `_path`, mas
-   é um fecho que falta.
-6. **Limite de tentativas de login compartilhado e durável.** O `rate_limit`
-   por IP ([app/controllers/users/sessions_controller.rb](../app/controllers/users/sessions_controller.rb))
-   usa o `Rails.cache`, que em produção hoje é `:file_store` em `tmp/cache`:
-   não é compartilhado entre instâncias (o Kamal pode subir mais de uma) e zera
-   a cada deploy. O `solid_cache` já está no Gemfile, mas não está ligado como
-   `cache_store`; ligá-lo torna o limite por IP compartilhado e durável. O
-   bloqueio por conta (`:lockable`, no banco) não é afetado e continua sendo o
-   controle principal contra adivinhação de senha; o limite por IP é defesa em
-   profundidade.
-7. **Imutabilidade das versões publicadas também no banco.** Hoje é o model
+5. **Imutabilidade das versões publicadas também no banco.** Hoje é o model
    que recusa alterar ou apagar uma versão publicada (e os testes conferem).
    Como o rascunho mora na mesma tabela, o usuário do banco da aplicação
    precisa de `UPDATE` em `versoes_formulario`, e um `GRANT` não distingue
    linha publicada de rascunho. Um gatilho (`BEFORE UPDATE`/`BEFORE DELETE`)
    fecharia isso no banco, mas o `schema.rb` não guarda gatilhos: exigiria
    passar para `structure.sql`.
-8. **Mensagens em português.** As telas e as mensagens de login e de validação
+6. **Mensagens em português.** As telas e as mensagens de login e de validação
    já estão em português (`config/locales/pt-BR.yml`); o que não tem tradução
    ainda aparece em inglês.
-9. **Licença** do projeto.
+7. **Licença** do projeto.
+8. **Busca parcial lê todos os pacientes visíveis.** Prontuários e iniciais são
+   cifrados, então a busca por parte do texto
+   (`Paciente.ids_que_combinam`) decifra em Ruby todos os pacientes dos
+   registros que a pessoa vê, a cada busca. Com uma base grande, isso pesa na
+   resposta. A busca exata poderia usar o índice (os prontuários são
+   determinísticos); a parcial pede outra estrutura.
+9. **Eliminação e anonimização a pedido do titular** (LGPD, art. 16 e 18, VI)
+   ainda são manuais: o prontuário é guardado pelo prazo legal, e não há
+   rotina que anonimize um paciente depois dele.
