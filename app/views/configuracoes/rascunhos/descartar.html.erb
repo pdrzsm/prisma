@@ -1,0 +1,16 @@
+<% content_for :title, "Descartar rascunho · Configurações · Prisma" %>
+<% trilha ["Configurações", configuracoes_instituicoes_path], ["Gerador de formulários", configuracoes_formularios_path],
+          [@formulario.titulo, configuracoes_formulario_path(@formulario)], ["Descartar rascunho"] %>
+<div>
+  <h1 class="text-2xl font-bold text-slate-900">Descartar o rascunho da versão <%= @rascunho.numero %>?</h1>
+  <p class="max-w-2xl text-sm text-slate-600">
+    As mudanças que ainda não foram publicadas se perdem. A versão <%= @formulario.versao_publicada.numero %> continua valendo,
+    sem nenhuma alteração.
+  </p>
+</div>
+
+<div class="flex flex-wrap gap-3">
+  <%= button_to "Descartar rascunho", configuracoes_formulario_rascunho_path(@formulario), method: :delete,
+                class: ApplicationHelper::BOTAO_PERIGO, form_class: "contents" %>
+  <%= link_to "Cancelar", configuracoes_formulario_rascunho_path(@formulario), class: ApplicationHelper::BOTAO_SECUNDARIO %>
+</div>

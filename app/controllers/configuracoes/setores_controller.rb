@@ -1,6 +1,7 @@
 # Setores de uma instituição, só para o admin (SetorPolicy). Ficam dentro da
 # instituição na URL (/configuracoes/instituicoes/1/setores/2/edit) e sempre
-# são buscados por ela: um id de setor de outra instituição dá 404.
+# são buscados por ela: um id de setor de outra instituição dá 404. Cadastrar
+# e editar abrem num modal por cima da lista de instituições (ModalHelper).
 module Configuracoes
   class SetoresController < ApplicationController
     before_action :carregar_instituicao
@@ -9,6 +10,7 @@ module Configuracoes
     def new
       @setor = @instituicao.setores.build
       authorize @setor
+      carregar_lista
     end
 
     def create
@@ -19,11 +21,13 @@ module Configuracoes
         redirect_to volta_para_instituicao, notice: "Setor cadastrado."
       else
         flash.now[:alert] = mensagem_de_erro
+        carregar_lista
         render :new, status: :unprocessable_content
       end
     end
 
     def edit
+      carregar_lista
     end
 
     def update
@@ -31,6 +35,7 @@ module Configuracoes
         redirect_to volta_para_instituicao, notice: "Setor atualizado."
       else
         flash.now[:alert] = mensagem_de_erro
+        carregar_lista
         render :edit, status: :unprocessable_content
       end
     end
@@ -46,6 +51,11 @@ module Configuracoes
     end
 
     private
+
+    # A lista de instituições, ao fundo do modal (a mesma de InstituicoesController)
+    def carregar_lista
+      @instituicoes = policy_scope(Instituicao).includes(:setores).order(:nome)
+    end
 
     def carregar_instituicao
       @instituicao = Instituicao.find(params[:instituicao_id])

@@ -9,7 +9,7 @@ class ContasTest < ActionDispatch::IntegrationTest
     users(:operador).update!(deve_trocar_senha: true)
     sign_in users(:operador)
 
-    [ root_path, formularios_path, formulario_avaliacoes_clinicas_path("seguimento_tb") ].each do |caminho|
+    [ root_path, formulario_avaliacoes_clinicas_path("acompanhamento") ].each do |caminho|
       get caminho
       assert_redirected_to edit_senha_path, caminho
     end
@@ -50,16 +50,94 @@ class ContasTest < ActionDispatch::IntegrationTest
     assert_not users(:operador).reload.deve_trocar_senha?
     assert users(:operador).valid_password?(NOVA)
 
-    get formularios_path
+    get formulario_avaliacoes_clinicas_path("acompanhamento")
     assert_response :success
   end
 
   test "a troca é sempre da própria senha" do
     sign_in users(:operador)
-    patch senha_path, params: { id: users(:consultor).id, usuario: { current_password: SENHA_DE_TESTE, password: NOVA, password_confirmation: NOVA } }
+    patch senha_path, params: { id: users(:consultor).id, usuario: { current_password: SENHA_DE_TESTE, password: NOVA, password_confirmation: NOVA,
+                                                                    codigo: codigo_mostrado } }
 
     assert users(:operador).reload.valid_password?(NOVA)
     assert users(:consultor).reload.valid_password?(SENHA_DE_TESTE)
+  end
+
+  test "a troca só vale com o código mostrado, que serve uma vez só e vence em 10 minutos" do
+    sign_in users(:operador)
+    campos = { current_password: SENHA_DE_TESTE, password: NOVA, password_confirmation: NOVA }
+
+    # Sem código, ou com um que não é o mostrado
+    patch senha_path, params: { usuario: campos }
+    assert_response :unprocessable_content
+    assert_select "#usuario_codigo_erros", text: /não confere/
+    codigo_mostrado
+    patch senha_path, params: { usuario: campos.merge(codigo: "AAA-AAA") }
+    assert_response :unprocessable_content
+    assert users(:operador).reload.valid_password?(SENHA_DE_TESTE)
+
+    # O código errado descarta o anterior: a tela de erro mostra um novo
+    assert_select "[data-codigo]", text: /\A[A-Z0-9]{3}-[A-Z0-9]{3}\z/
+
+    # Vencido
+    codigo = codigo_mostrado
+    travel 11.minutes do
+      patch senha_path, params: { usuario: campos.merge(codigo:) }
+    end
+    assert_response :unprocessable_content
+    assert users(:operador).reload.valid_password?(SENHA_DE_TESTE)
+
+    # Certo, em minúsculas e sem o traço
+    patch senha_path, params: { usuario: campos.merge(codigo: codigo_mostrado.delete("-").downcase) }
+    assert_redirected_to root_path
+    assert users(:operador).reload.valid_password?(NOVA)
+  end
+
+  test "pela janela, o erro volta para a mesma página com a janela aberta, e o acerto também" do
+    sign_in users(:operador)
+    campos = { current_password: SENHA_DE_TESTE, password: NOVA, password_confirmation: NOVA }
+    pagina = formularios_path(unidade: setores(:ambulatorio).id)
+
+    get pagina, params: { painel: "senha" }
+    patch senha_path, params: { voltar: pagina, usuario: campos.merge(codigo: "AAA-AAA") }
+    assert_response :see_other
+    assert_equal({ "painel" => "senha", "unidade" => setores(:ambulatorio).id.to_s },
+                 Rack::Utils.parse_nested_query(URI.parse(response.location).query))
+    assert_equal formularios_path, URI.parse(response.location).path
+    follow_redirect!
+    assert_select "dialog[open][aria-label='Trocar senha']" do
+      assert_select "p[role=alert]", text: /Revise os campos/
+      assert_select "#usuario_codigo_erros", text: /não confere/
+      assert_select "input[name=voltar][value='#{pagina}']"
+    end
+    assert users(:operador).reload.valid_password?(SENHA_DE_TESTE)
+
+    # O código novo, da janela que acabou de abrir
+    codigo = css_select("[data-codigo]").first.text.strip
+    patch senha_path, params: { voltar: pagina, usuario: campos.merge(codigo:) }
+    assert_redirected_to pagina
+    assert_equal "Senha alterada.", flash[:notice]
+    assert users(:operador).reload.valid_password?(NOVA)
+  end
+
+  test "o voltar só aceita uma página do próprio sistema" do
+    sign_in users(:operador)
+    %w[https://exemplo.com/x //exemplo.com/x javascript:alert(1)].each do |voltar|
+      patch senha_path, params: { voltar:, usuario: { current_password: SENHA_DE_TESTE, password: NOVA, password_confirmation: NOVA, codigo: "x" } }
+      assert_response :unprocessable_content, voltar
+    end
+  end
+
+  test "o menu da conta abre a troca de senha numa janela com o código" do
+    sign_in users(:operador)
+    get formularios_path(painel: "senha")
+
+    assert_select "dialog[open][aria-label='Trocar senha']" do
+      assert_select "form[action='#{senha_path}'] input[type=password]", 3
+      assert_select "[data-codigo]", text: /\A[A-Z0-9]{3}-[A-Z0-9]{3}\z/
+      assert_select "input[name='usuario[codigo]']"
+      assert_select "a[aria-label='Fechar'][href='#{formularios_path}']"
+    end
   end
 
   test "senha temporária do admin: obriga a troca e derruba a sessão aberta" do
@@ -125,6 +203,12 @@ class ContasTest < ActionDispatch::IntegrationTest
   private
 
   def trocar(atual:, nova:, confirmacao: nova)
-    patch senha_path, params: { usuario: { current_password: atual, password: nova, password_confirmation: confirmacao } }
+    patch senha_path, params: { usuario: { current_password: atual, password: nova, password_confirmation: confirmacao, codigo: codigo_mostrado } }
+  end
+
+  # Abre a tela de troca e lê o código que ela mostra (e que fica na sessão)
+  def codigo_mostrado
+    get edit_senha_path
+    css_select("[data-codigo]").first.text.strip
   end
 end

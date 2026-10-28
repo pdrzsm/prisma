@@ -1,21 +1,21 @@
 # Configurações > Usuários, só para o admin (UserPolicy). A conta nova sempre
 # é de usuário comum (o admin é único e nunca é criado pela tela), com senha
 # temporária que a pessoa troca no primeiro acesso. Ninguém é excluído:
-# desativar tira o acesso e derruba a sessão aberta.
+# desativar tira o acesso e derruba a sessão aberta. Cadastrar e editar abrem
+# num modal por cima da lista (ModalHelper).
 module Configuracoes
   class UsuariosController < ApplicationController
     before_action :carregar_usuario, only: [ :edit, :update ]
 
     def index
       authorize User
-      # O admin primeiro; depois por nome
-      @usuarios = policy_scope(User).includes(:liberacoes_formulario)
-                                    .order(Arel.sql("role = 'admin' DESC"), :nome)
+      carregar_lista
     end
 
     def new
       authorize User
       @usuario = User.new
+      carregar_lista
     end
 
     def create
@@ -29,11 +29,13 @@ module Configuracoes
                     notice: "Usuário cadastrado. Agora defina o que ele pode acessar."
       else
         flash.now[:alert] = "Não foi possível salvar. Revise os campos destacados."
+        carregar_lista
         render :new, status: :unprocessable_content
       end
     end
 
     def edit
+      carregar_lista
     end
 
     def update
@@ -41,11 +43,19 @@ module Configuracoes
         redirect_to configuracoes_usuarios_path, notice: "Usuário atualizado."
       else
         flash.now[:alert] = "Não foi possível salvar. Revise os campos destacados."
+        carregar_lista
         render :edit, status: :unprocessable_content
       end
     end
 
     private
+
+    # A lista de usuários (a tela da lista e o fundo dos modais): o admin
+    # primeiro; depois por nome
+    def carregar_lista
+      @usuarios = policy_scope(User).includes(:liberacoes_formulario)
+                                    .order(Arel.sql("role = 'admin' DESC"), :nome)
+    end
 
     def carregar_usuario
       @usuario = User.find(params[:id])

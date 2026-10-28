@@ -1,24 +1,19 @@
-<%# Barra lateral (desktop), no desenho do sistema: as três faces de um
-    prisma, como no login. A face escura (marca-700) leva o símbolo, o nome e
-    o menu. Embaixo, dois cortes se encontram num ponto: um sobe para a
-    direita (como a segunda quebra do login) e abre a face do meio
-    (marca-600); o outro desce para a direita (como a primeira diagonal) e
-    abre a face mais clara (marca-400) no canto. No celular, o mesmo menu fica
-    no topo (shared/_topo). %>
-<aside class="hidden lg:block w-38 shrink-0 bg-marca-700">
-  <div class="sticky top-0 h-screen">
-    <%# As faces de baixo ficam atrás do menu, que passa por cima se for comprido.
-        Os dois cortes se encontram em (35%, 26%) do bloco. %>
-    <div class="pointer-events-none absolute inset-x-0 bottom-0 h-64" aria-hidden="true">
-      <div class="absolute inset-0 bg-marca-600 [clip-path:polygon(0_40%,100%_0,100%_100%,0_100%)]"></div>
-      <div class="absolute inset-0 bg-marca-400 [clip-path:polygon(35%_26%,100%_0,100%_100%,70%_100%)]"></div>
-    </div>
-
-    <div class="relative">
-      <%= link_to root_path, class: "flex items-center gap-2 px-4 pt-6 pb-12 text-marca-100", aria: { label: "Prisma, visão geral" } do %>
-        <%= render "shared/logo", classe: "h-10 w-auto" %>
-        <%= render "shared/logo", versao: :nome, classe: "h-4 w-auto" %>
-      <% end %>
+<%# Barra lateral (desktop): só navegação — o símbolo e o nome no alto e o
+    menu (shared/_menu). Mesma superfície do cabeçalho (shared/_topo): fundo
+    claro que acompanha o modo noturno e borda marca-200. A faixa do logo tem
+    a altura do cabeçalho e a mesma borda embaixo, então as duas linhas se
+    encontram. O menu ocupa o resto da altura da tela: os itens do dia a dia
+    no alto e, no pé, o grupo Configurações (só do admin); numa tela baixa, o
+    menu rola por dentro, e o logo fica parado. Conta, avisos, novidades, modo
+    noturno, busca e o voltar ficam no cabeçalho. No celular, o mesmo menu
+    abre pelo símbolo no cabeçalho. %>
+<aside class="hidden lg:block print:hidden w-64 shrink-0 border-r border-marca-200 bg-white">
+  <div class="sticky top-0 flex h-screen flex-col">
+    <%= link_to root_path, class: "flex h-[61px] shrink-0 items-center gap-2 border-b border-marca-200 px-4 text-slate-900", aria: { label: "Prisma, visão geral" } do %>
+      <%= render "shared/logo", classe: "h-9 w-9" %>
+      <%= render "shared/logo", versao: :nome, classe: "h-4 w-auto" %>
+    <% end %>
+    <div class="flex min-h-0 flex-1 flex-col overflow-y-auto pb-4 pt-4">
       <%= render "shared/menu" %>
     </div>
   </div>

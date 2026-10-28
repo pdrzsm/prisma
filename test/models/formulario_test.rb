@@ -1,166 +1,118 @@
 require "test_helper"
 
+# O formulário (a identidade: chave e versões). O conteúdo de cada versão é
+# testado em DefinicaoDeFormularioTest.
 class FormularioTest < ActiveSupport::TestCase
-  setup { @tb = Formulario.find("seguimento_tb") }
-
-  test "todas as definições de config/formularios carregam sem erro" do
-    assert_not_empty Formulario.todos
-    assert_includes Formulario.chaves, "seguimento_tb"
+  test "chave nova vem do título, sem acentos, sem repetir e sem nome reservado" do
+    assert_equal "avaliacao_nutricional", Formulario.chave_para("Avaliação  Nutricional!")
+    assert_equal "acompanhamento_2", Formulario.chave_para("Acompanhamento")
+    assert_equal "formulario", Formulario.chave_para("123 ---")
+    assert_equal "formulario", Formulario.chave_para("‮")
+    assert_equal "new_2", Formulario.chave_para("New")
+    assert_equal "triagem", Formulario.chave_para("2ª Triagem")
+    assert_operator Formulario.chave_para("x" * 300).length, :<=, 64
   end
 
-  test "formulário inexistente vira 404" do
-    assert_raises(ActiveRecord::RecordNotFound) { Formulario.find("nao_existe") }
+  test "chave com formato inválido ou reservada é recusada, e não muda depois" do
+    [ "Maiuscula", "1comeca", "com-hifen", "", "a" * 65, "new", "edit" ].each do |chave|
+      assert_not Formulario.new(chave:, instituicao: instituicoes(:centro)).valid?, chave
+    end
+    assert_raises(ActiveRecord::ReadonlyAttributeError) { formularios(:acompanhamento).chave = "outra" }
   end
 
-  test "seguimento de TB tem as 47 perguntas do original, com as mesmas obrigatórias" do
-    assert_equal (1..47).to_a, @tb.perguntas.map(&:numero)
-    assert_equal [ 4, 5, 6, 7, 8, 9, 10 ], numeros_com(obrigatoria: "abertura")
-    assert_equal (11..24).to_a + [ 26, 27, 28, 30, 32, 39 ], numeros_com(obrigatoria: "encerramento")
-    assert_equal %w[prontuario_sah prontuario_aghuse iniciais], @tb.perguntas_do_paciente.map(&:chave)
-  end
-
-  test "respostas de abertura bastam para salvar" do
-    assert_empty validar(respostas_de_abertura)
-  end
-
-  test "obrigatórias de abertura" do
-    erros = validar(respostas_de_abertura.except("gestante", "municipio_residencia"))
-
-    assert_equal [ "é obrigatória" ], erros["gestante"]
-    assert_equal [ "é obrigatória" ], erros["municipio_residencia"]
-  end
-
-  test "ao preencher o encerramento, as perguntas marcadas para encerrar viram obrigatórias" do
-    erros = validar(respostas_de_abertura("data_encerramento" => Date.current.iso8601))
-
-    assert_equal numeros_com(obrigatoria: "encerramento").size, erros.size
-    assert_equal [ "é obrigatória para encerrar a notificação" ], erros["rx_torax"]
-    assert_empty validar(respostas_de_abertura.merge(respostas_de_encerramento))
-  end
-
-  test "pergunta 10 só vale para forma clínica extrapulmonar" do
-    pulmonar = @tb.normalizar(respostas_de_abertura("forma_clinica" => "1", "tb_extrapulmonar" => [ "1" ]))
-    assert_not pulmonar.key?("tb_extrapulmonar")
-
-    assert_equal [ "é obrigatória" ], validar(respostas_de_abertura("forma_clinica" => "2"))["tb_extrapulmonar"]
-    assert_empty validar(respostas_de_abertura("forma_clinica" => "3", "tb_extrapulmonar" => [ "1", "10" ]))
-  end
-
-  test "a pergunta 10 é revelada pelas opções 2 e 3 da pergunta 9" do
-    seguinte = @tb.condicional_seguinte(@tb.pergunta("forma_clinica"))
-
-    assert_equal "tb_extrapulmonar", seguinte.chave
-    assert_equal %w[2 3], seguinte.condicao["valores"]
-  end
-
-  test "opções exclusivas não combinam com outras" do
-    assert_match "“Não” não pode ser marcada", validar(respostas_de_abertura("populacoes_especiais" => %w[0 1]))["populacoes_especiais"].first
-    assert_empty validar(respostas_de_abertura("tomografia" => %w[1 3]))
-    assert_not_empty validar(respostas_de_abertura("tomografia" => %w[2 1]))["tomografia"]
-  end
-
-  test "opção inexistente e campo desconhecido são recusados" do
-    erros = validar(respostas_de_abertura("gestante" => "7", "campo_inventado" => "x"))
-
-    assert_equal [ "tem uma opção inválida" ], erros["gestante"]
-    assert_match "campo_inventado", erros["base"].first
-  end
-
-  test "números inteiros e comparação entre perguntas" do
-    assert_equal [ "deve ser um número inteiro" ], validar(respostas_de_abertura("numero_contatos" => "três"))["numero_contatos"]
-    assert_match "não pode ser maior que", validar(respostas_de_abertura("numero_contatos" => "2", "numero_contatos_avaliados" => "5"))["numero_contatos_avaliados"].first
-    assert_empty validar(respostas_de_abertura("numero_contatos" => "5", "numero_contatos_avaliados" => "5"))
-  end
-
-  test "datas válidas, não futuras e revisão depois do encerramento" do
-    amanha = Date.current.tomorrow.iso8601
-    hoje = Date.current.iso8601
-    ontem = Date.current.yesterday.iso8601
-
-    assert_equal [ "não é uma data válida" ], validar(respostas_de_abertura("data_revisao_encerramento" => "2026-02-30"))["data_revisao_encerramento"]
-    assert_equal [ "não pode ser no futuro" ], validar(respostas_de_abertura("data_revisao_encerramento" => amanha))["data_revisao_encerramento"]
-    erros = validar(respostas_de_abertura.merge(respostas_de_encerramento, "data_encerramento" => hoje, "data_revisao_encerramento" => ontem))
-    assert_match "não pode ser antes de", erros["data_revisao_encerramento"].first
-  end
-
-  test "normalização limpa espaços, converte números e descarta vazios" do
-    respostas = @tb.normalizar(respostas_de_abertura("municipio_residencia" => "  Cidade   Fictícia ", "numero_contatos" => "4", "cd4_final_tratamento" => "", "comorbidades" => [ "" ]))
-
-    assert_equal "Cidade Fictícia", respostas["municipio_residencia"]
-    assert_equal 4, respostas["numero_contatos"]
-    assert_equal [ "0" ], respostas["populacoes_especiais"]
-    assert_not respostas.key?("cd4_final_tratamento")
-    assert_not respostas.key?("comorbidades")
-  end
-
-  test "resposta formatada usa os rótulos e a data brasileira" do
-    assert_equal "Pulmonar + extrapulmonar", @tb.resposta_formatada(@tb.pergunta("forma_clinica"), "3")
-    assert_equal "Pleural; Ganglionar", @tb.resposta_formatada(@tb.pergunta("tb_extrapulmonar"), %w[1 2])
-    assert_equal "07/01/2019", @tb.resposta_formatada(@tb.pergunta("data_encerramento"), "2019-01-07")
-  end
-
-  test "parâmetros permitidos são só as perguntas de resposta" do
-    permitidos = @tb.parametros_permitidos
-
-    assert_includes permitidos, "forma_clinica"
-    assert_includes permitidos, { "tb_extrapulmonar" => [] }
-    assert_not_includes permitidos, "iniciais"
-  end
-
-  test "definição com condição que não depende da pergunta anterior é recusada" do
-    definicao = definicao_com([
-      { "numero" => 1, "chave" => "controle", "texto" => "Controle", "tipo" => "unica", "opcoes" => { "1" => "Sim" } },
-      { "numero" => 2, "chave" => "outra", "texto" => "Outra", "tipo" => "texto" },
-      { "numero" => 3, "chave" => "alvo", "texto" => "Alvo", "tipo" => "texto", "condicao" => { "pergunta" => "controle", "valores" => [ "1" ] } }
-    ])
-
-    erro = assert_raises(Formulario::DefinicaoInvalida) { Formulario.new("teste", definicao) }
-    assert_match "deve depender da pergunta anterior", erro.message
-  end
-
-  test "definição com tipo desconhecido é recusada" do
-    definicao = definicao_com([ { "numero" => 1, "chave" => "campo", "texto" => "Campo", "tipo" => "arquivo" } ])
-
-    erro = assert_raises(Formulario::DefinicaoInvalida) { Formulario.new("teste", definicao) }
-    assert_match "tipo inválido", erro.message
-  end
-
-  test "todo formulário diz para que coleta os dados e com qual base legal" do
-    assert_match "tratamento da tuberculose", @tb.finalidade
-    assert_match "art. 11, II", @tb.base_legal
-    Formulario.todos.each do |formulario|
-      assert formulario.finalidade.present? && formulario.base_legal.present?, formulario.chave
+  test "o banco também recusa chave fora do formato" do
+    assert_raises(ActiveRecord::StatementInvalid) do
+      Formulario.insert!({ chave: "Fora_Do_Formato", instituicao_id: instituicoes(:centro).id, created_at: Time.current, updated_at: Time.current })
     end
   end
 
-  test "definição sem finalidade ou sem base legal é recusada" do
-    definicao = definicao_com([ { "numero" => 1, "chave" => "campo", "texto" => "Campo", "tipo" => "texto" } ])
-    assert_nothing_raised { Formulario.new("teste", definicao) }
+  test "só os publicados contam para quem preenche" do
+    rascunho = Formulario.create!(chave: "so_rascunho", instituicao: instituicoes(:centro))
+    rascunho.versoes.create!(numero: 1, estrutura: estrutura_de_formulario)
 
-    %w[finalidade base_legal].each do |campo|
-      assert_raises(Formulario::DefinicaoInvalida, campo) { Formulario.new("teste", definicao.except(campo)) }
-      [ "  ", nil, [ "lista" ] ].each do |valor|
-        erro = assert_raises(Formulario::DefinicaoInvalida, "#{campo}: #{valor.inspect}") do
-          Formulario.new("teste", definicao.merge(campo => valor))
-        end
-        assert_match "finalidade e base_legal são obrigatórias", erro.message
+    assert_equal [ "acompanhamento" ], Formulario.chaves
+    assert_equal [ formularios(:acompanhamento) ], Formulario.todos
+    assert_raises(ActiveRecord::RecordNotFound) { Formulario.publicado!("so_rascunho") }
+    assert_raises(ActiveRecord::RecordNotFound) { Formulario.publicado!("nao_existe") }
+    assert_equal formularios(:acompanhamento), Formulario.publicado!("acompanhamento")
+    assert_equal "Formulário de teste", rascunho.titulo
+  end
+
+  test "todos em ordem de título, sem diferenciar acentos" do
+    publicar_formulario("zebra", estrutura_de_formulario(titulo: "Zebra"))
+    publicar_formulario("abacaxi", estrutura_de_formulario(titulo: "Ábaco"))
+
+    assert_equal [ "Ábaco", "Acompanhamento de teste", "Zebra" ], Formulario.todos.map(&:titulo)
+  end
+
+  test "com notificações nunca é excluído, publicado ou não, e o banco também não deixa" do
+    acompanhamento = formularios(:acompanhamento)
+
+    assert_not acompanhamento.excluivel?
+    assert_no_difference [ -> { Formulario.count }, -> { VersaoFormulario.count }, -> { FormularioHabilitado.count } ] do
+      assert_not acompanhamento.destroy
+    end
+    assert_includes acompanhamento.errors.full_messages, "Formulário com notificações não é excluído: o registro clínico é preservado"
+    # Sem passar pelo model, a chave estrangeira das notificações recusa
+    assert_raises(ActiveRecord::InvalidForeignKey) { Formulario.where(chave: "acompanhamento").delete_all }
+  end
+
+  test "o que nunca foi publicado sai com o rascunho" do
+    rascunho = Formulario.create!(chave: "descartavel", instituicao: instituicoes(:centro))
+    rascunho.versoes.create!(numero: 1, estrutura: estrutura_de_formulario)
+
+    assert rascunho.excluivel?
+    assert_difference -> { VersaoFormulario.count }, -1 do
+      assert rascunho.destroy
+    end
+  end
+
+  test "publicado que nunca teve notificação sai inteiro: versões, habilitações e liberações, com o autor na auditoria" do
+    formulario = publicar_formulario("sem_uso")
+    formulario.versoes.create!(numero: 2, estrutura: estrutura_de_formulario) # rascunho da versão 2
+    setores(:ambulatorio).formularios_habilitados.create!(formulario: "sem_uso")
+    users(:operador).liberacoes_formulario.create!(setor: setores(:ambulatorio), formulario: "sem_uso", papel: "registra")
+
+    assert formulario.excluivel?
+    PaperTrail.request.whodunnit = users(:admin).id.to_s
+    assert_difference [ -> { Formulario.count }, -> { FormularioHabilitado.count }, -> { LiberacaoFormulario.count } ], -1 do
+      assert_difference -> { VersaoFormulario.count }, -2 do
+        assert formulario.destroy
       end
     end
+
+    # Cada coisa que saiu ficou na auditoria, com quem excluiu
+    %w[Formulario VersaoFormulario FormularioHabilitado LiberacaoFormulario].each do |tipo|
+      exclusoes = PaperTrail::Version.where(item_type: tipo, event: "destroy")
+      assert_operator exclusoes.count, :>=, 1, tipo
+      assert_equal [ users(:admin).id.to_s ], exclusoes.pluck(:whodunnit).uniq, tipo
+    end
   end
 
-  private
+  test "uma versão publicada não sai sozinha, nem a de um formulário sem notificações" do
+    formulario = publicar_formulario("sem_uso")
 
-  # Definição mínima válida, com as perguntas dadas numa seção
-  def definicao_com(perguntas)
-    { "titulo" => "Teste", "finalidade" => "testar o carregamento", "base_legal" => "nenhuma, é um teste",
-      "secoes" => [ { "titulo" => "Única", "perguntas" => perguntas } ] }
+    assert_raises(ActiveRecord::ReadOnlyRecord) { formulario.versao_publicada.destroy }
+    assert_raises(ActiveRecord::ReadOnlyRecord) { versoes_formulario(:acompanhamento_v1).destroy }
+    assert_equal 1, formulario.reload.versoes.count
   end
 
-  def validar(entrada)
-    @tb.validar(@tb.normalizar(entrada))
+  test "a versão publicada precisa ser deste formulário e estar publicada" do
+    outro = publicar_formulario("outro")
+    acompanhamento = formularios(:acompanhamento)
+
+    acompanhamento.versao_publicada = outro.versao_publicada
+    assert_not acompanhamento.valid?
+
+    rascunho = acompanhamento.versoes.create!(numero: 2, estrutura: estrutura_de_formulario)
+    acompanhamento.versao_publicada = rascunho
+    assert_not acompanhamento.valid?
   end
 
-  def numeros_com(obrigatoria:)
-    @tb.perguntas.select { |pergunta| pergunta.obrigatoria == obrigatoria }.map(&:numero)
+  test "a chave das notificações, liberações e habilitações aponta para um formulário que existe" do
+    assert_raises(ActiveRecord::InvalidForeignKey) do
+      AvaliacaoClinica.where(id: avaliacoes_clinicas(:one).id).update_all(formulario: "nao_existe")
+    end
+    assert_raises(ActiveRecord::InvalidForeignKey) { formularios(:acompanhamento).update_column(:versao_publicada_id, 0) }
   end
 end

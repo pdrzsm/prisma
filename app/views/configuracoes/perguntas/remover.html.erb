@@ -1,0 +1,22 @@
+<% content_for :title, "Remover pergunta · Gerador de formulários · Prisma" %>
+<% trilha ["Configurações", configuracoes_instituicoes_path], ["Gerador de formulários", configuracoes_formularios_path],
+          [@formulario.titulo, configuracoes_formulario_path(@formulario)],
+          ["Rascunho da versão #{@rascunho.numero}", configuracoes_formulario_rascunho_path(@formulario)], ["Remover pergunta"] %>
+<%# O rascunho ao fundo, e a confirmação num modal por cima dele (ver ModalHelper#modal) %>
+<% voltar = configuracoes_formulario_rascunho_path(@formulario, anchor: "pergunta-#{@pergunta_atual.chave}") %>
+<%= render "configuracoes/rascunhos/conteudo", definicao: @rascunho.definicao, erros: nil %>
+<% modal "Remover do rascunho?", fechar: voltar, largura: "max-w-lg",
+         descricao: "Sai do rascunho da versão #{@rascunho.numero}. As versões já publicadas e as notificações registradas com elas não mudam." do %>
+  <ul class="list-disc space-y-1 rounded-lg border border-marca-200 bg-marca-50 p-4 pl-9 text-sm text-slate-800">
+    <% @removidas.each do |pergunta| %>
+      <li><%= pergunta.numero %>. <%= pergunta.texto %><%= " (depende de “#{@rascunho.definicao.controladora(pergunta).texto}”)" if pergunta.condicao %></li>
+    <% end %>
+  </ul>
+
+  <div class="flex flex-wrap gap-3">
+    <%= button_to @removidas.size > 1 ? "Remover as #{@removidas.size} perguntas" : "Remover pergunta",
+                  configuracoes_formulario_rascunho_pergunta_path(@formulario, @pergunta_atual.chave), method: :delete,
+                  params: { lock_version: @rascunho.lock_version }, class: ApplicationHelper::BOTAO_PERIGO, form_class: "contents" %>
+    <%= link_to "Cancelar", voltar, class: ApplicationHelper::BOTAO_SECUNDARIO %>
+  </div>
+<% end %>

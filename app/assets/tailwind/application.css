@@ -8,15 +8,41 @@
 @theme {
   --font-sans: "Source Sans 3", ui-sans-serif, system-ui, sans-serif;
 
-  /* Paleta "marca", a partir das cores do layout */
-  --color-marca-50: #f4f6fb;
-  --color-marca-100: #e9edf7; /* fundo das telas */
-  --color-marca-200: #d3daeb;
-  --color-marca-300: #b3bdd6;
-  --color-marca-400: #8f9cbd;
-  --color-marca-500: #6d7da2; /* barra lateral */
-  --color-marca-600: #586788; /* botões (5,7:1 com texto branco) */
-  --color-marca-700: #47536f; /* links e item ativo do menu */
-  --color-marca-800: #3a4459;
-  --color-marca-900: #2c3344;
+  /* Sistema reto, como o SGA: nenhum canto arredondado (o que precisa ser
+     círculo, como o interruptor, ou o selo do símbolo do logo, declara o
+     raio por conta própria) */
+  --radius-xs: 0;
+  --radius-sm: 0;
+  --radius-md: 0;
+  --radius-lg: 0;
+  --radius-xl: 0;
+  --radius-2xl: 0;
+  --radius-3xl: 0;
+  --radius-4xl: 0;
+
+  /* Paleta "marca": índigo calmo (2026-10-26). Primeiro critério: leitura,
+     num tom sóbrio que funcione no modo claro e no escuro. A cor forte fica
+     no logo, nas facetas em cores do espectro (docs/identidade-visual.md,
+     "Logo"); o resto do sistema usa só esta escala. Os tons claros (50 a 300)
+     são quase neutros, para fundos e bordas não cansarem a vista; a cor
+     aparece do 500 ao 900 (botões, links, foco). Anteriores:
+     índigo-violeta (Tailwind indigo, saturado demais: botões e fundo lavanda
+               chamando atenção): 50 #eef2ff, 100 #e0e7ff, 200 #c7d2fe,
+               300 #a5b4fc, 400 #818cf8, 500 #6366f1, 600 #4f46e5, 700 #4338ca,
+               800 #3730a3, 900 #312e81
+     petróleo: 50 #effafb, 100 #dff3f5, 200 #b8e3e8, 300 #86cdd6, 400 #3fb0bf,
+               500 #1596a8, 600 #0a7384, 700 #085f6d, 800 #064a56, 900 #043842
+     azul-acinzentado: 50 #f4f6fb, 100 #e9edf7, 200 #d3daeb, 300 #b3bdd6,
+               400 #8f9cbd, 500 #6d7da2, 600 #586788, 700 #47536f, 800 #3a4459,
+               900 #2c3344 */
+  --color-marca-50: #f8f9fb;  /* cabeçalho de tabela, hover */
+  --color-marca-100: #eceef3; /* fundo das telas (neutro) */
+  --color-marca-200: #d6d9e6; /* bordas de cartões */
+  --color-marca-300: #b5bad4; /* bordas de campos e botões secundários */
+  --color-marca-400: #848cbd;
+  --color-marca-500: #5661ae; /* detalhes; 5,7:1 com texto branco */
+  --color-marca-600: #3f49a2; /* botões (7,8:1 com texto branco) */
+  --color-marca-700: #343b89; /* links e destaques (9,9:1 com branco) */
+  --color-marca-800: #292d6b;
+  --color-marca-900: #1e204d;
 }

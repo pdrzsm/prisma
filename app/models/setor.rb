@@ -29,16 +29,25 @@ class Setor < ApplicationRecord
     "#{instituicao.sigla || instituicao.nome} - #{nome}"
   end
 
-  # Deixa habilitados exatamente estes formulários. Desabilitar tira também as
-  # liberações do formulário no setor; um formulário com notificações no setor
-  # não é desabilitado (o erro vai para errors). Devolve true se deu tudo certo.
+  # Os formulários que podem ser habilitados aqui: os da instituição do setor
+  # (publicados ou ainda rascunho), em ordem de título
+  def formularios_disponiveis
+    Formulario.where(instituicao_id:).includes(:versao_publicada, :rascunho)
+              .sort_by { |formulario| I18n.transliterate(formulario.titulo.to_s).downcase }
+  end
+
+  # Deixa habilitados exatamente estes formulários. Só entram formulários da
+  # instituição do setor. Desabilitar tira também as liberações do formulário
+  # no setor; um formulário com notificações no setor não é desabilitado (o
+  # erro vai para errors). Devolve true se deu tudo certo.
   def habilitar_formularios(chaves)
-    chaves = Array(chaves).map(&:to_s) & Formulario.chaves
+    chaves = Array(chaves).map(&:to_s)
     transaction do
       formularios_habilitados.reject { |habilitado| chaves.include?(habilitado.formulario) }.each do |habilitado|
         habilitado.destroy ? liberacoes_formulario.where(formulario: habilitado.formulario).destroy_all : errors.merge!(habilitado.errors)
       end
-      (chaves - formularios).each { |chave| formularios_habilitados.create!(formulario: chave) }
+      novos = Formulario.where(instituicao_id:, chave: chaves).pluck(:chave) - formularios
+      novos.each { |chave| formularios_habilitados.create!(formulario: chave) }
     end
     formularios_habilitados.reset
     errors.empty?

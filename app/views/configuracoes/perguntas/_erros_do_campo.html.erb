@@ -1,0 +1,4 @@
+<%# locals: (pergunta:, campo:) %>
+<% if pergunta.errors[campo].any? %>
+  <p id="pergunta_<%= campo %>_erros" class="text-sm font-medium text-rose-600"><%= pergunta.errors[campo].to_sentence %></p>
+<% end %>

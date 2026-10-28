@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_07_160000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_09_120000) do
   create_table "audit_logs", charset: "utf8mb4", collation: "utf8mb4_general_ci", force: :cascade do |t|
     t.bigint "user_id", null: false
     t.string "auditable_type", limit: 64, null: false
@@ -30,16 +30,31 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_07_160000) do
     t.text "dados_formulario", size: :long, collation: "utf8mb4_bin"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.string "formulario", null: false
+    t.string "formulario", limit: 64, null: false
     t.integer "lock_version", default: 0, null: false
     t.bigint "setor_id", null: false
     t.text "finalidade", null: false
     t.text "base_legal", null: false
+    t.bigint "versao_formulario_id", null: false
     t.index ["formulario", "updated_at"], name: "index_avaliacoes_clinicas_on_formulario_and_updated_at"
     t.index ["paciente_id"], name: "index_avaliacoes_clinicas_on_paciente_id"
     t.index ["setor_id", "formulario", "updated_at"], name: "idx_on_setor_id_formulario_updated_at_02132e20f9"
     t.index ["user_id"], name: "index_avaliacoes_clinicas_on_user_id"
+    t.index ["versao_formulario_id"], name: "index_avaliacoes_clinicas_on_versao_formulario_id"
+    t.check_constraint "cast(`formulario` as char charset binary) regexp '^[a-z][a-z0-9_]{0,63}$'", name: "avaliacoes_clinicas_formulario"
     t.check_constraint "json_valid(`dados_formulario`)", name: "dados_formulario"
+  end
+
+  create_table "formularios", charset: "utf8mb4", collation: "utf8mb4_general_ci", force: :cascade do |t|
+    t.string "chave", limit: 64, null: false
+    t.bigint "instituicao_id", null: false
+    t.bigint "versao_publicada_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["chave"], name: "index_formularios_on_chave", unique: true
+    t.index ["instituicao_id"], name: "index_formularios_on_instituicao_id"
+    t.index ["versao_publicada_id"], name: "index_formularios_on_versao_publicada_id"
+    t.check_constraint "cast(`chave` as char charset binary) regexp '^[a-z][a-z0-9_]{0,63}$'", name: "formularios_chave"
   end
 
   create_table "formularios_habilitados", charset: "utf8mb4", collation: "utf8mb4_general_ci", force: :cascade do |t|
@@ -47,7 +62,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_07_160000) do
     t.string "formulario", limit: 64, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.index ["formulario"], name: "index_formularios_habilitados_on_formulario"
     t.index ["setor_id", "formulario"], name: "index_formularios_habilitados_on_setor_id_and_formulario", unique: true
+    t.check_constraint "cast(`formulario` as char charset binary) regexp '^[a-z][a-z0-9_]{0,63}$'", name: "formularios_habilitados_formulario"
   end
 
   create_table "instituicoes", charset: "utf8mb4", collation: "utf8mb4_general_ci", force: :cascade do |t|
@@ -66,9 +83,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_07_160000) do
     t.string "papel", limit: 16, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.index ["formulario"], name: "index_liberacoes_formulario_on_formulario"
     t.index ["setor_id"], name: "index_liberacoes_formulario_on_setor_id"
     t.index ["user_id", "setor_id", "formulario"], name: "index_liberacoes_formulario_unicas", unique: true
     t.check_constraint "`papel` in ('registra','consulta')", name: "liberacoes_formulario_papel"
+    t.check_constraint "cast(`formulario` as char charset binary) regexp '^[a-z][a-z0-9_]{0,63}$'", name: "liberacoes_formulario_formulario"
   end
 
   create_table "liberacoes_instituicao", charset: "utf8mb4", collation: "utf8mb4_general_ci", force: :cascade do |t|
@@ -137,11 +156,35 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_07_160000) do
     t.index ["item_type", "item_id"], name: "index_versions_on_item_type_and_item_id"
   end
 
+  create_table "versoes_formulario", charset: "utf8mb4", collation: "utf8mb4_general_ci", force: :cascade do |t|
+    t.bigint "formulario_id", null: false
+    t.integer "numero", null: false
+    t.text "estrutura", size: :long, null: false, collation: "utf8mb4_bin"
+    t.datetime "publicada_em"
+    t.bigint "publicada_por_id"
+    t.integer "lock_version", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.virtual "rascunho_unico", type: :bigint, as: "if(`publicada_em` is null,`formulario_id`,NULL)", stored: true
+    t.index ["formulario_id", "numero"], name: "index_versoes_formulario_on_formulario_id_and_numero", unique: true
+    t.index ["publicada_por_id"], name: "index_versoes_formulario_on_publicada_por_id"
+    t.index ["rascunho_unico"], name: "index_versoes_formulario_on_rascunho_unico", unique: true
+    t.check_constraint "`numero` > 0", name: "versoes_formulario_numero"
+    t.check_constraint "`publicada_por_id` is null or `publicada_em` is not null", name: "versoes_formulario_publicacao"
+    t.check_constraint "json_valid(`estrutura`)", name: "versoes_formulario_estrutura"
+  end
+
   add_foreign_key "audit_logs", "users"
+  add_foreign_key "avaliacoes_clinicas", "formularios", column: "formulario", primary_key: "chave"
   add_foreign_key "avaliacoes_clinicas", "pacientes"
   add_foreign_key "avaliacoes_clinicas", "setores"
   add_foreign_key "avaliacoes_clinicas", "users"
+  add_foreign_key "avaliacoes_clinicas", "versoes_formulario"
+  add_foreign_key "formularios", "instituicoes"
+  add_foreign_key "formularios", "versoes_formulario", column: "versao_publicada_id"
+  add_foreign_key "formularios_habilitados", "formularios", column: "formulario", primary_key: "chave"
   add_foreign_key "formularios_habilitados", "setores"
+  add_foreign_key "liberacoes_formulario", "formularios", column: "formulario", primary_key: "chave"
   add_foreign_key "liberacoes_formulario", "setores"
   add_foreign_key "liberacoes_formulario", "users"
   add_foreign_key "liberacoes_instituicao", "instituicoes"
@@ -150,4 +193,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_07_160000) do
   add_foreign_key "liberacoes_setor", "users"
   add_foreign_key "pacientes", "setores"
   add_foreign_key "setores", "instituicoes"
+  add_foreign_key "versoes_formulario", "formularios"
+  add_foreign_key "versoes_formulario", "users", column: "publicada_por_id"
 end

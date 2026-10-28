@@ -6,6 +6,8 @@ class Instituicao < ApplicationRecord
   # Instituição com setores não é excluída: primeiro saem os setores
   has_many :setores, -> { order(:nome) }, dependent: :restrict_with_error, inverse_of: :instituicao
   has_many :liberacoes_instituicao, class_name: "LiberacaoInstituicao", dependent: :destroy
+  # Cada formulário pertence a uma instituição: com formulários, ela não sai
+  has_many :formularios, dependent: :restrict_with_error, inverse_of: :instituicao
   has_paper_trail
 
   # Sem espaços sobrando; sigla em maiúsculas e em branco vira nil

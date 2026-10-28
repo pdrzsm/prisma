@@ -1,13 +1,18 @@
 # Prisma
 
-Sistema web de código aberto para formulários de análises clínicas. Cada
-formulário é descrito num arquivo YAML; o sistema gera a tela, valida as
-respostas, cifra os dados e registra quem alterou o quê.
+Sistema web de código aberto para formulários de análises clínicas. O admin
+monta cada formulário no **gerador de formulários**, sem escrever código:
+seções, perguntas de texto, número, data, escolha única, lista suspensa e
+múltipla escolha, e perguntas que só aparecem conforme a resposta de outra. O
+sistema gera a tela, valida as respostas, cifra os dados e registra quem viu e
+quem alterou o quê. Cada formulário tem versões: a publicada nunca muda, e
+cada notificação continua com a versão em que foi registrada.
 
-O primeiro formulário é o **seguimento de tuberculose (TB)**: 47 perguntas com
-os códigos do SINAN. A notificação é aberta no início do tratamento e
-atualizada mês a mês até o encerramento. Os formulários ficam na seção
-**Formulários** do menu lateral.
+O Prisma não traz formulário pronto: uma instalação nova começa **limpa**, sem
+formulário, modelo ou dado nenhum, e o admin monta cada formulário no gerador,
+dentro de uma instituição e dos setores dela. Um formulário pode ser
+preenchido de uma vez ou ao longo do tempo (aberto, atualizado e encerrado).
+Os formulários publicados ficam no menu lateral de quem foi liberado.
 
 > **Estado:** desenvolvimento inicial. Ainda **não está pronto para produção**;
 > veja as [pendências conhecidas](docs/seguranca.md#pendências-conhecidas).
@@ -27,9 +32,9 @@ faz parte de cada mudança: antes de contribuir, leia
 
 ## Papéis
 
-- **admin**: uma conta só no sistema. Cadastra usuários, instituições e
-  setores, habilita formulários nos setores, define as liberações e vê e
-  registra tudo.
+- **admin**: uma conta só no sistema. Monta e publica os formulários no
+  gerador, cadastra usuários, instituições e setores, habilita formulários nos
+  setores, define as liberações e vê e registra tudo.
 - **usuário**: vê e registra só o que o admin liberar. A liberação é explícita
   em três níveis (instituição, setor e formulário), e cada formulário diz se a
   pessoa **registra** ou **só consulta** naquele setor. Conta nova recebe senha
@@ -62,23 +67,13 @@ docker compose run --rm web bin/rails db:prepare db:seed
 docker compose up
 ```
 
-Abra <http://localhost:3000> e entre como `admin`, `operador` (registra) ou
-`consultor` (só consulta), com a senha `prisma-dev-senha`. O seed cria também
-uma instituição e um setor de desenvolvimento, com as liberações dos dois.
-Essas contas só existem em desenvolvimento (ver [db/seeds.rb](db/seeds.rb)); o
-seed se recusa a rodar em produção.
-
-Para ver as telas com dados, gere notificações fictícias de seguimento de TB,
-abertas em datas variadas, atualizadas mês a mês e parte delas encerradas:
-
-```bash
-docker compose exec web bin/rails dev:notificacoes                   # 50
-docker compose exec web bin/rails dev:notificacoes QUANTIDADE=120 SETOR=2
-```
-
-Sem `SETOR`, as notificações vão para o primeiro setor com o seguimento de TB
-habilitado. Os prontuários começam com `TESTE-`, e rodar de novo não duplica nada. A
-tarefa também se recusa a rodar em produção.
+Abra <http://localhost:3000> e entre como `admin`, `operador` ou `consultor`,
+com a senha `prisma-dev-senha`. O seed cria também uma instituição e um setor
+de desenvolvimento, com o operador e o consultor liberados nos dois. Formulário
+nenhum, nem em desenvolvimento: monte o primeiro no gerador (Configurações >
+Gerador de formulários), publique e dê o papel de cada um em Usuários >
+Liberações. Essas contas só existem em desenvolvimento (ver
+[db/seeds.rb](db/seeds.rb)); o seed se recusa a rodar em produção.
 
 O banco e o servidor ficam acessíveis só na sua máquina (`127.0.0.1`). Em
 sistemas com SELinux (Fedora, RHEL), os volumes usam `:z`; não troque por `:Z`,
@@ -103,12 +98,12 @@ cada pull request.
 
 ## Documentação
 
-- [docs/arquitetura.md](docs/arquitetura.md): organização do código, motor de
-  formulários, modelos e convenções
+- [docs/arquitetura.md](docs/arquitetura.md): organização do código, gerador e
+  motor de formulários, versões e convenções
 - [docs/seguranca.md](docs/seguranca.md): controles, permissões, chaves,
   checklist de produção e pendências
 - [docs/novo-formulario.md](docs/novo-formulario.md): como criar um formulário
-  clínico novo em YAML
+  no gerador
 - [docs/identidade-visual.md](docs/identidade-visual.md): cores, fonte, logo e
   layout das telas
 - [SECURITY.md](SECURITY.md): como relatar uma vulnerabilidade

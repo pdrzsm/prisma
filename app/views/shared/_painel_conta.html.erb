@@ -1,0 +1,24 @@
+<%# Menu suspenso da conta (o nome, no cabeçalho): quem está logado, a troca
+    da própria senha (abre a janela de confirmação, ?painel=senha) e o Sair. %>
+<% linha = "flex w-full cursor-pointer items-center gap-2 px-4 py-2.5 text-left text-sm text-slate-700 hover:bg-marca-50 hover:text-slate-900" %>
+<div class="border-b border-marca-200 px-4 py-3">
+  <p class="truncate font-semibold text-slate-900"><%= current_user.nome %></p>
+  <p class="flex items-center gap-2 text-sm text-slate-600">
+    @<%= current_user.username %>
+    <% if current_user.admin? %>
+      <span class="text-xs font-semibold uppercase tracking-wide text-marca-700">admin</span>
+    <% end %>
+  </p>
+</div>
+<ul class="py-1">
+  <li>
+    <%= link_to url_for(request.query_parameters.merge(painel: "senha")), class: linha do %>
+      <%= icone :chave, classe: "h-4 w-4 text-marca-600" %>Trocar senha
+    <% end %>
+  </li>
+  <li>
+    <%= button_to destroy_user_session_path, method: :delete, form_class: "contents", class: linha do %>
+      <%= icone :sair, classe: "h-4 w-4 text-marca-600" %>Sair
+    <% end %>
+  </li>
+</ul>

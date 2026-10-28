@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-BR" data-tema="<%= cookies[:tema] == "escuro" ? "escuro" : "claro" %>">
   <head>
     <title><%= content_for(:title) || "Prisma" %></title>
     <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -24,21 +24,31 @@
 
   <body class="min-h-screen bg-marca-100 font-sans text-slate-800 antialiased">
     <%# As telas do Devise (login) têm página inteira própria %>
+    <% painel_do_topo if user_signed_in? && !content_for?(:modal) %>
     <% if devise_controller? %>
       <%= yield %>
     <% else %>
-      <div class="flex min-h-screen">
+      <%# Com um modal aberto (ModalHelper#modal), o resto da página fica inerte:
+          sem clique, sem foco e fora do leitor de tela %>
+      <div class="flex min-h-screen" <%= "inert" if content_for?(:modal) %>>
         <%= render "shared/lateral" %>
         <div class="flex-1 min-w-0">
           <%= render "shared/topo" %>
-          <main class="px-4 sm:px-8 lg:px-16 py-6 space-y-6">
+          <main class="px-4 sm:px-8 lg:px-16 py-6 space-y-6 print:p-0">
             <%= yield %>
           </main>
-          <footer class="px-4 pb-8 text-xs text-slate-600 sm:px-8 lg:px-16">
+          <footer class="print:hidden px-4 pb-8 text-xs text-slate-600 sm:px-8 lg:px-16">
             <%= link_to "Privacidade e proteção de dados", privacidade_path, class: "hover:text-marca-700 hover:underline" %>
           </footer>
         </div>
       </div>
+      <%# Só na impressão: quem imprimiu e quando (dado clínico impresso sai do sistema) %>
+      <% if user_signed_in? %>
+        <p class="hidden px-4 pt-4 text-xs text-slate-600 print:block">
+          Prisma · impresso por @<%= current_user.username %> em <%= data_e_hora(Time.current) %> · documento com dado sensível: guarde e descarte com segurança (LGPD).
+        </p>
+      <% end %>
+      <%= yield :modal %>
     <% end %>
 
     <%= render "shared/avisos" %>

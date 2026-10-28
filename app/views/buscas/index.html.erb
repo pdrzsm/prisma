@@ -1,0 +1,57 @@
+<% content_for :title, "Buscar · Prisma" %>
+<% trilha ["Buscar"] %>
+<h1 class="sr-only">Buscar notificação</h1>
+
+<%# Busca global: qualquer formulário e setor que a pessoa consulta (o campo
+    fica no header, shared/_topo). Pelo prontuário (SAH ou AGHUSE) ou pelas
+    iniciais, como a busca de dentro de um formulário. %>
+<%= form_with url: buscas_path, method: :get, html: { role: "search" }, class: "flex flex-wrap gap-3" do |busca| %>
+  <%= busca.search_field :termo, value: @termo, autocomplete: "off", autofocus: true,
+                         placeholder: "Prontuário (SAH ou AGHUSE) ou iniciais",
+                         class: "#{ApplicationHelper::CAMPO} h-11 max-w-sm" %>
+  <%= busca.button type: :submit, name: nil, class: "#{ApplicationHelper::BOTAO_PRIMARIO} h-11 gap-2" do %><%= icone :busca %>Buscar<% end %>
+<% end %>
+
+<% if @termo.blank? %>
+  <p class="text-sm text-slate-600">Digite um prontuário ou as iniciais pra encontrar uma notificação, em qualquer formulário.</p>
+<% elsif @avaliacoes.empty? %>
+  <div class="border border-marca-200 bg-white p-8 text-center text-sm text-slate-600">
+    Nenhuma notificação encontrada para “<%= @termo %>”, nos formulários e setores que você consulta.
+  </div>
+<% else %>
+  <div class="overflow-x-auto border border-marca-200 bg-white shadow-sm">
+    <table class="min-w-full divide-y divide-marca-200 text-sm">
+      <thead class="bg-marca-50 text-left text-xs font-semibold uppercase tracking-wider text-slate-600">
+        <tr>
+          <th scope="col" class="px-4 py-3">Iniciais</th>
+          <th scope="col" class="px-4 py-3">Prontuário SAH</th>
+          <th scope="col" class="px-4 py-3">Prontuário AGHUSE</th>
+          <th scope="col" class="px-4 py-3">Formulário</th>
+          <th scope="col" class="px-4 py-3">Setor</th>
+          <th scope="col" class="px-4 py-3">Situação</th>
+          <th scope="col" class="px-4 py-3">Atualizada em</th>
+          <th scope="col" class="px-4 py-3"><span class="sr-only">Ações</span></th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100">
+        <% @avaliacoes.each do |avaliacao| %>
+          <tr class="hover:bg-marca-50/60">
+            <td class="px-4 py-3 font-semibold text-slate-900"><%= avaliacao.paciente.iniciais %></td>
+            <td class="px-4 py-3"><%= avaliacao.paciente.prontuario_sah || "—" %></td>
+            <td class="px-4 py-3"><%= avaliacao.paciente.prontuario_aghuse || "—" %></td>
+            <td class="px-4 py-3 whitespace-nowrap"><%= Formulario.publicado!(avaliacao.formulario).titulo %></td>
+            <td class="px-4 py-3 whitespace-nowrap"><%= avaliacao.setor.nome_completo %></td>
+            <td class="px-4 py-3"><%= selo_da_situacao(avaliacao) %></td>
+            <td class="px-4 py-3 whitespace-nowrap text-slate-600"><%= data_e_hora(avaliacao.updated_at) %></td>
+            <td class="px-4 py-3 whitespace-nowrap text-right">
+              <%= link_to "Ver", formulario_avaliacao_clinica_path(avaliacao.formulario, avaliacao), class: "font-semibold text-marca-700 hover:text-marca-900 hover:underline" %>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+  <% if @avaliacoes.size == BuscasController::POR_PAGINA %>
+    <p class="text-xs text-slate-600">Mostrando só as <%= BuscasController::POR_PAGINA %> notificações mais recentes: refine a busca se não for a que você procura.</p>
+  <% end %>
+<% end %>

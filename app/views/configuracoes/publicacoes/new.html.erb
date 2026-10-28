@@ -1,0 +1,125 @@
+<% content_for :title, "Publicar · #{@definicao.titulo} · Gerador de formulários · Prisma" %>
+<% trilha ["Configurações", configuracoes_instituicoes_path], ["Gerador de formulários", configuracoes_formularios_path],
+          [@formulario.titulo, configuracoes_formulario_path(@formulario)],
+          ["Rascunho da versão #{@rascunho.numero}", configuracoes_formulario_rascunho_path(@formulario)], ["Revisar e publicar"] %>
+<% cartao = "rounded-xl border border-marca-200 bg-white p-5 shadow-sm sm:p-6" %>
+<% lista = "mt-2 list-disc space-y-1 pl-5 text-sm text-slate-700" %>
+
+<div>
+  <h1 class="text-2xl font-bold text-slate-900">Publicar a versão <%= @rascunho.numero %> de “<%= @definicao.titulo %>”</h1>
+  <p class="max-w-3xl text-sm text-slate-600">
+    Depois de publicada, a versão nunca mais muda. As notificações novas passam a usá-la; as já registradas continuam
+    com as perguntas e os códigos da versão delas.
+  </p>
+</div>
+
+<% if @impedimentos.any? %>
+  <%= render "configuracoes/erros", erros: @impedimentos, titulo: "Antes de publicar, resolva no rascunho" %>
+  <%= link_to "Voltar ao rascunho", configuracoes_formulario_rascunho_path(@formulario), class: ApplicationHelper::BOTAO_PRIMARIO %>
+<% else %>
+  <section class="<%= cartao %>" aria-labelledby="titulo-resumo">
+    <h2 id="titulo-resumo" class="text-lg font-bold text-slate-900">Resumo</h2>
+    <p class="mt-2 text-sm text-slate-700">
+      <%= pluralize(@definicao.secoes.size, "seção", plural: "seções") %>, <%= pluralize(@definicao.perguntas.size, "pergunta", plural: "perguntas") %>,
+      além da identificação do paciente (prontuários e iniciais), que todo formulário pede.
+    </p>
+    <%= render "avaliacoes_clinicas/finalidade", finalidade: @definicao.finalidade, base_legal: @definicao.base_legal %>
+    <% setores = @formulario.habilitacoes.includes(setor: :instituicao).map(&:setor).sort_by(&:nome_completo) %>
+    <% if setores.any? %>
+      <p class="mt-3 text-sm text-slate-700">Vale nos setores:</p>
+      <ul class="<%= lista %>">
+        <% setores.each do |setor| %>
+          <li><%= setor.nome_completo %></li>
+        <% end %>
+      </ul>
+    <% else %>
+      <p class="mt-3 text-sm font-medium text-amber-800">
+        Não está em nenhum setor: publicado, ninguém vai poder usá-lo até você marcar um setor na
+        <%= link_to "tela do formulário", configuracoes_formulario_path(@formulario, anchor: "setores"), class: "font-semibold underline" %>.
+      </p>
+    <% end %>
+  </section>
+
+  <section class="<%= cartao %>" aria-labelledby="titulo-mudancas">
+    <h2 id="titulo-mudancas" class="text-lg font-bold text-slate-900">
+      <%= @comparacao.primeira_versao? ? "Primeira versão" : "O que muda em relação à versão #{@formulario.versao_publicada.numero}" %>
+    </h2>
+    <% if @comparacao.primeira_versao? %>
+      <p class="mt-2 text-sm text-slate-700">É a primeira publicação: todas as perguntas são novas.</p>
+    <% elsif @comparacao.sem_mudancas? %>
+      <p class="mt-2 text-sm text-slate-700">Nada muda: o rascunho é igual à versão publicada.</p>
+    <% else %>
+      <% if @comparacao.cabecalho.any? %>
+        <p class="mt-3 text-sm font-semibold text-slate-900">Cabeçalho</p>
+        <ul class="<%= lista %>"><li>Mudou: <%= @comparacao.cabecalho.to_sentence %>.</li></ul>
+      <% end %>
+      <% if @comparacao.novas.any? %>
+        <p class="mt-3 text-sm font-semibold text-slate-900">Perguntas novas</p>
+        <ul class="<%= lista %>">
+          <% @comparacao.novas.each do |pergunta| %><li><%= pergunta.numero %>. <%= pergunta.texto %></li><% end %>
+        </ul>
+      <% end %>
+      <% if @comparacao.removidas.any? %>
+        <p class="mt-3 text-sm font-semibold text-slate-900">Perguntas removidas</p>
+        <ul class="<%= lista %>">
+          <% @comparacao.removidas.each do |pergunta| %><li><%= pergunta.numero %>. <%= pergunta.texto %></li><% end %>
+        </ul>
+        <p class="mt-1 text-xs text-slate-600">As respostas já registradas a elas continuam guardadas, nas notificações das versões anteriores.</p>
+      <% end %>
+      <% if @comparacao.alteradas.any? %>
+        <p class="mt-3 text-sm font-semibold text-slate-900">Perguntas alteradas</p>
+        <ul class="<%= lista %>">
+          <% @comparacao.alteradas.each do |alteracao| %>
+            <li><%= alteracao.pergunta.numero %>. <%= alteracao.pergunta.texto %>: <%= alteracao.mudancas.to_sentence %></li>
+          <% end %>
+        </ul>
+      <% end %>
+      <% if @comparacao.secoes_mudaram? || @comparacao.ordem_mudou? %>
+        <p class="mt-3 text-sm text-slate-700">Também mudaram as seções ou a ordem das perguntas.</p>
+      <% end %>
+    <% end %>
+  </section>
+
+  <section class="<%= cartao %>" aria-labelledby="titulo-minimizacao">
+    <h2 id="titulo-minimizacao" class="text-lg font-bold text-slate-900">Minimização dos dados (LGPD, art. 6º, III)</h2>
+    <% if @avisos.any? %>
+      <p class="mt-2 max-w-3xl text-sm text-slate-700">
+        Estas perguntas parecem pedir um dado que identifica a pessoa. O Prisma identifica o paciente só por prontuário e
+        iniciais: confirme com o encarregado (DPO) que cada uma é necessária para a finalidade.
+      </p>
+      <ul class="<%= lista %>">
+        <% @avisos.each do |aviso| %>
+          <li><%= aviso.pergunta.numero %>. <%= aviso.pergunta.texto %> (<%= aviso.motivo %>)</li>
+        <% end %>
+      </ul>
+    <% else %>
+      <p class="mt-2 max-w-3xl text-sm text-slate-700">Nenhuma pergunta parece pedir um dado que identifica a pessoa diretamente.</p>
+    <% end %>
+    <% if @texto_livre %>
+      <p class="mt-2 max-w-3xl text-sm text-slate-700">
+        O formulário tem texto livre: oriente a equipe a não escrever ali nome, CPF, endereço ou outro dado que identifique o paciente.
+      </p>
+    <% end %>
+  </section>
+
+  <%= form_with url: configuracoes_formulario_rascunho_publicacao_path(@formulario), scope: :publicacao, class: "space-y-6" do |form| %>
+    <%= hidden_field_tag :lock_version, @rascunho.lock_version, id: nil %>
+    <fieldset class="<%= cartao %> space-y-3">
+      <legend class="sr-only">Confirmações</legend>
+      <label for="publicacao_confirma_dpo" class="flex items-start gap-2 text-sm text-slate-800">
+        <%= form.check_box :confirma_dpo, { class: "mt-0.5 h-4 w-4 accent-marca-600" }, "1", "0" %>
+        <span>A finalidade e a base legal foram validadas com o encarregado de dados (DPO) da instituição.</span>
+      </label>
+      <label for="publicacao_confirma_minimizacao" class="flex items-start gap-2 text-sm text-slate-800">
+        <%= form.check_box :confirma_minimizacao, { class: "mt-0.5 h-4 w-4 accent-marca-600" }, "1", "0" %>
+        <span>Cada pergunta é necessária para essa finalidade, e a equipe que usa o formulário conferiu as perguntas, os códigos e as obrigatórias.</span>
+      </label>
+    </fieldset>
+
+    <div class="flex flex-wrap gap-3">
+      <%= form.submit "Publicar a versão #{@rascunho.numero}", class: ApplicationHelper::BOTAO_PRIMARIO %>
+      <%= link_to "Ver a prévia", previa_configuracoes_formulario_rascunho_path(@formulario), class: ApplicationHelper::BOTAO_SECUNDARIO %>
+      <%= link_to "Voltar ao rascunho", configuracoes_formulario_rascunho_path(@formulario), class: ApplicationHelper::BOTAO_SECUNDARIO %>
+    </div>
+  <% end %>
+<% end %>

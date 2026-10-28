@@ -1,0 +1,24 @@
+<%# locals: (form:) %>
+<%# Campos da troca da própria senha, na janela do cabeçalho (?painel=senha) e
+    na tela de troca obrigatória (senhas/edit). No fim, um código gerado agora
+    (CodigoDeConfirmacao), que a pessoa redigita para confirmar; a cada vez que
+    os campos aparecem, o código é outro. %>
+<% codigo = CodigoDeConfirmacao.new(session, :troca_de_senha).gerar %>
+<% erros_do_codigo = form.object.errors[:codigo] %>
+<%= render "shared/campo", form:, atributo: :current_password, tipo: :senha, autocomplete: "current-password",
+           rotulo: current_user.deve_trocar_senha? ? "Senha temporária" : "Senha atual" %>
+<%= render "shared/campo", form:, atributo: :password, rotulo: "Nova senha", tipo: :senha, autocomplete: "new-password",
+           ajuda: "No mínimo #{Devise.password_length.min} caracteres, diferente da atual." %>
+<%= render "shared/campo", form:, atributo: :password_confirmation, rotulo: "Repita a nova senha", tipo: :senha, autocomplete: "new-password" %>
+
+<div class="space-y-2 border border-marca-200 bg-marca-50 p-4">
+  <p class="text-sm text-slate-700">Para confirmar, digite o código abaixo.</p>
+  <p class="font-mono text-2xl font-bold tracking-[0.3em] text-slate-900 select-all" data-codigo><%= codigo %></p>
+  <%= form.label :codigo, "Código de confirmação", class: "block text-sm font-semibold text-slate-900" %>
+  <%= form.text_field :codigo, value: "", autocomplete: "off", spellcheck: false, autocapitalize: "characters",
+                      class: "#{ApplicationHelper::CAMPO} font-mono uppercase tracking-widest sm:max-w-xs",
+                      aria: { invalid: erros_do_codigo.any?, describedby: (form.field_id(:codigo, :erros) if erros_do_codigo.any?) } %>
+  <% if erros_do_codigo.any? %>
+    <p id="<%= form.field_id(:codigo, :erros) %>" class="text-sm font-medium text-rose-600"><%= erros_do_codigo.to_sentence %></p>
+  <% end %>
+</div>

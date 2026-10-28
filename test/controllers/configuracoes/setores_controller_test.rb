@@ -49,12 +49,32 @@ module Configuracoes
       end
     end
 
-    test "o admin habilita os formulários do setor" do
+    test "o setor abre num modal sobre a lista, com os formulários em interruptores" do
       sign_in users(:admin)
-      hospital = instituicoes(:hospital)
-      post configuracoes_instituicao_setores_path(hospital), params: { setor: { nome: "Enfermaria", formularios: [ "", "seguimento_tb" ] } }
+      centro = instituicoes(:centro)
+      get edit_configuracoes_instituicao_setor_path(centro, setores(:ambulatorio))
 
-      assert_equal [ "seguimento_tb" ], hospital.setores.find_by!(nome: "Enfermaria").formularios
+      assert_select "div[inert] li#instituicao_#{centro.id}"
+      assert_select "dialog.modal" do
+        assert_select "h1", "Editar setor"
+        assert_select "a[aria-label='Fechar'][href='#{configuracoes_instituicoes_path(anchor: "instituicao_#{centro.id}")}']"
+        assert_select "label[for='setor_formulario_acompanhamento'] input[type=checkbox][role=switch]" \
+                      "[name='setor[formularios][]'][value='acompanhamento'][aria-labelledby='setor_formulario_acompanhamento_titulo'][checked]"
+      end
+    end
+
+    test "o admin habilita os formulários do setor, só os da instituição dele" do
+      sign_in users(:admin)
+      centro = instituicoes(:centro)
+      post configuracoes_instituicao_setores_path(centro), params: { setor: { nome: "Enfermaria", formularios: [ "", "acompanhamento" ] } }
+      assert_equal [ "acompanhamento" ], centro.setores.find_by!(nome: "Enfermaria").formularios
+
+      # O acompanhamento é do centro: num setor do hospital, nem aparece nem entra
+      hospital = instituicoes(:hospital)
+      get new_configuracoes_instituicao_setor_path(hospital)
+      assert_select "input[value='acompanhamento']", 0
+      post configuracoes_instituicao_setores_path(hospital), params: { setor: { nome: "Enfermaria", formularios: [ "", "acompanhamento" ] } }
+      assert_empty hospital.setores.find_by!(nome: "Enfermaria").formularios
     end
 
     test "desabilitar um formulário tira as liberações dele no setor" do
@@ -65,12 +85,12 @@ module Configuracoes
       # O Laboratório tem a notificação "tres": o formulário não sai
       assert_response :unprocessable_content
       assert_includes response.body, "tem notificações neste setor e não pode ser desabilitado"
-      assert_equal [ "seguimento_tb" ], laboratorio.reload.formularios
+      assert_equal [ "acompanhamento" ], laboratorio.reload.formularios
 
       sem_notificacoes = instituicoes(:centro).setores.create!(nome: "Vazio")
-      sem_notificacoes.habilitar_formularios([ "seguimento_tb" ])
+      sem_notificacoes.habilitar_formularios([ "acompanhamento" ])
       users(:operador).liberacoes_setor.create!(setor: sem_notificacoes)
-      users(:operador).liberacoes_formulario.create!(setor: sem_notificacoes, formulario: "seguimento_tb", papel: "registra")
+      users(:operador).liberacoes_formulario.create!(setor: sem_notificacoes, formulario: "acompanhamento", papel: "registra")
 
       patch configuracoes_instituicao_setor_path(instituicoes(:centro), sem_notificacoes), params: { setor: { nome: "Vazio", formularios: [ "" ] } }
       assert_empty sem_notificacoes.reload.formularios

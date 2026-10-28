@@ -1,0 +1,146 @@
+<% content_for :title, "#{@formulario.titulo} · Gerador de formulários · Prisma" %>
+<% trilha ["Configurações", configuracoes_instituicoes_path], ["Gerador de formulários", configuracoes_formularios_path], [@formulario.titulo] %>
+<% cartao = "rounded-xl border border-marca-200 bg-white p-5 shadow-sm sm:p-6" %>
+<% rascunho = @formulario.rascunho %>
+<% publicada = @formulario.versao_publicada %>
+
+<div>
+  <h1 class="text-2xl font-bold text-slate-900"><%= @formulario.titulo %></h1>
+  <p class="text-sm text-slate-600">
+    Da instituição <strong class="font-semibold text-slate-900"><%= @formulario.instituicao.nome %></strong>.
+    Chave <span class="font-mono"><%= @formulario.chave %></span>, usada no endereço e nas liberações. Não muda.
+  </p>
+</div>
+
+<section class="<%= cartao %> space-y-4" aria-labelledby="titulo-situacao">
+  <h2 id="titulo-situacao" class="text-lg font-bold text-slate-900">Situação</h2>
+  <% if publicada %>
+    <p class="max-w-3xl text-sm text-slate-700">
+      Quem preenche usa a <strong>versão <%= publicada.numero %></strong>, publicada em <%= data_e_hora(publicada.publicada_em) %>
+      por <%= publicada.publicada_por ? "@#{publicada.publicada_por.username}" : "migração do sistema" %>.
+    </p>
+  <% else %>
+    <p class="max-w-3xl text-sm text-slate-700">Ainda não publicado: ninguém vê nem preenche este formulário.</p>
+  <% end %>
+
+  <div class="flex flex-wrap gap-3">
+    <% if rascunho %>
+      <%= link_to "Editar o rascunho da versão #{rascunho.numero}", configuracoes_formulario_rascunho_path(@formulario), class: ApplicationHelper::BOTAO_PRIMARIO %>
+    <% else %>
+      <%= button_to "Criar o rascunho da versão #{@formulario.versoes.maximum(:numero).to_i + 1}", configuracoes_formulario_rascunho_path(@formulario),
+                    method: :post, class: ApplicationHelper::BOTAO_PRIMARIO, form_class: "contents" %>
+    <% end %>
+    <% if publicada %>
+      <%= link_to "Ver a versão publicada", configuracoes_formulario_versao_path(@formulario, publicada.numero), class: ApplicationHelper::BOTAO_SECUNDARIO %>
+      <%= link_to "Ver os registros", formulario_avaliacoes_clinicas_path(@formulario), class: ApplicationHelper::BOTAO_SECUNDARIO %>
+    <% end %>
+  </div>
+</section>
+
+<%# Onde o formulário vale e o movimento em cada setor (AcompanhamentoDoFormulario).
+    Sem nenhum setor, a instituição também pode ser trocada. %>
+<%# Os selos quebram linha: no celular, não podem passar da borda do cartão %>
+<% selo = "inline-flex px-2 py-0.5 text-xs font-semibold" %>
+<%= form_with url: configuracoes_formulario_setores_path(@formulario), method: :patch, scope: :formulario, id: "setores",
+              class: "max-w-3xl space-y-3" do |form| %>
+  <% if @instituicoes %>
+    <%= render "instituicao_e_setores", instituicoes: @instituicoes, instituicao_id: @formulario.instituicao_id, setor_ids: [] %>
+    <p class="text-xs text-slate-600">Como ainda não está em nenhum setor, a instituição pode ser trocada.</p>
+  <% else %>
+    <%= hidden_field_tag "formulario[setor_ids][]", "", id: nil %>
+    <%= grupo_de_opcoes "Setores", id: "setores_do_formulario",
+          descricao: "Onde o formulário vale. Desligar um setor tira também as liberações do formulário nele; um setor com " \
+                     "notificações não sai. Parado é o setor sem registro há mais de #{AcompanhamentoDoFormulario::DIAS_PARADO} dias." do %>
+      <% @setores.each do |setor| %>
+        <% movimento = @acompanhamento.movimento[setor.id] %>
+        <% subtitulo = capture do %>
+          <% if movimento.nil? %>
+          <% elsif !@formulario.publicado? %>
+            Passa a valer quando o formulário for publicado
+          <% elsif movimento.notificacoes.zero? %>
+            Nenhum registro ainda
+          <% else %>
+            <%= pluralize(movimento.notificacoes, "notificação", plural: "notificações") %> · último registro em <%= data_e_hora(movimento.ultimo_registro) %>
+          <% end %>
+          <% if movimento&.parado %>
+            <span class="<%= selo %> mt-1 bg-amber-50 text-amber-800"><%= com_icone :alerta, "Parado há mais de #{AcompanhamentoDoFormulario::DIAS_PARADO} dias" %></span>
+          <% end %>
+          <% if setor.instituicao_id != @formulario.instituicao_id %>
+            <span class="<%= selo %> mt-1 bg-slate-100 text-slate-700">De outra instituição (anterior à regra)</span>
+          <% end %>
+        <% end %>
+        <%= linha_com_interruptor setor.nome_completo, id: dom_id(setor, :do_formulario), subtitulo: subtitulo.presence do |opcoes| %>
+          <%= check_box_tag "formulario[setor_ids][]", setor.id, @setores_habilitados.include?(setor.id), opcoes %>
+        <% end %>
+      <% end %>
+      <% if @setores.empty? %>
+        <p class="px-4 py-3 text-sm text-slate-600 sm:px-5">
+          A instituição não tem setores. Cadastre em
+          <%= link_to "Instituições e setores", configuracoes_instituicoes_path(anchor: dom_id(@formulario.instituicao)),
+                      class: "font-semibold text-marca-700 hover:underline" %>.
+        </p>
+      <% end %>
+    <% end %>
+  <% end %>
+  <%= form.submit "Salvar setores", class: ApplicationHelper::BOTAO_SECUNDARIO %>
+<% end %>
+
+<%# Histórico: quem incluiu ou tirou o formulário de cada setor (auditoria) %>
+<% historico = @acompanhamento.historico %>
+<%= grupo_de_opcoes "Histórico dos setores", id: "historico", lista: true, classe: "max-w-3xl",
+      descricao: "Quem incluiu ou tirou o formulário de cada setor, e quando, como guardado na auditoria." do %>
+  <% historico.each do |evento| %>
+    <li class="flex flex-col gap-x-4 gap-y-0.5 px-4 py-3 text-sm sm:flex-row sm:items-baseline sm:justify-between sm:px-5">
+      <span class="text-slate-800">
+        <span class="font-semibold text-slate-900"><%= evento.autor ? "@#{evento.autor.username}" : "O sistema" %></span>
+        <%= evento.acao == :incluiu ? "incluiu no setor" : "tirou do setor" %>
+        <span class="font-semibold text-slate-900"><%= evento.setor&.nome_completo || "que depois foi excluído" %></span>
+      </span>
+      <time datetime="<%= evento.quando.iso8601 %>" class="shrink-0 text-xs text-slate-600"><%= data_e_hora(evento.quando) %></time>
+    </li>
+  <% end %>
+  <% if historico.empty? %>
+    <li class="px-4 py-3 text-sm text-slate-600 sm:px-5">Nada registrado ainda.</li>
+  <% end %>
+<% end %>
+
+<section class="<%= cartao %>" aria-labelledby="titulo-versoes">
+  <h2 id="titulo-versoes" class="text-lg font-bold text-slate-900">Versões</h2>
+  <ul class="mt-3 divide-y divide-marca-100 text-sm">
+    <% @versoes.each do |versao| %>
+      <li class="flex flex-wrap items-center justify-between gap-3 py-2">
+        <span>
+          <span class="font-semibold text-slate-900">Versão <%= versao.numero %></span>
+          <% if versao.publicada? %>
+            · publicada em <%= data_e_hora(versao.publicada_em) %>
+            <% if versao.id == publicada&.id %><span class="text-emerald-700">(a que vale agora)</span><% end %>
+            · <%= pluralize(@notificacoes_por_versao.fetch(versao.id, 0), "notificação", plural: "notificações") %>
+          <% else %>
+            · rascunho em edição
+          <% end %>
+        </span>
+        <% if versao.publicada? %>
+          <%= link_to "Ver", configuracoes_formulario_versao_path(@formulario, versao.numero), class: "font-semibold text-marca-700 hover:underline",
+                             aria: { label: "Ver a versão #{versao.numero}" } %>
+        <% end %>
+      </li>
+    <% end %>
+  </ul>
+</section>
+
+<%# Só sem notificações o formulário é excluído, publicado ou não; com elas, a tela diz por quê %>
+<section class="<%= cartao %>" aria-labelledby="titulo-excluir">
+  <h2 id="titulo-excluir" class="text-lg font-bold text-slate-900">Excluir</h2>
+  <% if policy([ :configuracoes, @formulario ]).destroy? %>
+    <p class="mt-2 max-w-3xl text-sm text-slate-700">
+      Nenhuma notificação foi registrada com este formulário, então ele pode ser excluído<%= ", mesmo publicado" if publicada %>.
+      Saem as versões, a habilitação nos setores e as liberações das pessoas, e a exclusão fica na auditoria. Não dá para desfazer.
+    </p>
+    <%= link_to "Excluir formulário", excluir_configuracoes_formulario_path(@formulario), class: "#{ApplicationHelper::BOTAO_PERIGO} mt-4" %>
+  <% else %>
+    <p class="mt-2 max-w-3xl text-sm text-slate-700">
+      Este formulário tem <%= pluralize(@notificacoes_por_versao.values.sum, "notificação", plural: "notificações") %> e não pode ser
+      excluído: o registro clínico é preservado (Lei 13.787/2018), e as versões dizem para que cada dado foi coletado.
+    </p>
+  <% end %>
+</section>

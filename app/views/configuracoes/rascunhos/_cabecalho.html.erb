@@ -1,0 +1,86 @@
+<%# locals: (definicao:, valores:) %>
+<%# O cabeçalho do formulário. valores: o que foi enviado e não gravou, para
+    a tela voltar com o que a pessoa digitou. %>
+<% valores = valores.to_h.with_indifferent_access %>
+<% valor = ->(campo, atual) { valores.key?(campo) ? valores[campo] : atual } %>
+<% rotulo = "block text-sm font-semibold text-slate-900" %>
+<% ajuda = "text-xs text-slate-600" %>
+<% campo = "#{ApplicationHelper::CAMPO} sm:max-w-2xl" %>
+<% tamanhos = DefinicaoDeFormulario::TAMANHOS %>
+<%= form_with url: configuracoes_formulario_rascunho_path(@formulario), method: :patch, scope: :cabecalho, class: "mt-4 space-y-5" do |form| %>
+  <%= hidden_field_tag :lock_version, @rascunho.lock_version, id: nil %>
+
+  <div class="space-y-1">
+    <%= form.label :titulo, "Título", class: rotulo %>
+    <%= form.text_field :titulo, value: valor.(:titulo, definicao.titulo), maxlength: tamanhos[:titulo], autocomplete: "off", class: campo %>
+  </div>
+
+  <div class="space-y-1">
+    <%= form.label :descricao, "Descrição (opcional)", class: rotulo %>
+    <%= form.text_area :descricao, value: valor.(:descricao, definicao.descricao), rows: 2, maxlength: tamanhos[:descricao], class: campo,
+                                   aria: { describedby: "cabecalho_descricao_ajuda" } %>
+    <p id="cabecalho_descricao_ajuda" class="<%= ajuda %>">Quando o formulário é usado. Aparece na tela de registro.</p>
+  </div>
+
+  <div class="space-y-1">
+    <%= form.label :finalidade, "Finalidade da coleta", class: rotulo %>
+    <%= form.text_area :finalidade, value: valor.(:finalidade, definicao.finalidade), rows: 2, maxlength: tamanhos[:finalidade], class: campo,
+                                    aria: { describedby: "cabecalho_finalidade_ajuda" } %>
+    <p id="cabecalho_finalidade_ajuda" class="<%= ajuda %>">
+      Completa a frase “Dados coletados para …” (LGPD, art. 6º, I). Obrigatória para publicar e gravada em cada notificação.
+    </p>
+  </div>
+
+  <div class="space-y-1">
+    <%= form.label :base_legal, "Base legal", class: rotulo %>
+    <%= form.text_area :base_legal, value: valor.(:base_legal, definicao.base_legal), rows: 2, maxlength: tamanhos[:base_legal], class: campo,
+                                    aria: { describedby: "cabecalho_base_legal_ajuda" } %>
+    <p id="cabecalho_base_legal_ajuda" class="<%= ajuda %>">
+      Por exemplo: “cumprimento de obrigação legal (LGPD, art. 11, II, “a”)”. Defina com o encarregado de dados (DPO).
+    </p>
+  </div>
+
+  <fieldset class="space-y-2">
+    <legend class="<%= rotulo %>">Numeração das perguntas</legend>
+    <% numeracao = valor.(:numeracao, definicao.numeracao) %>
+    <% [ [ "automatica", "Automática (1, 2, 3...)" ], [ "manual", "Igual à do formulário em papel: cada pergunta tem o seu número" ] ].each do |opcao, texto| %>
+      <label for="cabecalho_numeracao_<%= opcao %>" class="flex items-start gap-2 text-sm">
+        <%= form.radio_button :numeracao, opcao, checked: numeracao == opcao, id: "cabecalho_numeracao_#{opcao}", class: "mt-0.5 accent-marca-600" %>
+        <span><%= texto %></span>
+      </label>
+    <% end %>
+  </fieldset>
+
+  <% datas = definicao.perguntas.select { |pergunta| pergunta.tipo == "data" && pergunta.condicao.nil? } %>
+  <div class="space-y-1">
+    <%= form.label :encerramento, "Pergunta de encerramento (opcional)", class: rotulo %>
+    <%= form.select :encerramento, options_for_select([ [ "Nenhuma", "" ] ] + datas.map { |pergunta| [ "#{pergunta.numero}. #{pergunta.texto}", pergunta.chave ] },
+                                                      valor.(:encerramento, definicao.campo_encerramento)),
+                    {}, class: "#{ApplicationHelper::CAMPO} sm:max-w-md", aria: { describedby: "cabecalho_encerramento_ajuda" } %>
+    <p id="cabecalho_encerramento_ajuda" class="<%= ajuda %>">
+      Uma data que “fecha” o registro (ex.: data do desfecho). Preenchida, as perguntas “para encerrar” passam a ser obrigatórias,
+      e a lista mostra o registro como encerrado. Precisa ser uma data sem condição, que não aceita data futura e não é obrigatória.
+    </p>
+  </div>
+
+  <% elegiveis = definicao.perguntas.reject { |pergunta| pergunta.tipo == "texto_longo" } %>
+  <fieldset class="space-y-2">
+    <legend class="<%= rotulo %>">Colunas da lista de registros (até <%= DefinicaoDeFormulario::MAXIMO_DE_COLUNAS %>)</legend>
+    <%= hidden_field_tag "cabecalho[lista][]", "", id: nil %>
+    <% if elegiveis.empty? %>
+      <p class="<%= ajuda %>">As perguntas aparecem aqui depois de criadas.</p>
+    <% end %>
+    <% marcadas = Array(valor.(:lista, definicao.perguntas_da_lista.map(&:chave))) %>
+    <div class="grid gap-1 sm:grid-cols-2">
+      <% elegiveis.each do |pergunta| %>
+        <label for="cabecalho_lista_<%= pergunta.chave %>" class="flex items-start gap-2 text-sm">
+          <%= check_box_tag "cabecalho[lista][]", pergunta.chave, marcadas.include?(pergunta.chave), id: "cabecalho_lista_#{pergunta.chave}",
+                            class: "mt-0.5 accent-marca-600" %>
+          <span><%= pergunta.numero %>. <%= pergunta.texto %></span>
+        </label>
+      <% end %>
+    </div>
+  </fieldset>
+
+  <%= form.submit "Salvar cabeçalho", class: ApplicationHelper::BOTAO_PRIMARIO %>
+<% end %>

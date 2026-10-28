@@ -1,7 +1,7 @@
 # Notificações: quem vê e quem registra vem das liberações (Permissoes), por
 # setor e formulário. O record é uma notificação gravada ou uma nova, montada
 # com o formulário (e o setor, ao gravar) para as telas de lista e de registro:
-#   authorize AvaliacaoClinica.new(formulario: "seguimento_tb")
+#   authorize AvaliacaoClinica.new(formulario: "avaliacao_nutricional")
 class AvaliacaoClinicaPolicy < ApplicationPolicy
   # Lista do formulário: consulta em pelo menos um setor
   def index?
@@ -23,7 +23,7 @@ class AvaliacaoClinicaPolicy < ApplicationPolicy
     permissoes.registra?(record.setor_id, record.formulario)
   end
 
-  # O seguimento é atualizado ao longo do tratamento por quem registra no setor;
+  # A notificação é atualizada ao longo do acompanhamento por quem registra no setor;
   # cada alteração fica na auditoria (PaperTrail). edit? segue update?.
   def update?
     create?

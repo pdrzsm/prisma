@@ -17,33 +17,28 @@
   <%# Fundo do painel da marca, com a borda em diagonal na mesma inclinação das
       formas do símbolo, e o símbolo em contorno animado atrás de tudo. O tom
       mais escuro da paleta deixa a luz do contorno aparecer e dá contraste
-      folgado ao texto branco (7,7:1). %>
+      folgado ao texto branco (9,9:1). %>
   <div class="hidden lg:block absolute inset-y-0 left-0 w-1/2 xl:w-[55%] overflow-hidden bg-marca-700 [clip-path:polygon(0_0,65%_0,100%_100%,0_100%)]">
     <%= render "shared/logo_contorno",
-               classe: "pointer-events-none absolute left-[48%] top-1/2 h-[86%] w-auto -translate-x-1/2 -translate-y-1/2" %>
+               classe: "pointer-events-none absolute left-[48%] top-1/2 h-[50%] w-auto -translate-x-1/2 -translate-y-1/2" %>
   </div>
 
+  <%# Texto todo em branco: o painel é marca-700 nos dois modos, e os tons
+      claros da marca (marca-100) escurecem no modo noturno (tema_escuro.css) %>
   <section class="relative hidden lg:flex flex-col justify-between p-12 text-white">
-    <%= render "shared/logo", classe: "h-12 w-auto self-start text-marca-100" %>
+    <%= render "shared/logo", classe: "h-12 w-auto self-start" %>
 
     <div class="max-w-sm">
       <%= render "shared/logo", versao: :nome, classe: "h-14 w-auto" %>
-      <p class="mt-4 text-sm uppercase tracking-widest text-marca-100">Central de Formulários Clínicos</p>
-      <p class="mt-6 text-[15px] leading-relaxed text-marca-100">
+      <p class="mt-4 text-sm uppercase tracking-widest">Central de Formulários Clínicos</p>
+      <%# Sem a lista dos formulários: eles são da instituição, e esta página é
+          aberta antes do login %>
+      <p class="mt-6 text-[15px] leading-relaxed">
         Notificações registradas, acompanhadas e encerradas em um único espaço seguro.
       </p>
-
-      <ul class="mt-10 flex flex-col gap-4">
-        <% Formulario.todos.each do |formulario| %>
-          <li>
-            <p class="text-xs font-semibold uppercase tracking-widest"><%= formulario.titulo %></p>
-            <p class="mt-1 text-sm text-marca-100"><%= formulario.descricao %></p>
-          </li>
-        <% end %>
-      </ul>
     </div>
 
-    <p class="text-xs text-marca-100">Acesso restrito a profissionais autorizados.</p>
+    <p class="text-xs">Acesso restrito a profissionais autorizados.</p>
   </section>
 
   <main class="relative flex min-h-screen items-center justify-center px-6 py-12">

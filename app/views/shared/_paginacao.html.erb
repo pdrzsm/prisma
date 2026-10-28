@@ -1,0 +1,56 @@
+<%# locals: (paginacao:, caminho:) %>
+<%# Rodapé da tabela de notificações: quantas há e em que página a pessoa está.
+    Os números de página só aparecem quando há mais de uma; no celular, no lugar
+    deles, "Página 2 de 4" entre o Anterior e o Próxima. caminho é uma função
+    (->(pagina) { ... }) que devolve a mesma lista, com os mesmos filtros, na
+    página dada. Fica fora da rolagem lateral da tabela, para não sair da tela
+    quando ela é larga (ver avaliacoes_clinicas/_planilha). %>
+<% controle = "inline-flex h-9 min-w-9 items-center justify-center gap-1.5 px-3 text-sm font-semibold" %>
+<% numero = "font-semibold text-slate-900" %>
+<div class="flex flex-col gap-3 border-t border-marca-200 bg-marca-50 px-4 py-3 text-sm text-slate-600 sm:flex-row sm:items-center sm:justify-between">
+  <p>
+    <% if !paginacao.varias? %>
+      <span class="<%= numero %>"><%= paginacao.total %></span> <%= paginacao.total == 1 ? "notificação" : "notificações" %>
+    <% elsif paginacao.primeiro == paginacao.ultimo %>
+      Mostrando <span class="<%= numero %>"><%= paginacao.primeiro %></span> de <span class="<%= numero %>"><%= paginacao.total %></span> notificações
+    <% else %>
+      Mostrando <span class="<%= numero %>"><%= paginacao.primeiro %> a <%= paginacao.ultimo %></span> de <span class="<%= numero %>"><%= paginacao.total %></span> notificações
+    <% end %>
+  </p>
+
+  <% if paginacao.varias? %>
+    <nav aria-label="Paginação">
+      <ul class="flex items-center justify-between gap-1 sm:justify-end">
+        <li>
+          <% if paginacao.anterior? %>
+            <%= link_to caminho.(paginacao.pagina - 1), rel: "prev", class: "#{controle} botao-prisma botao-prisma-secundario" do %><%= icone :seta_esquerda %>Anterior<% end %>
+          <% else %>
+            <span aria-disabled="true" class="<%= controle %> cursor-not-allowed border border-marca-200 text-slate-400"><%= icone :seta_esquerda %>Anterior</span>
+          <% end %>
+        </li>
+
+        <li class="whitespace-nowrap px-2 sm:hidden">Página <span class="<%= numero %>"><%= paginacao.pagina %></span> de <%= paginacao.paginas %></li>
+
+        <% paginacao.numeros.each do |pagina| %>
+          <li class="hidden sm:block">
+            <% if pagina == :lacuna %>
+              <span class="inline-flex h-9 min-w-9 items-center justify-center text-slate-500" aria-hidden="true">…</span>
+            <% elsif pagina == paginacao.pagina %>
+              <span aria-current="page" class="<%= controle %> border border-marca-600 bg-marca-600 text-white"><span class="sr-only">Página </span><%= pagina %></span>
+            <% else %>
+              <%= link_to pagina, caminho.(pagina), aria: { label: "Página #{pagina}" }, class: "#{controle} botao-prisma botao-prisma-secundario" %>
+            <% end %>
+          </li>
+        <% end %>
+
+        <li>
+          <% if paginacao.proxima? %>
+            <%= link_to caminho.(paginacao.pagina + 1), rel: "next", class: "#{controle} botao-prisma botao-prisma-secundario" do %>Próxima<%= icone :seta_direita %><% end %>
+          <% else %>
+            <span aria-disabled="true" class="<%= controle %> cursor-not-allowed border border-marca-200 text-slate-400">Próxima<%= icone :seta_direita %></span>
+          <% end %>
+        </li>
+      </ul>
+    </nav>
+  <% end %>
+</div>

@@ -1,0 +1,99 @@
+<%# locals: (definicao:, erros:) %>
+<%# O rascunho inteiro: o cabeçalho do formulário, as seções e as perguntas. É a
+    tela do rascunho (show) e também o fundo dos modais das perguntas (nova,
+    editar e remover), que se abrem por cima dela. erros: os da definição
+    inteira, quando a mudança não gravou (nos modais, quem mostra é o modal). %>
+<% cartao = "rounded-xl border border-marca-200 bg-white p-5 shadow-sm sm:p-6" %>
+<% acao = "font-semibold text-marca-700 hover:underline" %>
+<% secoes = definicao.secoes %>
+
+<div>
+  <h1 class="text-2xl font-bold text-slate-900">Rascunho da versão <%= @rascunho.numero %> · <%= definicao.titulo %></h1>
+  <p class="max-w-3xl text-sm text-slate-600">
+    <% if @formulario.publicado? %>
+      Quem preenche continua usando a versão <%= @formulario.versao_publicada.numero %> até você publicar este rascunho.
+    <% else %>
+      Ninguém vê este formulário até você publicar.
+    <% end %>
+    Cada mudança é conferida ao salvar; o que falta para publicar aparece na revisão.
+  </p>
+</div>
+
+<%= render "configuracoes/erros", erros: %>
+
+<div class="flex flex-wrap gap-3">
+  <%= link_to "Ver a prévia", previa_configuracoes_formulario_rascunho_path(@formulario), class: ApplicationHelper::BOTAO_SECUNDARIO %>
+  <%= link_to "Revisar e publicar", new_configuracoes_formulario_rascunho_publicacao_path(@formulario), class: ApplicationHelper::BOTAO_PRIMARIO %>
+  <% if @formulario.publicado? %>
+    <%= link_to "Descartar rascunho", descartar_configuracoes_formulario_rascunho_path(@formulario), class: ApplicationHelper::BOTAO_PERIGO %>
+  <% else %>
+    <%= link_to "Excluir formulário", excluir_configuracoes_formulario_path(@formulario), class: ApplicationHelper::BOTAO_PERIGO %>
+  <% end %>
+</div>
+
+<%# O cabeçalho é longo: fica recolhido, menos quando falta algo para publicar,
+    quando a tela volta com erro ou logo depois de salvo (para a pessoa ver o
+    que gravou). Sem JavaScript: <details> %>
+<% aberto = @cabecalho.present? || flash[:cabecalho_aberto] || definicao.finalidade.blank? || definicao.base_legal.blank? %>
+<%= tag.details id: "cabecalho", open: aberto, class: "#{cartao} group" do %>
+  <summary class="flex cursor-pointer list-none items-center justify-between gap-3 [&::-webkit-details-marker]:hidden">
+    <span>
+      <span class="block text-lg font-bold text-slate-900">Cabeçalho</span>
+      <span class="block text-sm text-slate-600">Título, descrição, finalidade, base legal, numeração, encerramento e colunas da lista</span>
+    </span>
+    <span class="shrink-0 text-sm font-semibold text-marca-700"><span class="group-open:hidden">Abrir</span><span class="hidden group-open:inline">Fechar</span></span>
+  </summary>
+  <%= render "configuracoes/rascunhos/cabecalho", definicao:, valores: @cabecalho %>
+<% end %>
+
+<% secoes.each_with_index do |secao, indice| %>
+  <section id="<%= secao.id %>" class="<%= cartao %> space-y-4" aria-labelledby="titulo-<%= secao.id %>">
+    <div class="flex flex-wrap items-start justify-between gap-3">
+      <div class="min-w-0">
+        <h2 id="titulo-<%= secao.id %>" class="text-lg font-bold text-slate-900"><%= secao.titulo %></h2>
+        <% if secao.descricao %>
+          <p class="max-w-3xl whitespace-pre-line text-sm text-slate-600"><%= secao.descricao %></p>
+        <% end %>
+      </div>
+      <div class="flex flex-wrap items-center gap-3 text-sm">
+        <%# Nova e editar seção abrem num modal por cima do rascunho; a âncora deixa o lugar dela à vista atrás dele %>
+        <%= link_to "Editar seção", edit_configuracoes_formulario_rascunho_secao_path(@formulario, secao.id, anchor: secao.id), class: acao,
+                                    aria: { label: "Editar a seção #{secao.titulo}" } %>
+        <% if indice.positive? %>
+          <%= render "configuracoes/rascunhos/mover", caminho: mover_configuracoes_formulario_rascunho_secao_path(@formulario, secao.id),
+                     direcao: "acima", nome: "a seção #{secao.titulo}" %>
+        <% end %>
+        <% if indice < secoes.size - 1 %>
+          <%= render "configuracoes/rascunhos/mover", caminho: mover_configuracoes_formulario_rascunho_secao_path(@formulario, secao.id),
+                     direcao: "abaixo", nome: "a seção #{secao.titulo}" %>
+        <% end %>
+      </div>
+    </div>
+
+    <% raizes = definicao.raizes(secao) %>
+    <% if raizes.empty? %>
+      <p class="text-sm text-slate-600">Nenhuma pergunta nesta seção ainda.</p>
+    <% else %>
+      <ol class="space-y-3">
+        <% raizes.each_with_index do |pergunta, posicao| %>
+          <%= render "configuracoes/rascunhos/pergunta", definicao:, pergunta:,
+                     pode_subir: posicao.positive? || indice.positive?, pode_descer: posicao < raizes.size - 1 || indice < secoes.size - 1 %>
+        <% end %>
+      </ol>
+    <% end %>
+
+    <%# A nova pergunta abre num modal por cima do rascunho; a âncora deixa a seção à vista atrás dele %>
+    <%= link_to "Nova pergunta nesta seção", new_configuracoes_formulario_rascunho_pergunta_path(@formulario, secao: secao.id, anchor: secao.id),
+                class: ApplicationHelper::BOTAO_SECUNDARIO, aria: { label: "Nova pergunta na seção #{secao.titulo}" } %>
+  </section>
+<% end %>
+
+<% if secoes.empty? %>
+  <div class="rounded-xl border border-marca-200 bg-white p-8 text-center text-sm text-slate-600">
+    O formulário ainda não tem seções. Crie a primeira para começar a acrescentar perguntas.
+  </div>
+<% end %>
+<% if secoes.size < DefinicaoDeFormulario::MAXIMO_DE_SECOES %>
+  <%= link_to com_icone(:mais, "Nova seção"), new_configuracoes_formulario_rascunho_secao_path(@formulario, anchor: secoes.last&.id),
+              class: ApplicationHelper::BOTAO_PRIMARIO %>
+<% end %>

@@ -1,0 +1,13 @@
+# Notas de atualização mostradas no painel "Novidades" do topo: a mais recente
+# primeiro. Cada nota tem data, título e a lista do que mudou, em linguagem de
+# quem usa o sistema.
+- data: 2026-10-20
+  titulo: Formulários, relatórios e painéis laterais
+  itens:
+    - Formulários agora escolhe a unidade e o formulário em menus suspensos e mostra os registros logo abaixo.
+    - Nova página de Relatórios, com indicadores por formulário, unidade e período.
+    - Botão Imprimir na notificação, com a identificação de quem imprimiu.
+    - Coluna Atualizada por nas listas de registros.
+    - Filtros, Configurações e Preferências passam a abrir em painéis laterais.
+    - Botões arredondados, ícones nos menus e nos selos e botão Voltar no topo.
+    - Nova paleta de cores e modo noturno.

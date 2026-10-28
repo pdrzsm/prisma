@@ -3,28 +3,31 @@
  * (app/views/shared/_logo_contorno.html.erb, que explica as duas etapas).
  * O logo fica parado no lugar: só o traço e a luz se mexem.
  *
- * Os traços estão em unidades do viewBox do símbolo (862 de altura): no
- * tamanho do painel, 1 unidade dá cerca de 0,75 px.
+ * Os traços estão em unidades do viewBox do símbolo (188,45 de altura, desde
+ * o redesenho de 2026-10-26): no tamanho do painel, 1 unidade dá cerca de
+ * 3,4 px — por isso os stroke-width aqui são bem menores que em CSS comum.
  */
 .contorno {
   overflow: visible; /* o brilho passa um pouco das bordas do viewBox */
   opacity: 0.5;      /* discreto: fica atrás do texto do painel */
 }
 
-/* Por faceta: a ordem (--n) e quanto dura uma volta da luz (--ritmo). Ritmos
-   espalhados à mão para duas facetas vizinhas nunca andarem juntas. Uma
-   faceta nova no LogoHelper precisa de uma linha aqui. */
-.contorno-faceta-0 { --n: 0; --ritmo: 5s; }
-.contorno-faceta-1 { --n: 1; --ritmo: 7.3s; }
-.contorno-faceta-2 { --n: 2; --ritmo: 6.1s; }
-.contorno-faceta-3 { --n: 3; --ritmo: 8.6s; }
-.contorno-faceta-4 { --n: 4; --ritmo: 5.6s; }
-.contorno-faceta-5 { --n: 5; --ritmo: 7.9s; }
+/* Por faceta: a ordem (--n), quanto dura uma volta da luz (--ritmo) e a cor
+   (--cor, a mesma de LogoHelper::CORES_DO_ESPECTRO — o prisma abrindo a luz
+   branca em cores). Ritmos espalhados à mão para duas facetas vizinhas nunca
+   andarem juntas. Uma faceta nova no LogoHelper precisa de uma linha aqui. */
+.contorno-faceta-0 { --n: 0; --ritmo: 5s; --cor: #ef4444; }
+.contorno-faceta-1 { --n: 1; --ritmo: 7.3s; --cor: #f97316; }
+.contorno-faceta-2 { --n: 2; --ritmo: 6.1s; --cor: #f59e0b; }
+.contorno-faceta-3 { --n: 3; --ritmo: 8.6s; --cor: #22c55e; }
+.contorno-faceta-4 { --n: 4; --ritmo: 5.6s; --cor: #0ea5e9; }
+.contorno-faceta-5 { --n: 5; --ritmo: 7.9s; --cor: #6366f1; }
+.contorno-faceta-6 { --n: 6; --ritmo: 6.7s; --cor: #a855f7; }
 
 /* 1. O contorno se desenhando: cada faceta começa 250 ms depois da anterior. */
 .contorno-traco {
   stroke: rgb(255 255 255 / 0.3);
-  stroke-width: 1.5;
+  stroke-width: 0.33;
   stroke-linejoin: round;
   stroke-dasharray: 100;
   stroke-dashoffset: 100;
@@ -49,13 +52,13 @@
     contorno-corre var(--ritmo) linear calc(var(--n) * -1.3s) infinite;
 }
 .contorno-brilho {
-  stroke: #d3daeb; /* marca-200 */
-  stroke-width: 10;
-  --opacidade: 0.3;
+  stroke: var(--cor);
+  stroke-width: 2.19;
+  --opacidade: 0.5;
 }
 .contorno-nucleo {
   stroke: #fff;
-  stroke-width: 3;
+  stroke-width: 0.66;
   --opacidade: 1;
 }
 @keyframes contorno-aparece {

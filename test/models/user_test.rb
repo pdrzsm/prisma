@@ -92,10 +92,10 @@ class UserTest < ActiveSupport::TestCase
     assert_not_includes user.ciphertext_for(:cpf), user.cpf
   end
 
-  test "senha precisa de pelo menos 12 caracteres" do
+  test "senha precisa de pelo menos 8 caracteres" do
     user = usuario_novo
 
-    user.password = user.password_confirmation = "curta-123"
+    user.password = user.password_confirmation = "curta12"
     assert_not user.valid?
     assert user.errors.include?(:password)
 

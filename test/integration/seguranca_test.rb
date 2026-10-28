@@ -1,7 +1,7 @@
 require "test_helper"
 
 class SegurancaTest < ActionDispatch::IntegrationTest
-  FORMULARIO = "seguimento_tb".freeze
+  FORMULARIO = "acompanhamento".freeze
   CABECALHOS = {
     "Cache-Control" => "no-store",
     "X-Frame-Options" => "SAMEORIGIN",
@@ -12,7 +12,7 @@ class SegurancaTest < ActionDispatch::IntegrationTest
   test "toda rota do sistema exige login, menos o health check" do
     avaliacao = avaliacoes_clinicas(:one)
     paginas = [
-      root_path, formularios_path,
+      root_path,
       formulario_avaliacoes_clinicas_path(FORMULARIO), new_formulario_avaliacao_clinica_path(FORMULARIO),
       formulario_avaliacao_clinica_path(FORMULARIO, avaliacao), edit_formulario_avaliacao_clinica_path(FORMULARIO, avaliacao),
       edit_paciente_identificacao_path(avaliacao.paciente), privacidade_path
@@ -39,7 +39,7 @@ class SegurancaTest < ActionDispatch::IntegrationTest
 
     sign_in users(:operador)
     avaliacao = avaliacoes_clinicas(:one)
-    [ root_path, formularios_path, formulario_avaliacoes_clinicas_path(FORMULARIO),
+    [ root_path, formulario_avaliacoes_clinicas_path(FORMULARIO),
       new_formulario_avaliacao_clinica_path(FORMULARIO), formulario_avaliacao_clinica_path(FORMULARIO, avaliacao),
       edit_formulario_avaliacao_clinica_path(FORMULARIO, avaliacao), edit_paciente_identificacao_path(avaliacao.paciente),
       privacidade_path ].each do |pagina|
@@ -55,8 +55,8 @@ class SegurancaTest < ActionDispatch::IntegrationTest
 
     post formulario_avaliacoes_clinicas_path(FORMULARIO), params: {
       paciente: { prontuario_sah: "<b>SAH</b>", prontuario_aghuse: "", iniciais: "ABC" },
-      avaliacao_clinica: { setor_id: setores(:ambulatorio).id, dados_formulario: respostas_de_abertura("municipio_residencia" => ataque[0, 100], "numero_sinan" => "<i>1</i>",
-                                                                   "motivo_mudanca_esquema" => ataque) }
+      avaliacao_clinica: { versao_formulario_id: versoes_formulario(:acompanhamento_v1).id, setor_id: setores(:ambulatorio).id, dados_formulario: respostas_de_abertura("municipio_residencia" => ataque[0, 100], "numero_registro" => "<i>1</i>",
+                                                                   "motivo_mudanca_tratamento" => ataque) }
     }
     avaliacao = AvaliacaoClinica.last
     assert_redirected_to formulario_avaliacao_clinica_path(FORMULARIO, avaliacao)
@@ -68,7 +68,7 @@ class SegurancaTest < ActionDispatch::IntegrationTest
         assert_no_match trecho, response.body, pagina
       end
     end
-    # Na lista, o número SINAN aparece escapado
+    # Na lista, o número do registro aparece escapado
     assert_includes response.body, "&lt;i&gt;1&lt;/i&gt;"
   end
 
@@ -78,12 +78,12 @@ class SegurancaTest < ActionDispatch::IntegrationTest
 
     post formulario_avaliacoes_clinicas_path(FORMULARIO), params: {
       paciente: { prontuario_sah: "SAH-NOVO", prontuario_aghuse: "", iniciais: "ABC", id: outro_paciente.id },
-      avaliacao_clinica: { setor_id: setores(:ambulatorio).id, user_id: users(:admin).id, paciente_id: outro_paciente.id, formulario: "outro", lock_version: 99,
+      avaliacao_clinica: { versao_formulario_id: versoes_formulario(:acompanhamento_v1).id, setor_id: setores(:ambulatorio).id, user_id: users(:admin).id, paciente_id: outro_paciente.id, formulario: "outro", lock_version: 99,
                            created_at: 1.year.ago, dados_formulario: respostas_de_abertura }
     }
     avaliacao = AvaliacaoClinica.last
     assert_equal users(:operador), avaliacao.user
-    assert_equal "seguimento_tb", avaliacao.formulario
+    assert_equal "acompanhamento", avaliacao.formulario
     assert_not_equal outro_paciente, avaliacao.paciente
     assert_equal 0, avaliacao.lock_version
     assert avaliacao.created_at > 1.minute.ago
@@ -95,7 +95,7 @@ class SegurancaTest < ActionDispatch::IntegrationTest
     avaliacao.reload
     assert_equal users(:operador), avaliacao.user
     assert_not_equal outro_paciente, avaliacao.paciente
-    assert_equal "seguimento_tb", avaliacao.formulario
+    assert_equal "acompanhamento", avaliacao.formulario
   end
 
   test "estrutura fora do formulário é descartada antes de chegar ao model" do
@@ -104,7 +104,7 @@ class SegurancaTest < ActionDispatch::IntegrationTest
     assert_no_difference "AvaliacaoClinica.count" do
       post formulario_avaliacoes_clinicas_path(FORMULARIO), params: {
         paciente: { prontuario_sah: "SAH-NOVO", prontuario_aghuse: "", iniciais: "ABC" },
-        avaliacao_clinica: { setor_id: setores(:ambulatorio).id, dados_formulario: respostas_de_abertura("gestante" => { "x" => "1" }, "campo_inventado" => "1") }
+        avaliacao_clinica: { versao_formulario_id: versoes_formulario(:acompanhamento_v1).id, setor_id: setores(:ambulatorio).id, dados_formulario: respostas_de_abertura("gestante" => { "x" => "1" }, "campo_inventado" => "1") }
       }
     end
     assert_response :unprocessable_content
@@ -115,7 +115,8 @@ class SegurancaTest < ActionDispatch::IntegrationTest
   test "registro de outro formulário não abre pela URL deste" do
     sign_in users(:admin)
     avaliacao = avaliacoes_clinicas(:one)
-    avaliacao.update_column(:formulario, "outro_formulario")
+    outro = publicar_formulario("outro_formulario")
+    AvaliacaoClinica.where(id: avaliacao.id).update_all(formulario: outro.chave, versao_formulario_id: outro.versao_publicada_id)
 
     get formulario_avaliacao_clinica_path(FORMULARIO, avaliacao)
     assert_response :not_found
@@ -135,7 +136,7 @@ class SegurancaTest < ActionDispatch::IntegrationTest
     assert_no_difference "AvaliacaoClinica.count" do
       post formulario_avaliacoes_clinicas_path(FORMULARIO), params: {
         paciente: { prontuario_sah: "SAH-NOVO", prontuario_aghuse: "", iniciais: "ABC" },
-        avaliacao_clinica: { setor_id: setores(:ambulatorio).id, dados_formulario: respostas_de_abertura }
+        avaliacao_clinica: { versao_formulario_id: versoes_formulario(:acompanhamento_v1).id, setor_id: setores(:ambulatorio).id, dados_formulario: respostas_de_abertura }
       }
     end
     assert_response :unprocessable_content

@@ -3,68 +3,116 @@
 <h1 class="sr-only">Visão geral</h1>
 <% cartao = "rounded-xl border border-marca-200 bg-white p-5 shadow-sm" %>
 <% titulo_da_secao = "mb-3 text-xs font-semibold uppercase tracking-widest text-slate-600" %>
+<% titulo_do_cartao = "flex items-center gap-2 font-semibold text-slate-900" %>
+<% marcador = capture do %><span class="h-2 w-2 shrink-0 bg-marca-500" aria-hidden="true"></span><% end %>
 
-<section class="<%= cartao %> sm:p-6">
-  <h2 class="text-lg font-bold text-slate-900">O que é o Prisma</h2>
-  <p class="mt-2 max-w-3xl text-sm text-slate-700">
-    A central de formulários clínicos do serviço. Cada notificação é registrada, acompanhada ao longo
-    do tratamento e encerrada aqui, com as mesmas perguntas e os mesmos códigos do formulário em papel.
-    Os formulários disponíveis ficam em <%= link_to "Formulários", formularios_path, class: "font-semibold text-marca-700 hover:underline" %>.
-  </p>
-  <div class="mt-4 rounded-lg bg-marca-50 px-3 py-2 text-sm text-slate-700">
+<%# Abertura: o que é o Prisma e, ao lado, o que esta pessoa pode fazer nele %>
+<section aria-labelledby="titulo-prisma" class="<%= cartao %> grid gap-6 sm:p-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:gap-8">
+  <div class="flex flex-col items-start">
+    <h2 id="titulo-prisma" class="text-lg font-bold text-slate-900">O que é o Prisma</h2>
+    <p class="mt-2 max-w-2xl text-sm text-slate-700">
+      O Prisma registra notificações clínicas em formulários que a administração monta e publica. Cada
+      notificação pertence a um paciente e a um setor: é registrada uma vez, atualizada a cada retorno
+      e, nos formulários que têm data de encerramento, encerrada no fim do acompanhamento.
+    </p>
+    <%# Um atalho para cada formulário que a pessoa consulta, como no menu %>
+    <% if current_user.permissoes.formularios_consultados.any? %>
+      <div class="mt-5 flex flex-wrap gap-3">
+        <% current_user.permissoes.formularios_consultados.each do |formulario| %>
+          <%= link_to formulario.titulo, formulario_avaliacoes_clinicas_path(formulario), class: ApplicationHelper::BOTAO_PRIMARIO %>
+        <% end %>
+      </div>
+    <% end %>
+  </div>
+
+  <div class="rounded-lg bg-marca-50 p-4 text-sm text-slate-700">
+    <h3 class="text-xs font-semibold uppercase tracking-widest text-slate-600">Seu acesso</h3>
     <% if current_user.admin? %>
-      <p>Você entrou com a conta <span class="font-semibold uppercase tracking-wide text-marca-700">admin</span>: administra o sistema e vê e registra tudo.</p>
+      <p class="mt-2">
+        Você entrou como <span class="font-semibold uppercase tracking-wide text-marca-700">admin</span>.
+        Consulta as notificações de todos os setores, registra onde o formulário está habilitado e administra
+        o sistema em “Configurações”.
+      </p>
     <% elsif @acessos.empty? %>
-      <p>Você ainda não tem nenhum acesso liberado. Fale com a administração do sistema.</p>
+      <p class="mt-2">Você ainda não tem nenhum acesso liberado. Peça ao admin a liberação da instituição, do setor e do formulário que você usa.</p>
     <% else %>
-      <p>Você vê e registra o que o admin liberou para você:</p>
-      <ul class="mt-2 space-y-1">
+      <ul class="mt-2 divide-y divide-marca-200">
         <% @acessos.each do |setor, formularios| %>
-          <li>
-            <span class="font-semibold text-slate-900"><%= setor.nome_completo %></span>:
-            <%= safe_join(formularios.map { |formulario, papel| "#{formulario.titulo} (#{papel == "registra" ? "registra" : "só consulta"})" }, ", ") %>
+          <li class="py-2 first:pt-0 last:pb-0">
+            <p class="font-semibold text-slate-900"><%= setor.nome_completo %></p>
+            <ul class="mt-1 space-y-1">
+              <% formularios.each do |formulario, papel| %>
+                <li class="flex items-center justify-between gap-3">
+                  <span><%= formulario.titulo %></span>
+                  <span class="shrink-0 bg-white px-1.5 py-0.5 text-xs font-semibold text-marca-700 ring-1 ring-marca-200">
+                    <%= papel == "registra" ? "registra" : "só consulta" %>
+                  </span>
+                </li>
+              <% end %>
+            </ul>
           </li>
         <% end %>
       </ul>
+      <p class="mt-3 text-xs text-slate-600">
+        “Registra” cria e edita notificações; “só consulta” apenas lê. Precisa de outro acesso? Fale com a administração do sistema.
+      </p>
     <% end %>
-  </div>
-</section>
-
-<section aria-labelledby="titulo-numeros">
-  <h2 id="titulo-numeros" class="<%= titulo_da_secao %>">Em números</h2>
-  <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
-    <div class="<%= cartao %>">
-      <p class="text-xs font-semibold uppercase tracking-wider text-slate-600">Notificações registradas</p>
-      <p class="mt-2 text-3xl font-bold text-slate-900"><%= @total %></p>
-    </div>
-    <div class="<%= cartao %>">
-      <p class="text-xs font-semibold uppercase tracking-wider text-slate-600">Registradas hoje</p>
-      <p class="mt-2 text-3xl font-bold text-slate-900"><%= @registrados_hoje %></p>
-    </div>
-    <div class="<%= cartao %>">
-      <p class="text-xs font-semibold uppercase tracking-wider text-slate-600">Atualizadas nos últimos 30 dias</p>
-      <p class="mt-2 text-3xl font-bold text-slate-900"><%= @atualizados_no_mes %></p>
-    </div>
   </div>
 </section>
 
 <section aria-labelledby="titulo-como-funciona">
   <h2 id="titulo-como-funciona" class="<%= titulo_da_secao %>">Como funciona</h2>
-  <ol class="grid grid-cols-1 gap-4 md:grid-cols-3">
+  <ol class="grid grid-cols-1 gap-4 md:grid-cols-2 2xl:grid-cols-4">
     <% [
-         [ "Abrir", "Em Formulários, escolha o formulário e registre uma notificação nova. O paciente é identificado pelos prontuários SAH e AGHUSE e pelas iniciais. As perguntas marcadas “Obrigatória” precisam estar respondidas para salvar." ],
-         [ "Acompanhar", "A cada consulta, abra a notificação e atualize o que mudou, como os exames do mês. Não é preciso responder tudo de uma vez: o registro vai sendo completado ao longo do tratamento." ],
-         [ "Encerrar", "No fim do tratamento, preencha a data de encerramento. A partir daí, as perguntas marcadas “Para encerrar” passam a ser exigidas, e a notificação aparece como encerrada na lista." ]
+         [ "Registrar", "Em “Formulários”, escolha a unidade e o formulário e clique em “Nova notificação”. Informe os prontuários SAH e AGHUSE e as iniciais: se o prontuário já existe no setor, a notificação é ligada ao mesmo paciente, e dados que não batem com o cadastro são recusados. As perguntas “Obrigatória” precisam de resposta para salvar." ],
+         [ "Buscar", "Digite parte do prontuário (SAH ou AGHUSE) ou das iniciais na busca do topo para procurar em todos os formulários que você consulta. Na lista de um formulário, “Filtros” faz a mesma busca e, para quem vê mais de um setor, filtra por setor. Cada notificação exibida fica registrada com quem a viu, quando e de qual IP." ],
+         [ "Acompanhar", "A cada retorno do paciente, abra a notificação, clique em “Editar” e atualize o que mudou. Só as perguntas “Obrigatória” precisam estar respondidas; o restante pode ser completado depois. Os detalhes mostram quantas perguntas de cada seção já têm resposta." ],
+         [ "Encerrar", "Nos formulários que têm data de encerramento, preencha-a no fim do acompanhamento. As perguntas “Para encerrar” passam a ser obrigatórias, e a lista mostra a notificação como “Encerrada”. Em “Relatórios”, os totais de encerradas, em acompanhamento e paradas há mais de #{AcompanhamentoDoFormulario::DIAS_PARADO} dias aparecem só como números, sem dado de paciente." ]
        ].each_with_index do |(etapa, explicacao), indice| %>
       <li class="<%= cartao %>">
-        <p class="flex items-center gap-3 font-semibold text-slate-900">
-          <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-marca-500 text-sm text-white" aria-hidden="true"><%= indice + 1 %></span>
+        <h3 class="flex items-center gap-3 font-semibold text-slate-900">
+          <span class="flex h-7 w-7 shrink-0 items-center justify-center bg-marca-500 text-sm text-white" aria-hidden="true"><%= indice + 1 %></span>
           <%= etapa %>
-        </p>
+        </h3>
         <p class="mt-2 text-sm text-slate-700"><%= explicacao %></p>
       </li>
     <% end %>
   </ol>
+</section>
+
+<%# Comparação com o que o serviço usava antes; os detalhes técnicos ficam em "Segurança e privacidade" %>
+<section aria-labelledby="titulo-por-que">
+  <h2 id="titulo-por-que" class="<%= titulo_da_secao %>">Por que o Prisma, e não planilha ou papel</h2>
+  <ul class="grid grid-cols-1 gap-4 md:grid-cols-2">
+    <% [
+         [ "Onde ficam os dados",
+           "Arquivos copiados entre computadores e e-mails; a ficha em papel pode se perder.",
+           "Os dados ficam num só banco, e o acesso é pelo navegador, sem instalar nada no computador de quem usa." ],
+         [ "Preenchimento",
+           "Qualquer célula aceita qualquer valor, e trocar uma coluna muda a leitura dos registros antigos.",
+           "Cada pergunta tem tipo e limites (data, número, lista de opções), e a obrigatória não deixa salvar em branco. Se o formulário muda, as notificações antigas mantêm as perguntas da versão em que foram registradas." ],
+         [ "Quem vê",
+           "Quem abre o arquivo ou pega a ficha vê todos os pacientes, e a cópia continua com a pessoa depois que ela sai da equipe.",
+           "Cada pessoa vê só os setores e formulários que o admin liberou, e a liberação retirada vale na próxima página que ela abrir." ],
+         [ "O que mudou",
+           "Sobrescrever uma célula apaga o valor anterior, sem autor nem horário.",
+           "Os detalhes mostram quem criou e quem alterou cada notificação, com data e hora. Se duas pessoas editam ao mesmo tempo, a segunda é avisada em vez de apagar a alteração da primeira." ]
+       ].each do |aspecto, antes, no_prisma| %>
+      <li class="<%= cartao %>">
+        <h3 class="<%= titulo_do_cartao %>"><%= marcador %><%= aspecto %></h3>
+        <dl class="mt-3 space-y-3 text-sm">
+          <div class="border-l-2 border-marca-200 pl-3">
+            <dt class="text-xs font-semibold uppercase tracking-wide text-slate-600">Planilha ou papel</dt>
+            <dd class="mt-0.5 text-slate-600"><%= antes %></dd>
+          </div>
+          <div class="border-l-2 border-marca-500 pl-3">
+            <dt class="text-xs font-semibold uppercase tracking-wide text-marca-700">No Prisma</dt>
+            <dd class="mt-0.5 text-slate-800"><%= no_prisma %></dd>
+          </div>
+        </dl>
+      </li>
+    <% end %>
+  </ul>
 </section>
 
 <section aria-labelledby="titulo-papeis">
@@ -74,39 +122,38 @@
       <li class="flex flex-col gap-1 py-3 text-sm sm:flex-row sm:gap-4">
         <span class="w-28 shrink-0 font-semibold uppercase tracking-wide text-marca-700"><%= DashboardHelper::NOME_DO_PAPEL.fetch(papel) %></span>
         <span class="text-slate-700">
-          <%= permissao.upcase_first %>.
-          <% if papel == current_user.role %><span class="ml-1 rounded bg-marca-50 px-1.5 py-0.5 text-xs font-semibold text-marca-700">Você</span><% end %>
+          <%= permissao %>
+          <% if papel == current_user.role %><span class="ml-1 bg-marca-50 px-1.5 py-0.5 text-xs font-semibold text-marca-700">Você</span><% end %>
         </span>
       </li>
     <% end %>
   </ul>
-  <p class="mt-2 text-xs text-slate-600">Ninguém apaga notificações: o registro clínico é preservado.</p>
+  <p class="mt-2 text-xs text-slate-600">
+    Ninguém apaga notificações nem pacientes. Prontuário ou iniciais digitados errado são corrigidos em “Corrigir identificação”,
+    nos detalhes da notificação.
+  </p>
 </section>
 
 <section aria-labelledby="titulo-seguranca">
   <h2 id="titulo-seguranca" class="<%= titulo_da_secao %>">Segurança e privacidade</h2>
   <ul class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
     <% [
-         [ "Identificação mínima", "O Prisma não guarda nome completo, CPF nem endereço do paciente: só os prontuários e as iniciais, como no formulário em papel." ],
-         [ "Dados cifrados", "Prontuários, iniciais e respostas são cifrados antes de chegar ao banco de dados. Quem abre o banco diretamente vê só texto embaralhado." ],
-         [ "Histórico de alterações e acessos", "Toda criação, alteração e visualização fica registrada com autor e horário, e nada é apagado: o prontuário é preservado, como exige a Lei 13.787/2018." ],
-         [ "Acesso por liberação", "Cada pessoa só vê e registra o que o admin liberou, em três níveis (instituição, setor e formulário), conferido a cada ação no servidor. Tirar um nível corta os de baixo." ],
-         [ "Login protegido", "Senha com no mínimo #{Devise.password_length.min} caracteres; conta nova recebe uma senha temporária, trocada no primeiro acesso. Depois de #{Devise.maximum_attempts} senhas erradas, a conta fica bloqueada por #{em_minutos(Devise.unlock_in)}. A sessão expira após #{em_minutos(Devise.timeout_in)} sem uso." ],
-         [ "Sem rastros no computador", "As páginas não ficam guardadas no navegador e não existe “lembrar de mim”. Os registros do servidor não guardam o que é digitado nos formulários. Em computador compartilhado, saia ao terminar." ]
+         [ "Identificação mínima", "O paciente é identificado só pelos prontuários SAH e AGHUSE e pelas iniciais: o Prisma não pede nome completo, CPF nem endereço. Se o admin criar uma pergunta que pareça pedir esse tipo de dado, o gerador de formulários avisa antes de publicar." ],
+         [ "Dados cifrados", "Prontuários, iniciais e respostas são cifrados antes de ir para o banco, com chaves guardadas fora dele, na configuração do servidor. Sem as chaves, o conteúdo do banco fica ilegível, inclusive o histórico de alterações." ],
+         [ "Histórico de alterações e acessos", "Fica registrado quem viu cada notificação, quando, de qual IP e com qual navegador, e também o autor e o horário de cada criação e alteração. Se o registro do acesso falhar, a página não abre. Nada é apagado: o prontuário tem guarda mínima de 20 anos (Lei 13.787/2018)." ],
+         [ "Acesso por liberação", "O admin libera em três níveis, instituição, setor e formulário, e nada é herdado de um nível para o outro: tirar um nível corta os de baixo. O servidor confere a liberação a cada página, então não adianta digitar o endereço de uma notificação de outro setor." ],
+         [ "Senha e sessão", "Senha de no mínimo #{Devise.password_length.min} caracteres. Conta nova e senha redefinida pelo admin vêm com senha temporária, trocada no primeiro acesso. Depois de #{Devise.maximum_attempts} senhas erradas, a conta fica bloqueada por #{em_minutos(Devise.unlock_in)}. A sessão expira após #{em_minutos(Devise.timeout_in)} sem uso. Não há recuperação de senha por e-mail: quem esquecer a senha pede ao admin uma senha temporária." ],
+         [ "No navegador", "As páginas não ficam guardadas no navegador, então o botão Voltar depois de sair não mostra dados. Não existe “lembrar de mim”, e o que é digitado nos formulários não vai para os logs do servidor. Em computador compartilhado, saia ao terminar." ]
        ].each do |titulo, explicacao| %>
       <li class="<%= cartao %>">
-        <p class="flex items-center gap-2 font-semibold text-slate-900">
-          <span class="h-2 w-2 shrink-0 rounded-full bg-marca-500" aria-hidden="true"></span>
-          <%= titulo %>
-        </p>
+        <h3 class="<%= titulo_do_cartao %>"><%= marcador %><%= titulo %></h3>
         <p class="mt-2 text-sm text-slate-700"><%= explicacao %></p>
       </li>
     <% end %>
   </ul>
   <p class="mt-2 text-xs text-slate-600">
-    Para que os dados são coletados, base legal e direitos dos pacientes:
+    Antes das perguntas, cada formulário mostra para que os dados são coletados e a base legal. O resumo da instituição, com os direitos
+    dos pacientes e o contato do encarregado (DPO), está em
     <%= link_to "Privacidade e proteção de dados", privacidade_path, class: "font-semibold text-marca-700 hover:underline" %>.
   </p>
 </section>
-
-<p class="text-sm text-slate-600">Problemas de acesso? Fale com a administração do setor.</p>

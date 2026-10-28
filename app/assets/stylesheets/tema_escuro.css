@@ -1,0 +1,123 @@
+/*
+ * Modo noturno: o layout põe data-tema="escuro" no <html> (cookie "tema").
+ * As telas não mudam: o Tailwind lê as cores de variáveis, e aqui trocamos
+ * as de superfície (branco e os tons claros da marca, 50 a 300), de texto
+ * (slate, invertida: o 900 vira o mais claro) e de borda. Os tons fortes da
+ * marca (500 a 900) ficam, porque são fundo de botão, selo e painel, com
+ * texto branco por cima; só os textos e links em marca-600 a 800, que sobre o
+ * fundo escuro não leriam, são clareados. A barra lateral usa a escala
+ * "barra", que não muda. Tinta escura de baixa saturação, no matiz da marca e
+ * da barra (docs/identidade-visual.md, "Modo noturno"). Fica fora de @layer
+ * para vencer o tema do Tailwind.
+ */
+html[data-tema="escuro"] {
+  color-scheme: dark;
+  --color-white: #171921;      /* superfícies: cartões, topo, campos */
+  --color-marca-50: #1d1f2a;
+  --color-marca-100: #22242f;
+  --color-marca-200: #323443;
+  --color-marca-300: #46495d;
+  --color-slate-50: #1d1f2a;
+  --color-slate-100: #20222d;
+  --color-slate-200: #323443;
+  --color-slate-300: #46495d;
+  --color-slate-400: #888ca0;  /* 5,3:1 em branco (#171921) */
+  --color-slate-500: #9da1b4;
+  --color-slate-600: #b2b6c7;  /* 8,7:1 */
+  --color-slate-700: #c8cbda;
+  --color-slate-800: #dcdeea;
+  --color-slate-900: #eeeff7;
+  --color-slate-950: #f8f9fc;
+  --color-emerald-50: #11382b;
+  --color-emerald-700: #6ee7b7;
+  --color-amber-50: #3d3010;
+  --color-amber-700: #fcd34d;
+  --color-amber-800: #fde68a;
+  --color-rose-50: #3d1a22;
+  --color-rose-200: #7f2a3c;
+  --color-rose-600: #fb7185;   /* erro de campo: rose-600 dá só 3,7:1 aqui */
+  --color-rose-700: #fda4af;
+  --color-rose-800: #fecdd3;
+}
+html[data-tema="escuro"] body {
+  background-color: #0e0f15;
+}
+
+/* Texto branco é sempre branco: "white" virou a cor das superfícies, mas
+   text-white só aparece sobre fundo de cor (botão, selo, item ativo do menu,
+   painel do login), onde tem de continuar claro */
+html[data-tema="escuro"] .text-white,
+html[data-tema="escuro"] .hover\:text-white:hover,
+html[data-tema="escuro"] .has-checked\:text-white:has(:checked) {
+  color: #fff;
+}
+
+/* Links e destaques em texto: o índigo forte não lê no fundo escuro */
+html[data-tema="escuro"] .text-marca-600,
+html[data-tema="escuro"] .text-marca-700,
+html[data-tema="escuro"] .hover\:text-marca-700:hover {
+  color: #a4aeef;               /* 8,3:1 em #171921 */
+}
+html[data-tema="escuro"] .text-marca-800,
+html[data-tema="escuro"] .hover\:text-marca-900:hover {
+  color: #c2c9fa;
+}
+/* Botão principal, item marcado e selos continuam com texto branco */
+html[data-tema="escuro"] .bg-marca-700 .text-marca-700,
+html[data-tema="escuro"] .bg-marca-600 .text-marca-700 {
+  color: inherit;
+}
+
+/* Rádios e caixas de marcar: o marca-600 marcado quase some no fundo escuro */
+html[data-tema="escuro"] .accent-marca-600 {
+  accent-color: #a4aeef;
+}
+
+/* Contorno de foco: o marca-700 some no fundo escuro */
+html[data-tema="escuro"] :focus-visible,
+html[data-tema="escuro"] label:has(:focus-visible) {
+  outline-color: #a4aeef;
+}
+html[data-tema="escuro"] .focus\:ring-marca-200:focus {
+  --tw-ring-color: var(--color-marca-700);
+}
+
+/* Selo do logo (shared/_logo, :simbolo): no modo noturno, monocromático, nos
+   tons do próprio tema em vez das cores do espectro. O CSS vence os atributos
+   fill e stroke do SVG. As facetas variam só a opacidade, pra o prisma
+   continuar com volume. O ícone do navegador (public/icon.svg) não muda. */
+html[data-tema="escuro"] .selo-prisma rect {
+  fill: var(--color-marca-200);
+}
+html[data-tema="escuro"] .selo-prisma path {
+  fill: var(--color-slate-800);
+  stroke: var(--color-marca-200);
+}
+html[data-tema="escuro"] .selo-prisma path:nth-of-type(2),
+html[data-tema="escuro"] .selo-prisma path:nth-of-type(3) {
+  fill-opacity: 0.75;
+}
+html[data-tema="escuro"] .selo-prisma path:nth-of-type(6),
+html[data-tema="escuro"] .selo-prisma path:nth-of-type(7) {
+  fill-opacity: 0.55;
+}
+
+html[data-tema="escuro"] .botao-prisma {
+  --texto: #fff;
+}
+html[data-tema="escuro"] .botao-prisma-secundario {
+  --fundo: var(--color-white);
+  --texto: var(--color-slate-800);
+}
+html[data-tema="escuro"] .botao-prisma-secundario:hover {
+  --fundo: var(--color-marca-50);
+}
+html[data-tema="escuro"] .botao-prisma-perigo {
+  --fundo: var(--color-white);
+  --borda: #9f3a50;
+  --texto: #fda4af;
+}
+html[data-tema="escuro"] .botao-prisma-perigo:hover {
+  --fundo: var(--color-rose-50);
+  --borda: #fb7185;
+}

@@ -1,0 +1,12 @@
+<% content_for :title, "Nova pergunta · Gerador de formulários · Prisma" %>
+<% trilha ["Configurações", configuracoes_instituicoes_path], ["Gerador de formulários", configuracoes_formularios_path],
+          [@formulario.titulo, configuracoes_formulario_path(@formulario)],
+          ["Rascunho da versão #{@rascunho.numero}", configuracoes_formulario_rascunho_path(@formulario)], ["Nova pergunta"] %>
+<%# O rascunho ao fundo, e a pergunta nova num modal por cima dele (ver ModalHelper#modal).
+    Fechar e Cancelar voltam à pergunta de que ela depende ou à seção. %>
+<% voltar = configuracoes_formulario_rascunho_path(@formulario, anchor: @controladora ? "pergunta-#{@controladora.chave}" : @secao.id) %>
+<% onde = @controladora ? "Aparece logo abaixo de “#{@controladora.texto}”, conforme a resposta dela, na seção #{@secao.titulo}." : "No fim da seção #{@secao.titulo}." %>
+<%= render "configuracoes/rascunhos/conteudo", definicao: @rascunho.definicao, erros: nil %>
+<% modal "Nova pergunta", fechar: voltar, descricao: onde, rodape: true, largura: "max-w-2xl" do %>
+  <%= render "formulario", url: configuracoes_formulario_rascunho_perguntas_path(@formulario), metodo: :post, voltar: %>
+<% end %>

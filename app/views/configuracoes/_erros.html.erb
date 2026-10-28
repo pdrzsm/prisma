@@ -1,0 +1,12 @@
+<%# locals: (erros:, titulo: "Não foi possível salvar") %>
+<%# Erros que não são de um campo só (os da definição inteira do formulário) %>
+<% if erros.present? %>
+  <div role="alert" class="max-w-3xl rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
+    <p class="font-semibold"><%= titulo %>:</p>
+    <ul class="mt-1 list-disc space-y-0.5 pl-5">
+      <% erros.each do |erro| %>
+        <li><%= erro %></li>
+      <% end %>
+    </ul>
+  </div>
+<% end %>

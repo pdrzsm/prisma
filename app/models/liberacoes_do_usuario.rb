@@ -28,9 +28,11 @@ class LiberacoesDoUsuario
 
   private
 
-  # { [setor_id, chave] => papel }, só nos setores marcados e com o formulário habilitado
+  # { [setor_id, chave] => papel }, só nos setores marcados e com o formulário
+  # habilitado e publicado (um rascunho já pode estar habilitado num setor)
   def formularios_desejados(formularios, setores)
-    habilitados = FormularioHabilitado.where(setor_id: setores.to_a).pluck(:setor_id, :formulario).to_set
+    habilitados = FormularioHabilitado.where(setor_id: setores.to_a, formulario: Formulario.chaves)
+                                      .pluck(:setor_id, :formulario).to_set
     formularios.to_h.each_with_object({}) do |(setor_id, por_formulario), desejadas|
       setor_id = Integer(setor_id.to_s, exception: false)
       next unless setores.include?(setor_id)

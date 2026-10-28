@@ -1,0 +1,7 @@
+/*
+ * Modal (ModalHelper#modal): com ele aberto, a página de fundo não rola; quem
+ * rola é o próprio modal, quando o conteúdo não cabe na tela.
+ */
+body:has(> .modal[open]) {
+  overflow: hidden;
+}

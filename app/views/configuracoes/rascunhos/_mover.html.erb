@@ -1,0 +1,8 @@
+<%# locals: (caminho:, direcao:, nome:) %>
+<%# Botão de subir ou descer uma seção ou pergunta. Leva o lock_version do
+    rascunho: se ele mudou em outra aba, nada é movido. %>
+<%= button_to caminho, method: :patch, params: { direcao:, lock_version: @rascunho.lock_version }, form_class: "contents",
+                       class: "cursor-pointer font-semibold text-marca-700 hover:underline",
+                       aria: { label: "#{direcao == "acima" ? "Subir" : "Descer"} #{nome}" } do %>
+  <%= direcao == "acima" ? "Subir" : "Descer" %>
+<% end %>

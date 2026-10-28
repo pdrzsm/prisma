@@ -1,0 +1,11 @@
+_fixture:
+  model_class: VersaoFormulario
+
+# A versão 1 do acompanhamento de teste, publicada pelo admin, com a definição
+# de FormulariosDeTeste::ACOMPANHAMENTO. estrutura é o texto JSON gravado na coluna.
+acompanhamento_v1:
+  formulario: acompanhamento
+  numero: 1
+  estrutura: <%= FormulariosDeTeste.acompanhamento.estrutura.to_json.to_json %>
+  publicada_em: <%= 1.month.ago.to_fs(:db) %>
+  publicada_por: admin

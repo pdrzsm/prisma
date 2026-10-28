@@ -1,6 +1,22 @@
 class Paciente < ApplicationRecord
   class IdentificacaoInvalida < StandardError; end
 
+  # Identificação pedida em todo formulário, antes das perguntas dele: o
+  # cadastro do paciente no setor. Não faz parte do gerador de formulários,
+  # porque é ela que liga as notificações ao paciente certo (Paciente.identificar).
+  # O limite da tela das iniciais é maior que o do cadastro (10 letras): pontos
+  # e espaços são tirados antes, então "M. S. S." cabe inteiro.
+  IDENTIFICACAO = [
+    [ "prontuario_sah", "Prontuário SAH", nil, nil ],
+    [ "prontuario_aghuse", "Prontuário AGHUSE", nil, nil ],
+    [ "iniciais", "Primeiras iniciais do nome", "abertura", "Até 10 letras, por exemplo: MSS. Pontos e espaços são ignorados." ]
+  ].map do |chave, texto, obrigatoria, ajuda|
+    DefinicaoDeFormulario::Pergunta.new(
+      chave:, numero: nil, texto:, tipo: "texto", ajuda:, obrigatoria:, opcoes: [].freeze, minimo: nil, maximo: 30,
+      decimais: nil, nao_maior_que: nil, nao_antes_de: nil, permite_futuro: false, condicao: nil, secao_id: nil, profundidade: 0
+    )
+  end.freeze
+
   # Cada setor tem os seus pacientes: o prontuário é único dentro do setor, e
   # o mesmo número em outro setor é outro cadastro
   belongs_to :setor
@@ -21,6 +37,27 @@ class Paciente < ApplicationRecord
 
   validates :iniciais, presence: true, length: { maximum: 10 }
   validates :prontuario_sah, :prontuario_aghuse, length: { maximum: 30 }, uniqueness: { scope: :setor_id }, allow_nil: true
+
+  # Busca por parte do prontuário (SAH ou AGHUSE) ou das iniciais, sem ligar
+  # para maiúsculas, espaços e pontos. Prontuários e iniciais são cifrados no
+  # banco, então a comparação é feita aqui, entre os pacientes dos registros que
+  # a pessoa já pode ver (registros: um escopo de AvaliacaoClinica); devolve os
+  # ids dos pacientes que combinam.
+  def self.ids_que_combinam(registros, termo)
+    busca = termo.to_s.gsub(/[\s.\-]/, "").upcase
+    return [] if busca.empty?
+
+    where(id: registros.select(:paciente_id)).select do |paciente|
+      [ paciente.prontuario_sah, paciente.prontuario_aghuse, paciente.iniciais ].compact.any? { |valor| valor.gsub(/[\s.\-]/, "").include?(busca) }
+    end.map(&:id)
+  end
+
+  # Sugestões para o autocomplete do filtro: prontuários e iniciais dos
+  # pacientes dos registros visíveis, sem repetição e em ordem
+  def self.sugestoes_de_busca(registros, limite: 200)
+    where(id: registros.select(:paciente_id)).flat_map { |paciente| [ paciente.prontuario_sah, paciente.prontuario_aghuse, paciente.iniciais ] }
+                                             .compact.uniq.sort.first(limite)
+  end
 
   scope :com_prontuario, ->(prontuario) { where(prontuario_sah: prontuario).or(where(prontuario_aghuse: prontuario)) }
 

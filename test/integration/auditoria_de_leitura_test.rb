@@ -3,7 +3,7 @@ require "test_helper"
 # Auditoria de leitura (LGPD, art. 37 e 46): toda tela que mostra dado sensível
 # grava quem viu, quando, qual registro e de qual IP
 class AuditoriaDeLeituraTest < ActionDispatch::IntegrationTest
-  FORMULARIO = "seguimento_tb".freeze
+  FORMULARIO = "acompanhamento".freeze
   NAVEGADOR = { "User-Agent" => "Navegador de Teste/1.0" }.freeze
 
   test "ver os detalhes grava uma linha com quem, quando, qual registro e de qual IP" do

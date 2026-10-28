@@ -1,35 +1,102 @@
-<header class="px-4 sm:px-8 lg:px-16 pt-6 lg:pt-12">
-  <div class="flex items-start justify-between gap-4">
-    <div class="flex items-start gap-3 min-w-0">
-      <%# Celular: o menu da barra lateral recolhido num botão, sem JavaScript %>
-      <details class="lg:hidden relative shrink-0">
-        <%# aria-label: o leitor de tela anuncia "Abrir menu", e não o nome do logo %>
-        <summary aria-label="Abrir menu" class="list-none [&::-webkit-details-marker]:hidden cursor-pointer bg-marca-700 p-2 text-marca-100">
-          <%= render "shared/logo", classe: "h-8 w-8" %>
+<%# Cabeçalho: uma fileira só, fixa no alto ao rolar. À esquerda, o voltar e a
+    trilha (onde a pessoa está); no meio, a busca global; à direita, Novidades
+    e Avisos (menus suspensos), o modo noturno (um clique) e o nome, cujo menu
+    tem a troca de senha (janela no centro: ModalHelper#painel_do_topo) e o
+    Sair. Cada coisa num lugar só: a barra lateral é só navegação. No celular,
+    a trilha desce para uma segunda linha. %>
+<% botao_de_icone = "flex h-9 w-9 shrink-0 items-center justify-center border border-marca-300 bg-white text-slate-600 transition hover:bg-marca-50 hover:text-slate-900" %>
+<header class="print:hidden sticky top-0 z-30 border-b border-marca-200 bg-white">
+  <div class="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 sm:px-8 lg:px-16">
+    <%# Celular: o menu da barra lateral recolhido num botão, sem JavaScript %>
+    <details class="lg:hidden relative shrink-0">
+      <%# aria-label: o leitor de tela anuncia "Abrir menu", e não o nome do logo %>
+      <summary aria-label="Abrir menu" class="list-none [&::-webkit-details-marker]:hidden cursor-pointer">
+        <%= render "shared/logo", classe: "h-9 w-9" %>
+      </summary>
+      <div class="absolute left-0 z-20 mt-2 w-64 border border-marca-200 bg-white py-3 shadow-lg">
+        <%= render "shared/menu" %>
+      </div>
+    </details>
+
+    <%# Voltar (ao nível de cima com caminho, declarado por `trilha`) e a
+        trilha. No celular vão para a segunda linha (order-last + basis-full).
+        No desktop, ocupam o que sobra da fileira (basis-0 + flex-1): com
+        basis-auto, uma trilha comprida empurrava os botões da direita para
+        uma segunda fileira. %>
+    <div class="order-last flex min-w-0 basis-full items-center gap-3 lg:order-none lg:basis-0 lg:flex-1">
+      <% if content_for?(:voltar_caminho) %>
+        <%= link_to yield(:voltar_caminho), aria: { label: "Voltar para #{yield(:voltar_texto)}" },
+                    title: "Voltar para #{yield(:voltar_texto)}", class: botao_de_icone do %>
+          <%= icone :seta_esquerda, classe: "h-4 w-4" %>
+        <% end %>
+      <% end %>
+      <%= yield :trilha %>
+    </div>
+
+    <%# Busca global: por prontuário (SAH ou AGHUSE) ou iniciais, em qualquer
+        formulário e setor que a pessoa consulta (BuscasController) %>
+    <%= form_with url: buscas_path, method: :get, html: { role: "search" }, class: "min-w-0 flex-1 lg:w-80 lg:flex-none" do |busca| %>
+      <%= busca.label :termo, "Buscar notificação", class: "sr-only" %>
+      <div class="relative">
+        <%= icone :busca, classe: "pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" %>
+        <%= busca.search_field :termo, autocomplete: "off", placeholder: "Buscar por prontuário ou iniciais",
+                               class: "#{ApplicationHelper::CAMPO} h-9 pl-9" %>
+      </div>
+    <% end %>
+
+    <%# Menus suspensos (Novidades, Avisos, conta): cada um é um <details> que
+        abre logo abaixo do botão, sem JavaScript; name= faz abrir um fechar o
+        outro, e clicar de novo no botão fecha. Os menus se alinham à direita
+        deste grupo (relative), para caberem na tela também no celular. %>
+    <% suspenso = "absolute right-0 top-full z-40 mt-2 w-[min(24rem,calc(100vw-2rem))] border border-marca-200 bg-white shadow-lg" %>
+    <% titulo_do_suspenso = "border-b border-marca-200 px-4 py-2.5 text-xs font-bold uppercase tracking-widest text-slate-600" %>
+    <% gatilho = "list-none cursor-pointer [&::-webkit-details-marker]:hidden group-open:bg-marca-50 group-open:text-slate-900" %>
+    <div class="relative flex shrink-0 items-center gap-2">
+      <details name="menu_do_topo" class="group">
+        <summary aria-label="Novidades" title="Novidades" class="<%= botao_de_icone %> <%= gatilho %>">
+          <%= icone :novidades, classe: "h-4 w-4" %>
         </summary>
-        <div class="absolute left-0 z-20 mt-2 w-64 bg-marca-700 py-3 shadow-lg">
-          <%= render "shared/menu" %>
+        <div class="<%= suspenso %>">
+          <p class="<%= titulo_do_suspenso %>">Novidades</p>
+          <div class="max-h-[70vh] overflow-y-auto"><%= render "shared/painel_novidades" %></div>
         </div>
       </details>
 
-      <div class="min-w-0">
-        <p class="py-2 text-xs leading-4 uppercase tracking-widest text-slate-600">Central de Formulários Clínicos</p>
-        <%= yield :trilha %>
-      </div>
-    </div>
-
-    <div class="flex items-center gap-3 shrink-0">
-      <%# A caixa do usuário leva à troca da própria senha %>
-      <%= link_to edit_senha_path, title: "Trocar senha",
-                  class: "hidden sm:flex h-8 items-center gap-2 border border-marca-300 bg-white px-3 text-sm transition hover:bg-marca-50" do %>
-        <span class="font-semibold text-slate-900">@<%= current_user.username %></span>
-        <% if current_user.admin? %>
-          <span class="text-xs font-semibold uppercase tracking-wide text-marca-700">admin</span>
-        <% end %>
-        <span class="sr-only">, trocar senha</span>
+      <%# Modo noturno: um clique, sem menu; o modo vai num cookie %>
+      <% escuro = cookies[:tema] == "escuro" %>
+      <%= button_to tema_path(modo: escuro ? "claro" : "escuro"), method: :patch, form_class: "contents",
+                    aria: { label: escuro ? "Usar o modo claro" : "Usar o modo noturno" },
+                    title: escuro ? "Modo claro" : "Modo noturno", class: "#{botao_de_icone} cursor-pointer" do %>
+        <%= icone(escuro ? :sol : :lua, classe: "h-4 w-4") %>
       <% end %>
-      <%= button_to "Sair", destroy_user_session_path, method: :delete,
-                    class: "botao-prisma botao-prisma-secundario inline-flex h-8 cursor-pointer items-center pl-4 pr-16 text-sm font-semibold uppercase tracking-wide" %>
+
+      <details name="menu_do_topo" class="group">
+        <summary aria-label="Avisos" title="Avisos" class="<%= botao_de_icone %> <%= gatilho %>">
+          <%= icone :sino, classe: "h-4 w-4" %>
+        </summary>
+        <div class="<%= suspenso %>">
+          <p class="<%= titulo_do_suspenso %>">Avisos</p>
+          <div class="max-h-[70vh] overflow-y-auto">
+            <%= render "shared/painel_avisos", atividade: AtividadeRecente.new(current_user, policy_scope(AvaliacaoClinica)).itens %>
+          </div>
+        </div>
+      </details>
+
+      <details name="menu_do_topo" class="group">
+        <summary title="Minha conta"
+                 class="flex h-9 items-center gap-2 border border-marca-300 bg-white px-2.5 text-sm transition hover:bg-marca-50 sm:px-3 <%= gatilho %>">
+          <%= icone :usuarios, classe: "h-4 w-4 text-slate-600" %>
+          <span class="hidden font-semibold text-slate-900 sm:inline">@<%= current_user.username %></span>
+          <% if current_user.admin? %>
+            <span class="hidden text-xs font-semibold uppercase tracking-wide text-marca-700 sm:inline">admin</span>
+          <% end %>
+          <span class="sr-only">Minha conta</span>
+          <%= icone :seta_baixo, classe: "h-4 w-4 text-slate-500 transition group-open:rotate-180" %>
+        </summary>
+        <div class="<%= suspenso %> sm:w-72">
+          <%= render "shared/painel_conta" %>
+        </div>
+      </details>
     </div>
   </div>
 </header>

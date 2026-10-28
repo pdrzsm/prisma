@@ -11,11 +11,11 @@ class AvaliacaoClinicaTest < ActiveSupport::TestCase
   end
 
   test "valida contra a definição do formulário, com erros por pergunta" do
-    registro = avaliacao(respostas_de_abertura.except("forma_clinica"))
+    registro = avaliacao(respostas_de_abertura.except("forma"))
 
     assert_not registro.valid?
-    assert_equal [ "é obrigatória" ], registro.erros_da_pergunta("forma_clinica")
-    assert_includes registro.errors.full_messages, "9. Forma clínica: é obrigatória"
+    assert_equal [ "é obrigatória" ], registro.erros_da_pergunta("forma")
+    assert_includes registro.errors.full_messages, "9. Forma: é obrigatória"
   end
 
   test "formulário desconhecido é recusado" do
@@ -48,7 +48,7 @@ class AvaliacaoClinicaTest < ActiveSupport::TestCase
     registro = avaliacoes_clinicas(:one)
 
     assert_difference -> { registro.versions.count }, 1 do
-      registro.update!(dados_formulario: registro.respostas.merge("baciloscopia_escarro_mes_1" => "2"))
+      registro.update!(dados_formulario: registro.respostas.merge("exame_mes_1" => "2"))
     end
     assert_not_includes registro.versions.last.object_changes, "Cidade Fictícia"
   end
@@ -62,7 +62,7 @@ class AvaliacaoClinicaTest < ActiveSupport::TestCase
   end
 
   test "só registra em setor com o formulário habilitado" do
-    formularios_habilitados(:tb_ambulatorio).delete
+    formularios_habilitados(:acompanhamento_ambulatorio).delete
     registro = avaliacao(respostas_de_abertura)
 
     assert_not registro.valid?
@@ -74,12 +74,12 @@ class AvaliacaoClinicaTest < ActiveSupport::TestCase
   end
 
   test "o registro grava a finalidade e a base legal do formulário, que não mudam depois" do
-    tb = Formulario.find("seguimento_tb")
+    acompanhamento = formularios(:acompanhamento)
     registro = avaliacao(respostas_de_abertura)
     registro.finalidade = "outra finalidade qualquer"
     registro.save!
 
-    assert_equal [ tb.finalidade, tb.base_legal ], [ registro.reload.finalidade, registro.base_legal ]
+    assert_equal [ acompanhamento.finalidade, acompanhamento.base_legal ], [ registro.reload.finalidade, registro.base_legal ]
     assert_raises(ActiveRecord::ReadonlyAttributeError) { registro.finalidade = "mudada depois" }
     assert_raises(ActiveRecord::ReadonlyAttributeError) { registro.base_legal = "mudada depois" }
   end
@@ -87,7 +87,7 @@ class AvaliacaoClinicaTest < ActiveSupport::TestCase
   private
 
   def avaliacao(respostas)
-    AvaliacaoClinica.new(formulario: "seguimento_tb", setor: setores(:ambulatorio), paciente: pacientes(:one),
+    AvaliacaoClinica.new(formulario: "acompanhamento", setor: setores(:ambulatorio), paciente: pacientes(:one),
                          user: users(:operador), dados_formulario: respostas)
   end
 end

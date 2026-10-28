@@ -1,0 +1,11 @@
+<% content_for :title, "Editar pergunta · Gerador de formulários · Prisma" %>
+<% trilha ["Configurações", configuracoes_instituicoes_path], ["Gerador de formulários", configuracoes_formularios_path],
+          [@formulario.titulo, configuracoes_formulario_path(@formulario)],
+          ["Rascunho da versão #{@rascunho.numero}", configuracoes_formulario_rascunho_path(@formulario)], ["Editar pergunta"] %>
+<%# O rascunho ao fundo, e a pergunta num modal por cima dele (ver ModalHelper#modal) %>
+<% voltar = configuracoes_formulario_rascunho_path(@formulario, anchor: "pergunta-#{@pergunta_atual.chave}") %>
+<%= render "configuracoes/rascunhos/conteudo", definicao: @rascunho.definicao, erros: nil %>
+<% modal "Editar pergunta #{@pergunta_atual.numero}", fechar: voltar, rodape: true, largura: "max-w-2xl",
+         descricao: "Chave #{@pergunta_atual.chave}, que identifica a resposta e não muda." do %>
+  <%= render "formulario", url: configuracoes_formulario_rascunho_pergunta_path(@formulario, @pergunta_atual.chave), metodo: :patch, voltar: %>
+<% end %>

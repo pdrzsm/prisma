@@ -1,0 +1,9 @@
+<%# locals: (avaliacao:) %>
+<%# A versão do formulário que a notificação segue. Uma versão mais nova não
+    muda as perguntas desta notificação: ela continua com as da versão dela. %>
+<% versao = avaliacao.versao_formulario %>
+<% atual = avaliacao.versao_formulario.formulario.versao_publicada_id == versao.id %>
+<p class="text-xs text-slate-600">
+  Versão <%= versao.numero %> do formulário<% unless atual %>, a de quando a notificação foi registrada.
+  O formulário já tem uma versão mais nova, mas esta notificação continua com as perguntas e os códigos da versão dela<% end %>.
+</p>

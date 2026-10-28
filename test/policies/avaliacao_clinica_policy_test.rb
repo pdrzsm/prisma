@@ -2,7 +2,7 @@ require "test_helper"
 
 # Quem vê e quem registra cada notificação vem das liberações (Permissoes)
 class AvaliacaoClinicaPolicyTest < ActiveSupport::TestCase
-  TB = "seguimento_tb".freeze
+  FORMULARIO = "acompanhamento".freeze
 
   test "lista e tela de nova: consulta ou registra em algum setor" do
     assert policy(:operador, nova).index?
@@ -60,7 +60,7 @@ class AvaliacaoClinicaPolicyTest < ActiveSupport::TestCase
   private
 
   def nova(setor = :ambulatorio)
-    AvaliacaoClinica.new(formulario: TB, setor: setor && setores(setor))
+    AvaliacaoClinica.new(formulario: FORMULARIO, setor: setor && setores(setor))
   end
 
   def policy(papel, record)

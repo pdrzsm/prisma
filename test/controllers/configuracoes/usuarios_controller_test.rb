@@ -24,7 +24,7 @@ module Configuracoes
 
       assert_response :success
       assert_select "tbody tr", User.count
-      assert_select "nav a[aria-current='page']", text: "Usuários"
+      assert_select "nav[aria-label='Seções do sistema'] a[aria-current='page']", text: /Usuários/
     end
 
     test "conta nova é sempre de usuário comum, com senha temporária, e vai para as liberações" do
@@ -60,6 +60,27 @@ module Configuracoes
 
       patch configuracoes_usuario_path(operador), params: { usuario: { ativo: "1" } }
       assert operador.reload.ativo?
+    end
+
+    test "a edição abre num modal sobre a lista, com a conta ativa num interruptor" do
+      sign_in users(:admin)
+      operador = users(:operador)
+      get edit_configuracoes_usuario_path(operador)
+
+      assert_select "div[inert] tbody tr", User.count
+      assert_select "dialog.modal" do
+        assert_select "h1", "Editar usuário"
+        assert_select "label[for='usuario_ativo'] input[type=checkbox][role=switch][name='usuario[ativo]']" \
+                      "[aria-labelledby='usuario_ativo_titulo'][aria-describedby='usuario_ativo_subtitulo'][checked]"
+        # O valor "0" vai mesmo com o interruptor desligado
+        assert_select "input[type=hidden][name='usuario[ativo]'][value='0']"
+        assert_select "a[href='#{edit_configuracoes_usuario_liberacoes_path(operador)}']", text: /Liberações/
+        assert_select "a[href='#{edit_configuracoes_usuario_senha_path(operador)}']", text: /Senha temporária/
+      end
+
+      get edit_configuracoes_usuario_senha_path(operador)
+      assert_select "div[inert] tbody tr", User.count
+      assert_select "dialog.modal form[action='#{configuracoes_usuario_senha_path(operador)}'] #usuario_password"
     end
 
     test "a conta admin não se desativa, nem enviando o campo à mão" do

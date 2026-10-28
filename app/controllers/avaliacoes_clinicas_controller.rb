@@ -1,32 +1,35 @@
-# Registros de um formulário clínico (ex.: notificações de seguimento de TB).
-# O formulário vem da URL e define quais respostas existem e são válidas.
+# Registros de um formulário clínico (as notificações).
+# O formulário vem da URL. A notificação nova segue a versão publicada agora;
+# a que já existe, a versão em que foi registrada: é essa definição que diz
+# quais respostas existem e são válidas (@definicao).
 # Cada notificação é de um setor: a pessoa só vê e registra nos setores em que
 # foi liberada para o formulário (AvaliacaoClinicaPolicy e Permissoes).
 # Lista, detalhes e edição (inclusive a que volta sem salvar) mostram dado
 # sensível: cada notificação exibida fica na auditoria de leitura
 # (log_read_access, em ApplicationController).
 class AvaliacoesClinicasController < ApplicationController
-  POR_PAGINA = 50
+  POR_PAGINA = 15
 
   before_action :carregar_formulario
   before_action :carregar_avaliacao, only: %i[show edit update]
 
   def index
     authorize AvaliacaoClinica.new(formulario: @formulario.chave)
+    @definicao = @formulario.definicao
     registros = policy_scope(AvaliacaoClinica).where(formulario: @formulario.chave)
-    registros = registros.where(paciente: Paciente.com_prontuario(params[:prontuario])) if params[:prontuario].present?
+    registros = registros.where(paciente_id: Paciente.ids_que_combinam(registros, params[:prontuario])) if params[:prontuario].present?
+    @sugestoes = Paciente.sugestoes_de_busca(policy_scope(AvaliacaoClinica).where(formulario: @formulario.chave)) if params[:filtros].present?
 
     # Filtro por setor, só entre os setores que a pessoa vê
     @setores = setores_do_formulario(permissoes.setores_que_consultam(@formulario.chave))
     @setor_filtrado = @setores.find { |setor| setor.id.to_s == params[:setor] }
     registros = registros.where(setor: @setor_filtrado) if @setor_filtrado
 
-    @pagina = [ params[:pagina].to_i, 1 ].max
-    # Um a mais que a página, só para saber se existe a próxima
-    @avaliacoes = registros.includes(:paciente, :user, setor: :instituicao).order(updated_at: :desc)
-                           .limit(POR_PAGINA + 1).offset((@pagina - 1) * POR_PAGINA).to_a
-    @tem_proxima = @avaliacoes.size > POR_PAGINA
-    @avaliacoes = @avaliacoes.first(POR_PAGINA)
+    # O id desempata as de mesma hora: sem ele, uma notificação podia aparecer em duas páginas, ou em nenhuma
+    @paginacao = Paginacao.new(params[:pagina], por_pagina: POR_PAGINA, total: registros.count)
+    @avaliacoes = registros.includes(:paciente, :user, :versao_formulario, setor: :instituicao).order(updated_at: :desc, id: :desc)
+                           .limit(POR_PAGINA).offset(@paginacao.deslocamento).to_a
+    @autores = AvaliacaoClinica.autores_da_ultima_alteracao(@avaliacoes)
     # Cada linha da lista mostra iniciais e prontuários: todas são lidas
     log_read_access(@avaliacoes)
   end
@@ -34,6 +37,7 @@ class AvaliacoesClinicasController < ApplicationController
   def show
     authorize @avaliacao
     log_read_access(@avaliacao)
+    @definicao = @avaliacao.definicao
     # Histórico da notificação, com as correções da identificação do paciente
     # feitas depois do registro dela (a correção muda o que esta tela mostra)
     correcoes = PaperTrail::Version.where(item: @avaliacao.paciente, event: "update", created_at: @avaliacao.created_at..)
@@ -43,6 +47,7 @@ class AvaliacoesClinicasController < ApplicationController
 
   def new
     authorize AvaliacaoClinica.new(formulario: @formulario.chave)
+    @definicao = @formulario.definicao
     carregar_setores_para_registro
     @paciente = Paciente.new
     @avaliacao = AvaliacaoClinica.new(formulario: @formulario.chave, setor: (@setores.first if @setores.one?))
@@ -52,9 +57,17 @@ class AvaliacoesClinicasController < ApplicationController
     # O setor escolhido decide a permissão: autoriza antes de ler ou gravar
     # qualquer paciente (o verify_authorized só roda depois da action)
     @setor = Setor.find_by(id: params.dig(:avaliacao_clinica, :setor_id))
+    @definicao = @formulario.definicao
     @avaliacao = AvaliacaoClinica.new(formulario: @formulario.chave, setor: @setor, user: current_user,
-                                      dados_formulario: dados_formulario_params)
+                                      versao_formulario: @formulario.versao_publicada, dados_formulario: dados_formulario_params)
     authorize @avaliacao
+
+    # O formulário ganhou uma versão nova enquanto a pessoa preenchia: as
+    # perguntas podem ter mudado, e uma resposta fora da versão nova seria
+    # descartada sem aviso. A tela volta com a versão nova e o que ainda vale.
+    unless params.dig(:avaliacao_clinica, :versao_formulario_id).to_s == @formulario.versao_publicada_id.to_s
+      return renderizar_novo("O formulário foi atualizado enquanto você preenchia. Confira as respostas e envie de novo.")
+    end
 
     # Paciente já cadastrado no setor é só vinculado: o formulário nunca altera cadastro
     @paciente = Paciente.identificar(setor: @setor, prontuario_sah: paciente_params[:prontuario_sah],
@@ -88,10 +101,12 @@ class AvaliacoesClinicasController < ApplicationController
     authorize @avaliacao
     # A tela de edição também mostra todos os dados da notificação
     log_read_access(@avaliacao)
+    @definicao = @avaliacao.definicao
   end
 
   def update
     authorize @avaliacao
+    @definicao = @avaliacao.definicao
     @avaliacao.assign_attributes(params.require(:avaliacao_clinica).permit(:lock_version))
     @avaliacao.dados_formulario = dados_formulario_params
 
@@ -111,8 +126,9 @@ class AvaliacoesClinicasController < ApplicationController
 
   private
 
+  # Só formulário publicado; o que não existe (ou nunca foi publicado) dá 404
   def carregar_formulario
-    @formulario = Formulario.find(params[:formulario_id])
+    @formulario = Formulario.publicado!(params[:formulario_id])
   end
 
   # Notificação de outro setor (ou de outro formulário) dá 404, como se não existisse
@@ -155,11 +171,12 @@ class AvaliacoesClinicasController < ApplicationController
     @paciente_params ||= params.require(:paciente).permit(:prontuario_sah, :prontuario_aghuse, :iniciais)
   end
 
-  # Só as perguntas declaradas no formulário; o model valida tipos e opções.
-  # Sem respostas na requisição, um hash vazio (o fetch com padrão devolveria
-  # parâmetros não permitidos, que não viram hash)
+  # Só as perguntas declaradas na versão do formulário; o model valida tipos e
+  # opções. Sem respostas na requisição, um hash vazio (o fetch com padrão
+  # devolveria parâmetros não permitidos, que não viram hash)
   def dados_formulario_params
-    permitidos = params.fetch(:avaliacao_clinica, {}).permit(:setor_id, dados_formulario: @formulario.parametros_permitidos)
+    permitidos = params.fetch(:avaliacao_clinica, {}).permit(:setor_id, :versao_formulario_id,
+                                                             dados_formulario: @definicao.parametros_permitidos)
     permitidos[:dados_formulario]&.to_h || {}
   end
 end

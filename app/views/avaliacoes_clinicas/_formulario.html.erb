@@ -1,10 +1,15 @@
-<%# locals: (url:, metodo:) %>
-<%# Formulário gerado a partir da definição (config/formularios/*.yml).
-    Na edição, a identificação do paciente aparece só para leitura. %>
+<%# locals: (definicao:, url:, metodo:) %>
+<%# Formulário gerado a partir da versão do formulário (DefinicaoDeFormulario):
+    primeiro a identificação do paciente, que todo formulário pede, depois as
+    seções. Na edição, a identificação aparece só para leitura. %>
 <%= form_with model: @avaliacao, url:, method: metodo, class: "space-y-6" do |form| %>
   <% if @avaliacao.persisted? %>
     <%# Bloqueio otimista: detecta edição simultânea por outra pessoa %>
     <%= form.hidden_field :lock_version %>
+  <% else %>
+    <%# A versão que a pessoa está preenchendo: se o formulário ganhar uma
+        versão nova até o envio, a tela volta com ela para conferir %>
+    <%= form.hidden_field :versao_formulario_id, value: @formulario.versao_publicada_id %>
   <% end %>
 
   <%# Setor da notificação: só os setores em que a pessoa registra este
@@ -31,43 +36,36 @@
   <% end %>
 
   <p class="text-sm text-slate-600">
-    <span class="rounded bg-rose-50 px-1.5 py-0.5 text-xs font-semibold text-rose-700">Obrigatória</span>
+    <span class="bg-rose-50 px-1.5 py-0.5 text-xs font-semibold text-rose-700">Obrigatória</span>
     precisa estar respondida para salvar.
-    <span class="ml-1 rounded bg-amber-50 px-1.5 py-0.5 text-xs font-semibold text-amber-700">Para encerrar</span>
-    passa a ser exigida quando a data de encerramento é preenchida.
+    <% if definicao.campo_encerramento %>
+      <span class="ml-1 bg-amber-50 px-1.5 py-0.5 text-xs font-semibold text-amber-700">Para encerrar</span>
+      passa a ser exigida quando a pergunta “<%= definicao.pergunta(definicao.campo_encerramento).texto %>” é preenchida.
+    <% end %>
   </p>
 
-  <% @formulario.secoes.each do |secao| %>
-    <section class="bg-white rounded-xl border border-marca-200 shadow-sm p-6 space-y-6">
-      <h2 class="text-lg font-bold text-slate-900"><%= secao.titulo %></h2>
-
-      <% if @avaliacao.persisted? && secao.perguntas.any?(&:paciente) %>
-        <p class="text-xs text-slate-500">
-          A identificação do paciente não é alterada pela edição da notificação. Para corrigir prontuário ou
-          iniciais, use “Corrigir identificação”, nos detalhes da notificação.
-        </p>
+  <section class="bg-white rounded-xl border border-marca-200 shadow-sm p-6 flex flex-col gap-6">
+    <h2 class="text-lg font-bold text-slate-900">Identificação do paciente</h2>
+    <% if @avaliacao.persisted? %>
+      <p class="text-xs text-slate-500">
+        A identificação do paciente não é alterada pela edição da notificação. Para corrigir prontuário ou
+        iniciais, use “Corrigir identificação”, nos detalhes da notificação.
+      </p>
+      <% Paciente::IDENTIFICACAO.each do |pergunta| %>
+        <div class="space-y-1">
+          <p class="text-sm font-semibold text-slate-900"><%= pergunta.texto %></p>
+          <p class="text-sm text-slate-700"><%= @avaliacao.paciente.public_send(pergunta.chave).presence || "—" %></p>
+        </div>
       <% end %>
-
-      <% secao.perguntas.each do |pergunta| %>
-        <% if pergunta.paciente && @avaliacao.persisted? %>
-          <div class="pergunta space-y-1">
-            <p class="text-sm font-semibold text-slate-900"><%= pergunta.numero %>. <%= pergunta.texto %></p>
-            <p class="text-sm text-slate-700"><%= @avaliacao.paciente.public_send(pergunta.chave).presence || "—" %></p>
-          </div>
-        <% elsif pergunta.paciente %>
-          <%= render "avaliacoes_clinicas/pergunta", formulario: @formulario, pergunta:,
-                     nome: "paciente[#{pergunta.chave}]",
-                     valor: @paciente.public_send(pergunta.chave),
-                     erros: @paciente.errors[pergunta.chave.to_sym] %>
-        <% else %>
-          <%= render "avaliacoes_clinicas/pergunta", formulario: @formulario, pergunta:,
-                     nome: "avaliacao_clinica[dados_formulario][#{pergunta.chave}]",
-                     valor: @avaliacao.respostas[pergunta.chave],
-                     erros: @avaliacao.erros_da_pergunta(pergunta.chave) %>
-        <% end %>
+    <% else %>
+      <% Paciente::IDENTIFICACAO.each do |pergunta| %>
+        <%= render "avaliacoes_clinicas/pergunta", definicao: nil, pergunta:, nome: "paciente[#{pergunta.chave}]",
+                   valor: @paciente.public_send(pergunta.chave), erros: @paciente.errors[pergunta.chave.to_sym] %>
       <% end %>
-    </section>
-  <% end %>
+    <% end %>
+  </section>
+
+  <%= render "avaliacoes_clinicas/secoes", definicao:, avaliacao: @avaliacao %>
 
   <div class="flex flex-wrap gap-3">
     <%= form.submit @avaliacao.persisted? ? "Salvar alterações" : "Registrar notificação", class: ApplicationHelper::BOTAO_PRIMARIO %>

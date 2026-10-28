@@ -13,12 +13,16 @@ class AddFinalidadeEBaseLegalToAvaliacoesClinicas < ActiveRecord::Migration[8.1]
     add_column :avaliacoes_clinicas, :base_legal, :text
 
     # As notificações que já existem foram coletadas com a finalidade e a base
-    # legal atuais do formulário. Formulário sem definição em
-    # config/formularios para a migração (RecordNotFound): restaure o YAML.
+    # legal do formulário, que então era um arquivo YAML em config/formularios.
+    # Esses arquivos não acompanham mais o Prisma (todo formulário é montado no
+    # gerador): num banco novo não há nada aqui; num banco antigo, com
+    # notificações, a migração para e explica o que fazer.
     Avaliacao.reset_column_information
     Avaliacao.distinct.pluck(:formulario).each do |chave|
-      definicao = Formulario.find(chave)
-      Avaliacao.where(formulario: chave).update_all(finalidade: definicao.finalidade, base_legal: definicao.base_legal)
+      raise ActiveRecord::MigrationError,
+            "O formulário #{chave} tem dados da época em que os formulários eram arquivos YAML (config/formularios), " \
+            "que não acompanham mais o Prisma. Migre este banco com uma versão do Prisma que ainda tenha esse arquivo " \
+            "(histórico do git) e depois volte a esta."
     end
 
     change_column_null :avaliacoes_clinicas, :finalidade, false

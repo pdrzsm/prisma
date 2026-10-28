@@ -1,0 +1,160 @@
+<%# locals: (url:, metodo:, voltar:) %>
+<%# A pergunta no gerador, dentro do modal (new e edit). O tipo escolhido mostra
+    só os campos dele (CSS em application.css, .pergunta-do-gerador); os outros
+    continuam no envio, mas o servidor só lê os do tipo (PerguntaDoGerador).
+    voltar: para onde Cancelar leva (o rascunho, na pergunta ou na seção). %>
+<% pergunta = @pergunta %>
+<% definicao = @rascunho.definicao %>
+<% rotulo = "block text-sm font-semibold text-slate-900" %>
+<% ajuda = "text-xs text-slate-600" %>
+<% campo = "#{ApplicationHelper::CAMPO} sm:max-w-md" %>
+<% invalido = ->(atributo) { { invalid: pergunta.errors[atributo].any?, describedby: [ ("pergunta_#{atributo}_ajuda" if %i[opcoes exclusivas limite].include?(atributo)), ("pergunta_#{atributo}_erros" if pergunta.errors[atributo].any?) ].compact.join(" ").presence } } %>
+<% outras = ->(tipo) { definicao.perguntas.select { |outra| outra.tipo == tipo && outra.chave != @pergunta_atual&.chave } } %>
+
+<%= form_with model: pergunta, scope: :pergunta, url:, method: metodo, class: "pergunta-do-gerador #{ModalHelper::PAINEL_FORMULARIO}" do |form| %>
+  <div class="<%= ModalHelper::PAINEL_CORPO %>">
+    <%= render "configuracoes/erros", erros: pergunta.errors[:base] %>
+
+    <%= hidden_field_tag :lock_version, @rascunho.lock_version, id: nil %>
+    <% if metodo == :post %>
+      <% if @controladora %>
+        <%= hidden_field_tag :controladora, @controladora.chave, id: nil %>
+      <% else %>
+        <%= hidden_field_tag :secao, @secao.id, id: nil %>
+      <% end %>
+    <% end %>
+
+    <% if @controladora %>
+      <%= tag.fieldset class: "space-y-2 rounded-lg border border-marca-200 bg-marca-50 p-4",
+                       aria: { describedby: ("pergunta_valores_erros" if pergunta.errors[:valores].any?) } do %>
+        <legend class="px-1 text-sm font-semibold text-slate-900">Aparece quando “<%= @controladora.texto %>” for:</legend>
+        <%= hidden_field_tag "pergunta[valores][]", "", id: nil %>
+        <div class="grid gap-1 sm:grid-cols-2">
+          <% @controladora.opcoes.each do |opcao| %>
+            <label for="pergunta_valores_<%= opcao.codigo %>" class="flex items-start gap-2 text-sm">
+              <%= check_box_tag "pergunta[valores][]", opcao.codigo, Array(pergunta.valores).include?(opcao.codigo),
+                                id: "pergunta_valores_#{opcao.codigo}", class: "mt-0.5 accent-marca-600" %>
+              <span><%= opcao.rotulo %></span>
+            </label>
+          <% end %>
+        </div>
+        <p class="<%= ajuda %>">Com outra resposta, a pergunta fica escondida e o que estiver nela é descartado ao salvar.</p>
+        <%= render "configuracoes/perguntas/erros_do_campo", pergunta:, campo: :valores %>
+      <% end %>
+    <% end %>
+
+    <div class="space-y-1">
+      <%= form.label :texto, "Enunciado", class: rotulo %>
+      <%= form.text_field :texto, maxlength: DefinicaoDeFormulario::TAMANHOS[:texto], autocomplete: "off", class: ApplicationHelper::CAMPO,
+                                  aria: invalido.(:texto) %>
+      <%= render "configuracoes/perguntas/erros_do_campo", pergunta:, campo: :texto %>
+    </div>
+
+    <div class="space-y-1">
+      <%= form.label :tipo, "Tipo de resposta", class: rotulo %>
+      <%= form.select :tipo, DefinicaoDeFormulario::TIPOS.map { |valor, nome| [ nome, valor ] }, {}, class: "tipo-da-pergunta #{ApplicationHelper::CAMPO}", aria: invalido.(:tipo) %>
+      <%= render "configuracoes/perguntas/erros_do_campo", pergunta:, campo: :tipo %>
+    </div>
+
+    <% if pergunta.numeracao_manual %>
+      <div class="space-y-1">
+        <%= form.label :numero, "Número", class: rotulo %>
+        <%= form.text_field :numero, maxlength: 10, autocomplete: "off", class: "#{ApplicationHelper::CAMPO} sm:max-w-32", aria: invalido.(:numero) %>
+        <%= render "configuracoes/perguntas/erros_do_campo", pergunta:, campo: :numero %>
+      </div>
+    <% end %>
+
+    <fieldset class="space-y-2">
+      <legend class="<%= rotulo %>">Obrigatória?</legend>
+      <% [ [ "", "Não" ], [ "abertura", "Sempre: precisa estar respondida para salvar" ],
+           [ "encerramento", "Só para encerrar: passa a ser exigida quando a pergunta de encerramento é preenchida" ] ].each do |valor, texto| %>
+        <label for="pergunta_obrigatoria_<%= valor.presence || "nao" %>" class="flex items-start gap-2 text-sm">
+          <%= form.radio_button :obrigatoria, valor, checked: pergunta.obrigatoria.to_s == valor, id: "pergunta_obrigatoria_#{valor.presence || "nao"}",
+                                class: "mt-0.5 accent-marca-600" %>
+          <span><%= texto %></span>
+        </label>
+      <% end %>
+      <% if pergunta.controladora || @controladora %>
+        <p class="<%= ajuda %>">Numa pergunta que depende de outra, só vale quando ela aparece.</p>
+      <% end %>
+      <%= render "configuracoes/perguntas/erros_do_campo", pergunta:, campo: :obrigatoria %>
+    </fieldset>
+
+    <div class="space-y-1">
+      <%= form.label :ajuda, "Texto de ajuda (opcional)", class: rotulo %>
+      <%= form.text_area :ajuda, rows: 2, maxlength: DefinicaoDeFormulario::TAMANHOS[:ajuda], class: ApplicationHelper::CAMPO, aria: invalido.(:ajuda) %>
+      <%= render "configuracoes/perguntas/erros_do_campo", pergunta:, campo: :ajuda %>
+    </div>
+
+    <div class="campos-do-tipo space-y-1" data-tipos="texto texto_longo">
+      <%= form.label :limite, "Limite de caracteres da resposta", class: rotulo %>
+      <%= form.number_field :limite, min: 1, max: DefinicaoDeFormulario::CARACTERES["texto_longo"].max, step: 1, class: "#{ApplicationHelper::CAMPO} sm:max-w-40",
+                                     aria: invalido.(:limite) %>
+      <p id="pergunta_limite_ajuda" class="<%= ajuda %>">
+        Texto curto: até <%= DefinicaoDeFormulario::CARACTERES["texto"].max %> (padrão <%= DefinicaoDeFormulario::CARACTERES_PADRAO["texto"] %>).
+        Texto longo: até <%= DefinicaoDeFormulario::CARACTERES["texto_longo"].max %> (padrão <%= DefinicaoDeFormulario::CARACTERES_PADRAO["texto_longo"] %>).
+        Campos de texto livre podem receber dados que identificam o paciente: peça só o necessário.
+      </p>
+      <%= render "configuracoes/perguntas/erros_do_campo", pergunta:, campo: :limite %>
+    </div>
+
+    <div class="campos-do-tipo space-y-4" data-tipos="numero">
+      <div class="flex flex-wrap gap-4">
+        <div class="space-y-1">
+          <%= form.label :minimo, "Valor mínimo", class: rotulo %>
+          <%= form.number_field :minimo, step: 1, class: "#{ApplicationHelper::CAMPO} w-40", aria: invalido.(:minimo) %>
+          <%= render "configuracoes/perguntas/erros_do_campo", pergunta:, campo: :minimo %>
+        </div>
+        <div class="space-y-1">
+          <%= form.label :maximo, "Valor máximo", class: rotulo %>
+          <%= form.number_field :maximo, step: 1, class: "#{ApplicationHelper::CAMPO} w-40", aria: invalido.(:maximo) %>
+          <%= render "configuracoes/perguntas/erros_do_campo", pergunta:, campo: :maximo %>
+        </div>
+        <div class="space-y-1">
+          <%= form.label :decimais, "Casas decimais", class: rotulo %>
+          <%= form.select :decimais, DefinicaoDeFormulario::DECIMAIS.map { |casas| [ casas.zero? ? "Nenhuma (número inteiro)" : casas.to_s, casas.to_s ] },
+                          {}, class: "#{ApplicationHelper::CAMPO} w-56", aria: invalido.(:decimais) %>
+        </div>
+      </div>
+      <div class="space-y-1">
+        <%= form.label :nao_maior_que, "Não pode ser maior que (opcional)", class: rotulo %>
+        <%= form.select :nao_maior_que, [ [ "Sem comparação", "" ] ] + outras.("numero").map { |outra| [ "#{outra.numero}. #{outra.texto}", outra.chave ] },
+                        {}, class: campo %>
+      </div>
+    </div>
+
+    <div class="campos-do-tipo space-y-4" data-tipos="data">
+      <label for="pergunta_permite_futuro" class="flex items-start gap-2 text-sm">
+        <%= form.check_box :permite_futuro, { class: "mt-0.5 accent-marca-600" }, "1", "0" %>
+        <span>Aceita data futura (ex.: data prevista de retorno). Sem marcar, só até hoje.</span>
+      </label>
+      <div class="space-y-1">
+        <%= form.label :nao_antes_de, "Não pode ser antes de (opcional)", class: rotulo %>
+        <%= form.select :nao_antes_de, [ [ "Sem comparação", "" ] ] + outras.("data").map { |outra| [ "#{outra.numero}. #{outra.texto}", outra.chave ] },
+                        {}, class: campo %>
+      </div>
+    </div>
+
+    <div class="campos-do-tipo space-y-1" data-tipos="unica lista_suspensa multipla">
+      <%= form.label :opcoes, "Opções", class: rotulo %>
+      <%= form.text_area :opcoes, rows: 6, class: "#{ApplicationHelper::CAMPO} font-mono", placeholder: "1, Sim\n2, Não", aria: invalido.(:opcoes) %>
+      <p id="pergunta_opcoes_ajuda" class="<%= ajuda %>">
+        Uma por linha, no formato <span class="font-mono">código, rótulo</span> (ex.: <span class="font-mono">9, Ignorado</span>). Use os códigos
+        oficiais quando houver (ex.: SINAN). Depois de publicado, não troque o sentido de um código: crie um código novo.
+      </p>
+      <%= render "configuracoes/perguntas/erros_do_campo", pergunta:, campo: :opcoes %>
+    </div>
+
+    <div class="campos-do-tipo space-y-1" data-tipos="multipla">
+      <%= form.label :exclusivas, "Opções exclusivas (opcional)", class: rotulo %>
+      <%= form.text_field :exclusivas, autocomplete: "off", class: "#{ApplicationHelper::CAMPO} sm:max-w-xs", aria: invalido.(:exclusivas) %>
+      <p id="pergunta_exclusivas_ajuda" class="<%= ajuda %>">Códigos que não podem ser marcados junto com outros, como “Não” ou “Nenhum”. Separe com vírgula.</p>
+      <%= render "configuracoes/perguntas/erros_do_campo", pergunta:, campo: :exclusivas %>
+    </div>
+  </div>
+
+  <div class="<%= ModalHelper::PAINEL_RODAPE %>">
+    <%= link_to "Cancelar", voltar, class: ApplicationHelper::BOTAO_SECUNDARIO %>
+    <%= form.submit metodo == :post ? "Criar pergunta" : "Salvar pergunta", class: ApplicationHelper::BOTAO_PRIMARIO %>
+  </div>
+<% end %>

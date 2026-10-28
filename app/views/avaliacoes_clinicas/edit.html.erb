@@ -10,4 +10,6 @@
 <%# A finalidade gravada no registro da notificação %>
 <%= render "finalidade", finalidade: @avaliacao.finalidade, base_legal: @avaliacao.base_legal %>
 
-<%= render "formulario", url: formulario_avaliacao_clinica_path(@formulario, @avaliacao), metodo: :patch %>
+<%= render "versao", avaliacao: @avaliacao %>
+
+<%= render "formulario", definicao: @definicao, url: formulario_avaliacao_clinica_path(@formulario, @avaliacao), metodo: :patch %>

@@ -1,0 +1,68 @@
+<%# locals: (definicao:, pergunta:, pode_subir:, pode_descer:) %>
+<%# Uma pergunta na árvore do rascunho, com as que dependem dela logo abaixo,
+    recuadas (como aparecem para quem preenche). %>
+<% acao = "font-semibold text-marca-700 hover:underline" %>
+<% selo = "inline-flex whitespace-nowrap px-1.5 py-0.5 text-xs font-semibold" %>
+<% dependentes = definicao.dependentes(pergunta) %>
+<li id="pergunta-<%= pergunta.chave %>" class="space-y-3">
+  <div class="flex flex-col gap-3 rounded-lg border border-marca-200 bg-marca-50/40 p-3 sm:flex-row sm:items-start sm:justify-between">
+    <div class="min-w-0 space-y-1">
+      <p class="font-semibold text-slate-900"><%= pergunta.numero %>. <%= pergunta.texto %></p>
+      <p class="flex flex-wrap items-center gap-1 text-xs text-slate-600">
+        <span class="<%= selo %> bg-white text-marca-700 ring-1 ring-marca-200"><%= pergunta.nome_do_tipo %></span>
+        <% if pergunta.obrigatoria == "abertura" %>
+          <span class="<%= selo %> bg-rose-50 text-rose-700"><%= com_icone :obrigatoria, "Obrigatória" %></span>
+        <% elsif pergunta.obrigatoria == "encerramento" %>
+          <span class="<%= selo %> bg-amber-50 text-amber-700">Para encerrar</span>
+        <% end %>
+        <% if pergunta.chave == definicao.campo_encerramento %>
+          <span class="<%= selo %> bg-slate-100 text-slate-700">Encerramento</span>
+        <% end %>
+        <span>chave <span class="font-mono"><%= pergunta.chave %></span></span>
+      </p>
+      <% if pergunta.condicao %>
+        <% controladora = definicao.controladora(pergunta) %>
+        <p class="text-xs text-slate-600">
+          Aparece quando “<%= controladora.texto %>” for:
+          <%= pergunta.condicao.valores.map { |codigo| definicao.rotulo(controladora, codigo) }.to_sentence(two_words_connector: " ou ", last_word_connector: " ou ") %>
+        </p>
+      <% end %>
+      <% if pergunta.escolha? %>
+        <p class="text-xs text-slate-600">
+          <%= pergunta.opcoes.first(6).map { |opcao| "#{opcao.codigo} · #{opcao.rotulo}#{" (exclusiva)" if opcao.exclusiva}" }.join("; ") %><%= "; e mais #{pergunta.opcoes.size - 6}" if pergunta.opcoes.size > 6 %>
+        </p>
+      <% end %>
+    </div>
+    <div class="flex shrink-0 flex-wrap items-center gap-3 text-sm">
+      <%# Editar, remover e acrescentar abrem um modal por cima do rascunho; a âncora deixa a pergunta à vista atrás dele %>
+      <%= link_to "Editar", edit_configuracoes_formulario_rascunho_pergunta_path(@formulario, pergunta.chave, anchor: "pergunta-#{pergunta.chave}"), class: acao,
+                            aria: { label: "Editar a pergunta #{pergunta.texto}" } %>
+      <% caminho = mover_configuracoes_formulario_rascunho_pergunta_path(@formulario, pergunta.chave) %>
+      <% if pode_subir %>
+        <%= render "configuracoes/rascunhos/mover", caminho:, direcao: "acima", nome: "a pergunta #{pergunta.texto}" %>
+      <% end %>
+      <% if pode_descer %>
+        <%= render "configuracoes/rascunhos/mover", caminho:, direcao: "abaixo", nome: "a pergunta #{pergunta.texto}" %>
+      <% end %>
+      <%= link_to "Remover", remover_configuracoes_formulario_rascunho_pergunta_path(@formulario, pergunta.chave, anchor: "pergunta-#{pergunta.chave}"),
+                             class: "font-semibold text-rose-700 hover:underline", aria: { label: "Remover a pergunta #{pergunta.texto}" } %>
+    </div>
+  </div>
+
+  <% if pergunta.escolha? && pergunta.profundidade < DefinicaoDeFormulario::MAXIMO_DE_NIVEIS && dependentes.size < DefinicaoDeFormulario::MAXIMO_DE_DEPENDENTES %>
+    <p class="ml-6 text-sm">
+      <%= link_to "Nova pergunta que aparece conforme esta resposta",
+                  new_configuracoes_formulario_rascunho_pergunta_path(@formulario, controladora: pergunta.chave, anchor: "pergunta-#{pergunta.chave}"),
+                  class: acao, aria: { label: "Nova pergunta que aparece conforme a resposta de #{pergunta.texto}" } %>
+    </p>
+  <% end %>
+
+  <% if dependentes.any? %>
+    <ol class="ml-6 space-y-3 border-l-2 border-marca-200 pl-4">
+      <% dependentes.each_with_index do |dependente, posicao| %>
+        <%= render "configuracoes/rascunhos/pergunta", definicao:, pergunta: dependente,
+                   pode_subir: posicao.positive?, pode_descer: posicao < dependentes.size - 1 %>
+      <% end %>
+    </ol>
+  <% end %>
+</li>

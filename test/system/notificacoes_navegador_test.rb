@@ -1,36 +1,38 @@
 require "application_system_test_case"
 
-class SeguimentoTbTest < ApplicationSystemTestCase
-  FORMULARIO = "seguimento_tb".freeze
+# No navegador, com o acompanhamento de teste das fixtures: a pergunta que
+# depende de outra, o registro, a edição, os erros e o consultor.
+class NotificacoesNavegadorTest < ApplicationSystemTestCase
+  FORMULARIO = "acompanhamento".freeze
 
-  test "a pergunta 10 só aparece para forma clínica extrapulmonar" do
+  test "a pergunta 10 só aparece para a forma disseminada" do
     sign_in users(:operador)
     visit new_formulario_avaliacao_clinica_path(FORMULARIO)
 
-    assert_no_text "Se extrapulmonar, qual?"
-    assert_no_selector "#campo_tb_extrapulmonar_1", visible: true
+    assert_no_text "Se disseminada, onde?"
+    assert_no_selector "#campo_locais_1", visible: true
 
-    marcar "campo_forma_clinica_2" # Extrapulmonar
-    assert_text "Se extrapulmonar, qual?"
-    assert_selector "#campo_tb_extrapulmonar_1", visible: true
+    marcar "campo_forma_2" # Disseminada
+    assert_text "Se disseminada, onde?"
+    assert_selector "#campo_locais_1", visible: true
 
-    marcar "campo_forma_clinica_1" # Pulmonar
-    assert_no_text "Se extrapulmonar, qual?"
+    marcar "campo_forma_1" # Localizada
+    assert_no_text "Se disseminada, onde?"
 
-    marcar "campo_forma_clinica_3" # Pulmonar + extrapulmonar
-    assert_text "Se extrapulmonar, qual?"
+    marcar "campo_forma_3" # Localizada + disseminada
+    assert_text "Se disseminada, onde?"
   end
 
-  test "operador registra uma notificação e depois atualiza o seguimento" do
+  test "operador registra uma notificação e depois atualiza o acompanhamento" do
     sign_in users(:operador)
-    visit formularios_path
+    visit formulario_avaliacoes_clinicas_path(FORMULARIO)
     click_on "Nova notificação"
 
     fill_in "campo_prontuario_sah", with: "sah 7777"
     fill_in "campo_iniciais", with: "r. t. s."
-    fill_in "campo_numero_sinan", with: "7654321"
-    marcar "campo_gestante_6", "campo_populacoes_especiais_0", "campo_recebe_beneficio_0", "campo_forma_clinica_2",
-           "campo_tb_extrapulmonar_1"
+    fill_in "campo_numero_registro", with: "7654321"
+    marcar "campo_gestante_6", "campo_populacoes_especiais_0", "campo_recebe_beneficio_0", "campo_forma_2",
+           "campo_locais_1"
     fill_in "campo_municipio_residencia", with: "Cidade Fictícia"
     click_on "Registrar notificação"
 
@@ -40,17 +42,17 @@ class SeguimentoTbTest < ApplicationSystemTestCase
     assert_text "Notificação registrada."
     assert_text "Notificação · RTS"
     assert_text "SAH7777"
-    assert_text "Pleural"
+    assert_text "Pele"
     assert_text "Em acompanhamento"
 
     click_on "Editar"
     assert_no_field "campo_iniciais" # identificação só para leitura
-    marcar "campo_baciloscopia_escarro_mes_1_2"
+    marcar "campo_exame_mes_1_2"
     click_on "Salvar alterações"
 
     assert_current_path %r{/avaliacoes/\d+\z}
     assert_text "Notificação atualizada."
-    assert_text "Negativa"
+    assert_text "Negativo"
     assert_text "Alterada por @operador_teste"
   end
 
@@ -71,14 +73,11 @@ class SeguimentoTbTest < ApplicationSystemTestCase
     sign_in users(:consultor)
     visit root_path
 
-    within("aside") { click_on "Formulários" } # a visão geral também cita Formulários no texto
-    assert_current_path formularios_path
-    # O menu é exibido em caixa alta (CSS), e o navegador devolve o texto como aparece
-    assert_selector "nav a[aria-current='page']", text: /\Aformulários\z/i
-    assert_no_link "Nova notificação"
-
-    click_on "Ver registros"
+    # O atalho da visão geral leva à lista do formulário; a trilha do topo diz onde a pessoa está
+    within("main") { click_on "Acompanhamento de teste" }
     assert_current_path formulario_avaliacoes_clinicas_path(FORMULARIO)
+    assert_selector "nav[aria-label='Você está em'] [aria-current='page']", text: /acompanhamento de teste/i
+    assert_no_link "Nova notificação"
     assert_text "MFU"
     assert_no_link "Editar"
 
@@ -91,6 +90,7 @@ class SeguimentoTbTest < ApplicationSystemTestCase
   test "sair volta para o login com o aviso" do
     sign_in users(:admin)
     visit root_path
+    find("summary[title='Minha conta']").click
     click_on "Sair"
 
     assert_current_path new_user_session_path

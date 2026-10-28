@@ -3,7 +3,7 @@ require "test_helper"
 # Correção da identificação do paciente (LGPD, art. 18, III): só prontuários e
 # iniciais, por quem registra as notificações dele, com o autor no PaperTrail
 class CorrecaoDeIdentificacaoTest < ActionDispatch::IntegrationTest
-  FORMULARIO = "seguimento_tb".freeze
+  FORMULARIO = "acompanhamento".freeze
 
   test "o botão aparece nos detalhes da notificação só para quem pode corrigir" do
     avaliacao = avaliacoes_clinicas(:one)

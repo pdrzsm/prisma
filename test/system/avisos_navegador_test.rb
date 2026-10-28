@@ -4,6 +4,7 @@ class AvisosNavegadorTest < ApplicationSystemTestCase
   test "o aviso fecha pelo botão, sem JavaScript" do
     sign_in users(:admin)
     visit root_path
+    find("summary[title='Minha conta']").click
     click_on "Sair"
 
     assert_current_path new_user_session_path

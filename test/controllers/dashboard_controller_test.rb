@@ -7,32 +7,40 @@ class DashboardControllerTest < ActionDispatch::IntegrationTest
     assert_redirected_to new_user_session_path
   end
 
-  test "todos veem a visão geral, com os totais só do que podem ver" do
-    { operador: 2, admin: 3, consultor: 2, laboratorista: 1, sem_acesso: 0 }.each do |papel, total|
+  test "todos veem a visão geral" do
+    %i[operador admin consultor laboratorista sem_acesso].each do |papel|
       sign_in users(papel)
       get root_path
 
       assert_response :success
-      assert_select "nav a[aria-current='page']", text: "Visão geral"
-      assert_select "a[href='#{formularios_path}']", minimum: 1
-      assert_select "p.text-3xl", text: total.to_s
+      assert_select "nav a[aria-current='page']", text: /Visão geral/
     end
   end
 
   test "a visão geral mostra a cada um o seu acesso" do
     {
-      admin: /conta\s+admin\s*: administra o sistema/,
-      operador: /CRF - Ambulatório\s*:\s+Seguimento de TB \(registra\)/,
-      consultor: /CRF - Ambulatório\s*:\s+Seguimento de TB \(só consulta\)/,
+      admin: /como\s+admin\s*\. Consulta as notificações de todos os setores/,
+      operador: /CRF - Ambulatório\s+Acompanhamento de teste\s+registra/,
+      consultor: /CRF - Ambulatório\s+Acompanhamento de teste\s+só consulta/,
       sem_acesso: /ainda não tem nenhum acesso liberado/
     }.each do |papel, acesso|
       sign_in users(papel)
       get root_path
 
       assert_match acesso, response.body.gsub(/<[^>]+>/, " ").squish, papel
-      [ "O que é o Prisma", "Como funciona", "Quem pode o quê", "Segurança e privacidade" ].each do |titulo|
+      [ "O que é o Prisma", "Como funciona", "Por que o Prisma, e não planilha ou papel", "Quem pode o quê", "Segurança e privacidade" ].each do |titulo|
         assert_select "h2", text: titulo
       end
+    end
+  end
+
+  test "a visão geral tem um atalho para cada formulário que a pessoa consulta" do
+    { admin: 1, operador: 1, sem_acesso: 0 }.each do |papel, atalhos|
+      sign_in users(papel)
+      get root_path
+
+      assert_select "main a[href='#{formulario_avaliacoes_clinicas_path("acompanhamento")}']",
+                    { count: atalhos, text: "Acompanhamento de teste" }, papel
     end
   end
 
@@ -40,8 +48,16 @@ class DashboardControllerTest < ActionDispatch::IntegrationTest
     sign_in users(:operador)
     get root_path
 
+    assert_select "li", text: /Senha de no mínimo #{Devise.password_length.min} caracteres/
     assert_select "li", text: /Depois de #{Devise.maximum_attempts} senhas erradas.*#{Devise.unlock_in.in_minutes.to_i} minutos/
     assert_select "li", text: /expira após #{Devise.timeout_in.in_minutes.to_i} minutos sem uso/
+  end
+
+  test "o prazo das notificações paradas vem do mesmo número dos relatórios" do
+    sign_in users(:operador)
+    get root_path
+
+    assert_select "li", text: /paradas há mais de #{AcompanhamentoDoFormulario::DIAS_PARADO} dias/
   end
 
   test "painel não mostra o CPF de quem está logado" do

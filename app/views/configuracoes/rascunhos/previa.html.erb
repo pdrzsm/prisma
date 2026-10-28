@@ -1,0 +1,20 @@
+<% definicao = @rascunho.definicao %>
+<% content_for :title, "Prévia · #{definicao.titulo} · Gerador de formulários · Prisma" %>
+<% trilha ["Configurações", configuracoes_instituicoes_path], ["Gerador de formulários", configuracoes_formularios_path],
+          [@formulario.titulo, configuracoes_formulario_path(@formulario)],
+          ["Rascunho da versão #{@rascunho.numero}", configuracoes_formulario_rascunho_path(@formulario)], ["Prévia"] %>
+<div class="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+  <div>
+    <h1 class="text-2xl font-bold text-slate-900">Prévia · <%= definicao.titulo %></h1>
+    <p class="max-w-3xl text-sm text-slate-600">
+      Como o rascunho da versão <%= @rascunho.numero %> aparece para quem preenche. Experimente as respostas: as perguntas que
+      dependem de outra aparecem e somem como na tela de verdade. Nada é enviado nem gravado.
+    </p>
+  </div>
+  <%= link_to "Voltar ao rascunho", configuracoes_formulario_rascunho_path(@formulario), class: ApplicationHelper::BOTAO_SECUNDARIO %>
+</div>
+
+<% if definicao.descricao %>
+  <p class="max-w-3xl whitespace-pre-line text-sm text-slate-600"><%= definicao.descricao %></p>
+<% end %>
+<%= render "configuracoes/preenchimento", definicao: %>

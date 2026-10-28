@@ -1,7 +1,7 @@
 require "test_helper"
 
 class AvaliacoesClinicasControllerTest < ActionDispatch::IntegrationTest
-  FORMULARIO = "seguimento_tb".freeze
+  FORMULARIO = "acompanhamento".freeze
 
   test "exige login" do
     get formulario_avaliacoes_clinicas_path(FORMULARIO)
@@ -28,7 +28,7 @@ class AvaliacoesClinicasControllerTest < ActionDispatch::IntegrationTest
 
       get formulario_avaliacao_clinica_path(FORMULARIO, avaliacoes_clinicas(:two))
       assert_response :success
-      assert_includes response.body, "Pleural; Ganglionar"
+      assert_includes response.body, "Pele; Articulações"
     end
   end
 
@@ -40,14 +40,30 @@ class AvaliacoesClinicasControllerTest < ActionDispatch::IntegrationTest
     assert_not_includes response.body, "MFU"
   end
 
+  test "a busca acha por parte do prontuário e pelas iniciais, sem ligar para maiúsculas, e o painel sugere" do
+    sign_in users(:consultor)
+
+    get formulario_avaliacoes_clinicas_path(FORMULARIO, prontuario: "agh0002")
+    assert_includes response.body, "JPD"
+    assert_not_includes response.body, "MFU"
+
+    get formulario_avaliacoes_clinicas_path(FORMULARIO, prontuario: "jp")
+    assert_includes response.body, "JPD"
+
+    get formulario_avaliacoes_clinicas_path(FORMULARIO, filtros: 1)
+    assert_select "datalist#sugestoes_de_busca option[value='AGH-0002']"
+  end
+
   test "operador e admin abrem o formulário com a pergunta 10 condicional; consultor não abre" do
     %i[operador admin].each do |papel|
       sign_in users(papel)
       get new_formulario_avaliacao_clinica_path(FORMULARIO)
 
       assert_response :success, papel
-      assert_select "input[name='avaliacao_clinica[dados_formulario][forma_clinica]'][data-revela]", 2
-      assert_select ".pergunta-condicional input[type=checkbox][name='avaliacao_clinica[dados_formulario][tb_extrapulmonar][]']", 10
+      # As opções 2 e 3 da forma revelam a primeira dependente dela, a pergunta 10
+      assert_select "input[name='avaliacao_clinica[dados_formulario][forma]'][data-revela='1']", 2
+      assert_select ".bloco > .pergunta input[name='avaliacao_clinica[dados_formulario][forma]'][value='1']:not([data-revela])"
+      assert_select ".dependente[data-indice='1'] input[type=checkbox][name='avaliacao_clinica[dados_formulario][locais][]']", 10
     end
 
     sign_in users(:consultor)
@@ -80,9 +96,9 @@ class AvaliacoesClinicasControllerTest < ActionDispatch::IntegrationTest
     get edit_formulario_avaliacao_clinica_path(FORMULARIO, do_laboratorio)
     assert_response :not_found
     sign_in users(:operador)
-    atualizar do_laboratorio, do_laboratorio.respostas.merge("baciloscopia_escarro_mes_1" => "1")
+    atualizar do_laboratorio, do_laboratorio.respostas.merge("exame_mes_1" => "1")
     assert_response :not_found
-    assert_nil do_laboratorio.reload.respostas["baciloscopia_escarro_mes_1"]
+    assert_nil do_laboratorio.reload.respostas["exame_mes_1"]
   end
 
   test "não registra em setor sem liberação, mesmo trocando o setor no formulário" do
@@ -193,10 +209,10 @@ class AvaliacoesClinicasControllerTest < ActionDispatch::IntegrationTest
     sign_in users(:operador)
 
     assert_no_difference [ "Paciente.count", "AvaliacaoClinica.count" ] do
-      enviar paciente: { prontuario_sah: "SAH-NOVO", iniciais: "" }, respostas: respostas_de_abertura("forma_clinica" => "2")
+      enviar paciente: { prontuario_sah: "SAH-NOVO", iniciais: "" }, respostas: respostas_de_abertura("forma" => "2")
     end
     assert_response :unprocessable_content
-    assert_select ".pergunta-condicional p.text-rose-600", text: "é obrigatória"
+    assert_select ".dependente #campo_locais_erros p.text-rose-600", text: "é obrigatória"
     assert_select "#campo_iniciais[aria-invalid='true']"
   end
 
@@ -209,7 +225,7 @@ class AvaliacoesClinicasControllerTest < ActionDispatch::IntegrationTest
     assert_redirected_to root_path
   end
 
-  test "operador atualiza o seguimento mês a mês, e a alteração fica auditada" do
+  test "operador atualiza o acompanhamento mês a mês, e a alteração fica auditada" do
     sign_in users(:operador)
     avaliacao = avaliacoes_clinicas(:one)
 
@@ -218,10 +234,10 @@ class AvaliacoesClinicasControllerTest < ActionDispatch::IntegrationTest
     assert_select "input[name='paciente[iniciais]']", 0 # identificação só para leitura
 
     assert_difference -> { avaliacao.versions.count }, 1 do
-      atualizar avaliacao, avaliacao.respostas.merge("baciloscopia_escarro_mes_1" => "2")
+      atualizar avaliacao, avaliacao.respostas.merge("exame_mes_1" => "2")
     end
     assert_redirected_to formulario_avaliacao_clinica_path(FORMULARIO, avaliacao)
-    assert_equal "2", avaliacao.reload.respostas["baciloscopia_escarro_mes_1"]
+    assert_equal "2", avaliacao.reload.respostas["exame_mes_1"]
   end
 
   test "encerrar exige as perguntas marcadas para encerrar" do
@@ -243,9 +259,9 @@ class AvaliacoesClinicasControllerTest < ActionDispatch::IntegrationTest
     get edit_formulario_avaliacao_clinica_path(FORMULARIO, avaliacao)
     assert_redirected_to root_path
 
-    atualizar avaliacao, avaliacao.respostas.merge("baciloscopia_escarro_mes_1" => "1")
+    atualizar avaliacao, avaliacao.respostas.merge("exame_mes_1" => "1")
     assert_redirected_to root_path
-    assert_nil avaliacao.reload.respostas["baciloscopia_escarro_mes_1"]
+    assert_nil avaliacao.reload.respostas["exame_mes_1"]
   end
 
   test "edição sobre uma versão antiga avisa do conflito em vez de sobrescrever" do
@@ -272,7 +288,7 @@ class AvaliacoesClinicasControllerTest < ActionDispatch::IntegrationTest
   def enviar(paciente:, respostas: respostas_de_abertura, setor: setores(:ambulatorio))
     post formulario_avaliacoes_clinicas_path(FORMULARIO), params: {
       paciente: { prontuario_sah: "", prontuario_aghuse: "", iniciais: "" }.merge(paciente),
-      avaliacao_clinica: { setor_id: setor.respond_to?(:id) ? setor.id : setor, dados_formulario: respostas }
+      avaliacao_clinica: { versao_formulario_id: versoes_formulario(:acompanhamento_v1).id, setor_id: setor.respond_to?(:id) ? setor.id : setor, dados_formulario: respostas }
     }
   end
 

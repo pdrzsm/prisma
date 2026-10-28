@@ -16,6 +16,7 @@ e para quem implanta o sistema.
 | Senha do usuário | `users` | Hash bcrypt (nunca reversível) |
 | Histórico de alterações | `versions` (PaperTrail) | Campos cifrados continuam cifrados |
 | Quem visualizou o quê: usuário, registro, IP e navegador | `audit_logs` | Texto puro, sem dado do paciente (só o id do registro visto) |
+| Definição de cada formulário: perguntas, opções, finalidade e base legal | `versoes_formulario` | Texto puro (JSON), sem dado de paciente; a versão publicada não muda |
 
 O Prisma **não guarda nome completo nem CPF de paciente**: como no formulário
 em papel, a identificação é feita por prontuário e iniciais (minimização,
@@ -55,6 +56,7 @@ e com o formulário **habilitado** no setor pelo admin
 | Corrigir a identificação do paciente (prontuários e iniciais) | ✅ | ✅ (se registra todos os formulários em que o paciente tem notificação) | ❌ | ❌ |
 | Excluir notificação | ❌ | ❌ | ❌ | ❌ |
 | Configurações: usuários, liberações, instituições, setores | ✅ | ❌ | ❌ | ❌ |
+| Gerador de formulários: criar, editar, publicar | ✅ | ❌ | ❌ | ❌ |
 
 Como isso é garantido:
 
@@ -68,9 +70,9 @@ Como isso é garantido:
   liberações uma vez por requisição e responde se a pessoa consulta ou registra
   um formulário num setor. As policies usam essa classe; nenhuma tela decide
   acesso sozinha.
-- **Dados filtrados na consulta.** A lista, a busca por prontuário, os números
-  da visão geral e a página de Formulários usam o escopo do Pundit, que só traz
-  as notificações dos pares (setor, formulário) liberados. A notificação de
+- **Dados filtrados na consulta.** A lista e a busca por prontuário usam o
+  escopo do Pundit, que só traz as notificações dos pares (setor, formulário)
+  liberados, e o menu mostra só os formulários que a pessoa consulta. A notificação de
   outro setor, aberta pela URL, dá **404**, como se não existisse.
 - **O setor decide antes de qualquer leitura.** Ao registrar, o setor escolhido
   é autorizado antes de procurar ou gravar paciente; um setor trocado no
@@ -95,9 +97,21 @@ Como isso é garantido:
   que ele tem notificação, no setor delas: ninguém altera o que aparece numa
   notificação que não pode editar. Paciente que a pessoa não vê dá 404.
 - **Configurações só para o admin.** A `ConfiguracaoPolicy` (base de
-  `InstituicaoPolicy`, `SetorPolicy` e `UserPolicy`) libera só o admin. O menu
-  nem aparece para os outros, mas a proteção é no servidor: a URL digitada à
-  mão também é barrada.
+  `InstituicaoPolicy`, `SetorPolicy`, `UserPolicy` e
+  `Configuracoes::FormularioPolicy`) libera só o admin. O menu nem aparece
+  para os outros, mas a proteção é no servidor: a URL digitada à mão também é
+  barrada. No gerador de formulários, a permissão é conferida antes de
+  procurar o formulário: quem não é admin recebe a mesma resposta para uma
+  chave que existe e para uma que não existe.
+- **Só formulário publicado vale.** Um formulário que nunca foi publicado não
+  aparece no menu, não abre em `/formularios` (404, até para o admin) e não é
+  liberado para ninguém (`LiberacoesDoUsuario` ignora). Ele já pode estar
+  habilitado nos setores escolhidos na criação, mas `Permissoes` o ignora, até
+  para o admin, até ser publicado.
+- **Formulário de uma instituição só.** Cada formulário pertence a uma
+  instituição e só é habilitado em setores dela: `FormularioHabilitado` recusa
+  um setor de outra, e as telas (gerador e setor) ignoram o que vier de fora.
+  A instituição só muda enquanto o formulário não estiver em nenhum setor.
 - **Rotas mínimas.** Cada recurso declara `only:` ou `except:` com as actions
   que existem. Usuário e notificação não têm rota de exclusão.
 
@@ -106,7 +120,7 @@ Como isso é garantido:
 ### Autenticação (Devise)
 
 - Login por nome de usuário ou CPF, com ou sem pontuação.
-- Senha com no mínimo 12 caracteres.
+- Senha com no mínimo 8 caracteres.
 - A conta é bloqueada por 15 minutos após 5 senhas erradas seguidas.
 - Cada IP pode fazer no máximo 20 tentativas de login a cada 3 minutos.
 - A sessão expira após 30 minutos sem uso.
@@ -137,17 +151,20 @@ Como isso é garantido:
 
 [config/initializers/filter_parameter_logging.rb](../config/initializers/filter_parameter_logging.rb)
 esconde os objetos `paciente` e `avaliacao_clinica` inteiros, além de CPF,
-login, senha, iniciais, prontuário e município. Todos os formulários de
-`config/formularios` enviam as respostas dentro de `avaliacao_clinica`, então
-um formulário novo já nasce coberto. Os testes conferem isso com
+login, senha, iniciais, prontuário e município. Todo formulário, inclusive o
+criado no gerador, envia as respostas dentro de `avaliacao_clinica`, então um
+formulário novo já nasce coberto. Os testes conferem isso com
 `request.filtered_parameters`.
 
 ### Auditoria
 
 - **Alterações (PaperTrail):** criação, alteração e exclusão de pacientes,
-  avaliações, usuários, instituições, setores, formulários habilitados e
-  liberações ficam na tabela `versions`, com o autor em `whodunnit`: dá para
-  saber quem liberou o quê e quando. Campos cifrados continuam cifrados na
+  avaliações, usuários, instituições, setores, formulários, versões de
+  formulário, formulários habilitados e liberações ficam na tabela `versions`,
+  com o autor em `whodunnit`: dá para saber quem liberou o quê, e quem mexeu no
+  rascunho e publicou cada versão, e quando. O conteúdo do rascunho a cada
+  clique não é copiado para a auditoria; o da versão publicada é a própria
+  linha, que não muda, com quem publicou e quando. Campos cifrados continuam cifrados na
   auditoria, e o hash da senha não é gravado.
 - **Leituras (LGPD, art. 37 e 46):** a lista, os detalhes e a tela de edição de
   uma notificação (inclusive a que volta sem salvar, por resposta inválida ou
@@ -173,15 +190,17 @@ um formulário novo já nasce coberto. Os testes conferem isso com
 
 ### Transparência: finalidade e base legal
 
-- Cada formulário declara no YAML a **finalidade** da coleta e a **base legal**
-  (LGPD, art. 6º, I e X, e art. 11). O formulário sem as duas não carrega.
+- Cada versão do formulário declara a **finalidade** da coleta e a **base
+  legal** (LGPD, art. 6º, I e X, e art. 11). Sem as duas, o rascunho não é
+  publicado.
 - A tela de registro mostra as duas **antes das perguntas**, com a guarda
   mínima de 20 anos (Lei 13.787/2018). A edição e os detalhes de uma
   notificação mostram as gravadas nela.
 - Cada notificação **grava** a finalidade e a base legal em vigor no registro
-  (`avaliacoes_clinicas.finalidade` e `base_legal`). Elas vêm sempre do
-  formulário, nunca da tela, e não mudam depois: se a definição mudar, as
-  notificações antigas continuam dizendo para que foram coletadas.
+  (`avaliacoes_clinicas.finalidade` e `base_legal`). Elas vêm sempre da
+  versão publicada, nunca da tela, e não mudam depois: numa versão nova do
+  formulário, as notificações antigas continuam dizendo para que foram
+  coletadas.
 - A página **Privacidade e proteção de dados** (`/privacidade`, no rodapé de
   todas as telas) resume para quem usa o sistema o que o art. 9º pede: quem
   responde pelos dados, finalidade e base legal de cada formulário, quais
@@ -207,10 +226,12 @@ um formulário novo já nasce coberto. Os testes conferem isso com
 - Cada setor tem os seus pacientes: um índice único impede dois pacientes com
   o mesmo prontuário no mesmo setor (o mesmo número em outro setor é outro
   cadastro). A notificação é sempre do setor do paciente.
-- As respostas seguem a definição do formulário (`config/formularios/*.yml`):
-  só perguntas declaradas, só códigos de opção existentes, textos e números
-  dentro dos limites, datas válidas e não futuras. Qualquer outra chave é
-  recusada, no controller (strong params) e no model.
+- As respostas seguem a versão do formulário em que a notificação foi
+  registrada (ver *Gerador de formulários*): só perguntas declaradas, só
+  códigos de opção existentes, textos e números dentro dos limites, datas
+  válidas (e não futuras, salvo na pergunta que aceita). Qualquer outra chave é
+  recusada, no controller (strong params) e no model. A resposta de uma
+  pergunta que não está à mostra (fora da condição) é descartada.
 - Toda edição fica na auditoria com autor e horário. Se duas pessoas editam a
   mesma notificação ao mesmo tempo, a segunda é avisada do conflito em vez de
   apagar a alteração da primeira (bloqueio otimista, `lock_version`).
@@ -218,6 +239,71 @@ um formulário novo já nasce coberto. Os testes conferem isso com
   setor com pacientes não é excluído, um formulário com notificações num setor
   não é desabilitado nele, e nada clínico é apagado em cascata. A Lei 13.787/2018 prevê guarda mínima de 20 anos
   do prontuário.
+
+### Gerador de formulários
+
+O admin monta os formulários pela tela; o que ele digita vira a definição que
+gera as telas de todo mundo. Por isso a definição é tratada como entrada não
+confiável, mesmo vinda do admin:
+
+- **Uma porta de entrada só.** Toda definição passa pelo
+  `DefinicaoDeFormulario`, ao gravar e ao ler: só campos conhecidos (um campo
+  de outro tipo de pergunta também é recusado), cada um com o tipo certo,
+  textos com tamanho máximo, quantidades limitadas (30 seções, 300 perguntas,
+  100 opções por pergunta e 3000 no formulário, 10 dependentes por pergunta,
+  3 níveis de condição, 1 MB no total) e referências que existem. O que é
+  gravado é a estrutura que o motor devolve, nunca a que chegou. Os testes com
+  dados aleatórios (`definicao_de_formulario_fuzz_test.rb`) conferem que
+  nenhuma definição ou resposta, nem lixo, levanta outro erro.
+- **Texto limpo.** `TextoSeguro` tira de tudo o que é digitado (na definição e
+  nas respostas) os caracteres de controle, os de largura zero e os de direção
+  do texto, que fariam um texto parecer outro na tela, e padroniza a forma
+  Unicode.
+- **Nada do admin vira código.** As chaves das perguntas são geradas pelo
+  servidor (e nunca reaproveitadas); os códigos de opção só aceitam letras,
+  números, ponto, traço e sublinhado. As telas não têm JavaScript, e o CSS que
+  mostra e esconde as perguntas é fixo (`application.css`): nenhuma regra,
+  estilo ou atributo é montado com o que o admin digitou. O ERB escapa tudo, e
+  os testes passam um ataque de XSS por todos os campos do gerador e conferem
+  todas as telas em que o texto aparece.
+- **Versão publicada não muda.** O model recusa alterar ou apagar uma versão
+  publicada (somente leitura, antes de qualquer outra regra), e a notificação
+  fica presa à versão dela (`attr_readonly` e chave estrangeira). A única
+  saída de uma versão publicada é a exclusão do formulário inteiro, que só
+  acontece sem nenhuma notificação (abaixo). No banco:
+  chave estrangeira das notificações, liberações e formulários habilitados
+  para `formularios.chave`, formato da chave conferido por `CHECK` (inclusive
+  maiúsculas, que a comparação do banco ignoraria), estrutura sempre JSON
+  válido e um rascunho só por formulário (coluna gerada com índice único).
+- **Nada sobrescrito sem ver.** Toda mudança no rascunho leva o `lock_version`
+  da tela: uma aba antiga é recusada. A publicação trava o formulário e publica
+  exatamente o que foi revisto; se o rascunho mudou depois da revisão, não
+  publica. Se o formulário ganha uma versão nova enquanto alguém preenche, o
+  envio volta com a versão nova e o que foi digitado, em vez de descartar sem
+  aviso uma resposta de pergunta que mudou.
+- **LGPD na publicação.** Sem finalidade e base legal não se publica. A
+  revisão mostra o que muda em relação à versão anterior e avisa das perguntas
+  que parecem pedir um dado que identifica a pessoa (CPF, nome, endereço,
+  telefone, documento, Cartão SUS, data de nascimento) e do texto livre; para
+  publicar, o admin confirma que o DPO validou a finalidade e a base legal e
+  que cada pergunta é necessária. As versões guardam para que e com qual base
+  legal cada dado foi coletado.
+- **Exclusão de formulário.** Formulário **com notificações nunca é
+  excluído**: o registro clínico é preservado (Lei 13.787/2018) e as versões
+  dizem para que cada dado foi coletado. O model recusa (`Formulario#excluivel?`
+  e `before_destroy`), a policy nega, as telas não oferecem o botão, e o banco
+  também recusa (chave estrangeira das notificações). **Sem nenhuma
+  notificação**, nada foi coletado com ele, e o admin pode excluí-lo, publicado
+  ou não, na lista ou na tela do formulário: sai com as versões, a habilitação
+  nos setores e as liberações das pessoas. A tela de confirmação lista o que
+  sai e, para um formulário já publicado, exige uma confirmação marcada. A
+  exclusão de cada coisa fica na auditoria (PaperTrail), com o autor
+  (`whodunnit`); as perguntas não ficam guardadas em lugar nenhum depois
+  disso. Uma notificação que chegue no meio da exclusão é barrada pela chave
+  estrangeira, e nada é apagado (transação). Só o admin exclui; a rota confere
+  a permissão antes de procurar o formulário.
+- **O catálogo não aparece antes do login.** A tela de entrada não lista os
+  formulários: eles são da instituição.
 
 ### Navegador
 
@@ -231,8 +317,9 @@ um formulário novo já nasce coberto. Os testes conferem isso com
 ### Infraestrutura e processo
 
 - Em produção, HTTPS é obrigatório (`force_ssl`, com HSTS e cookies seguros) e
-  só os domínios de `APP_HOSTS` são aceitos. Sem `PROXIES_CONFIAVEIS` (o IP do
-  proxy reverso), a aplicação nem sobe.
+  só os domínios de `APP_HOSTS` são aceitos quando a variável está definida
+  (ver *Pendências conhecidas*). Sem `PROXIES_CONFIAVEIS` (o IP do proxy
+  reverso), a aplicação nem sobe.
 - No `docker-compose.yml`, o banco e o servidor de desenvolvimento só escutam
   em `127.0.0.1`.
 - O CI roda Brakeman, bundler-audit, RuboCop, os testes e os testes de
@@ -246,13 +333,14 @@ um formulário novo já nasce coberto. Os testes conferem isso com
 
 | Item | Valor atual | Onde mudar |
 |------|-------------|------------|
-| Tamanho mínimo da senha | 12 | `config/initializers/devise.rb` (`password_length`) |
+| Tamanho mínimo da senha | 8 | `config/initializers/devise.rb` (`password_length`) |
 | Tentativas até bloquear / tempo de bloqueio | 5 / 15 min | `devise.rb` (`maximum_attempts`, `unlock_in`) |
 | Tentativas de login por IP | 20 a cada 3 min | `app/controllers/users/sessions_controller.rb` |
 | Sessão ociosa | 30 min | `devise.rb` (`timeout_in`) |
-| Perguntas, opções, obrigatoriedade e limites de cada formulário | por pergunta | `config/formularios/*.yml` |
+| Perguntas, opções, obrigatoriedade e limites de cada formulário | por pergunta | gerador de formulários (Configurações) |
+| Limites do gerador (seções, perguntas, opções, níveis, tamanhos) | ver *Gerador de formulários* | `app/models/definicao_de_formulario.rb` |
 | Fuso horário | America/Sao_Paulo | variável `PRISMA_FUSO_HORARIO` |
-| Finalidade e base legal de cada formulário | por formulário | `finalidade` e `base_legal` em `config/formularios/*.yml` |
+| Finalidade e base legal de cada formulário | por formulário | cabeçalho do formulário, no gerador |
 | Contato do encarregado de dados (DPO) | não definido | variável `PRISMA_ENCARREGADO` (ex.: "Maria Souza · dpo@hospital.gov.br") |
 
 Ao mexer nesses valores, considere os efeitos colaterais:
@@ -303,10 +391,10 @@ Antes de colocar dados reais:
       e rode as migrações com outro usuário, que tem permissão de alterar tabelas.
 - [ ] Política de retenção para `audit_logs` (contém IP e navegador de quem
       acessou), definida com o encarregado (DPO).
-- [ ] Finalidade e base legal de cada formulário (`config/formularios/*.yml`)
-      validadas com o encarregado (DPO). As do seguimento de TB são uma
-      proposta: obrigação legal (notificação compulsória) e políticas públicas
-      de saúde, art. 11, II, "a" e "b".
+- [ ] Finalidade e base legal de cada formulário validadas com o encarregado
+      (DPO) antes de publicar (a publicação pede essa confirmação). Para um
+      agravo de notificação compulsória, costumam ser obrigação legal e
+      políticas públicas de saúde (LGPD, art. 11, II, "a" e "b").
 - [ ] `PRISMA_ENCARREGADO` com o nome e o contato do encarregado (DPO), e a
       política de privacidade para os pacientes publicada pela instituição
       (LGPD, art. 9º e art. 41, § 1º); o texto de `/privacidade` pode servir de
@@ -335,7 +423,32 @@ Em ordem aproximada de prioridade:
 4. **Rotação de chaves.** O Active Record Encryption aceita várias chaves
    primárias (a última cifra, as anteriores ainda decifram), mas o Prisma lê só
    uma por variável. O modo determinístico não suporta rotação.
-5. **Mensagens em português.** As telas e as mensagens de login e de validação
+5. **`APP_HOSTS` deveria falhar fechado.** Sem a variável, `config.hosts` fica
+   vazio e **qualquer `Host` é aceito** (a proteção contra DNS-rebinding e
+   Host-header fica desligada), em
+   [config/environments/production.rb](../config/environments/production.rb).
+   É incoerente com `PROXIES_CONFIAVEIS` e com as chaves de criptografia, que
+   derrubam o boot quando faltam: o certo é a aplicação não subir em produção
+   com `APP_HOSTS` vazio (fora do build de assets, como as chaves). Risco real
+   baixo atrás de um proxy que roteia por host e com a app usando `_path`, mas
+   é um fecho que falta.
+6. **Limite de tentativas de login compartilhado e durável.** O `rate_limit`
+   por IP ([app/controllers/users/sessions_controller.rb](../app/controllers/users/sessions_controller.rb))
+   usa o `Rails.cache`, que em produção hoje é `:file_store` em `tmp/cache`:
+   não é compartilhado entre instâncias (o Kamal pode subir mais de uma) e zera
+   a cada deploy. O `solid_cache` já está no Gemfile, mas não está ligado como
+   `cache_store`; ligá-lo torna o limite por IP compartilhado e durável. O
+   bloqueio por conta (`:lockable`, no banco) não é afetado e continua sendo o
+   controle principal contra adivinhação de senha; o limite por IP é defesa em
+   profundidade.
+7. **Imutabilidade das versões publicadas também no banco.** Hoje é o model
+   que recusa alterar ou apagar uma versão publicada (e os testes conferem).
+   Como o rascunho mora na mesma tabela, o usuário do banco da aplicação
+   precisa de `UPDATE` em `versoes_formulario`, e um `GRANT` não distingue
+   linha publicada de rascunho. Um gatilho (`BEFORE UPDATE`/`BEFORE DELETE`)
+   fecharia isso no banco, mas o `schema.rb` não guarda gatilhos: exigiria
+   passar para `structure.sql`.
+8. **Mensagens em português.** As telas e as mensagens de login e de validação
    já estão em português (`config/locales/pt-BR.yml`); o que não tem tradução
    ainda aparece em inglês.
-6. **Licença** do projeto.
+9. **Licença** do projeto.

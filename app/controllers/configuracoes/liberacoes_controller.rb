@@ -8,6 +8,7 @@ module Configuracoes
 
     def edit
       @instituicoes = Instituicao.includes(setores: :formularios_habilitados).order(:nome)
+      @formularios = Formulario.todos.index_by(&:chave)
       @liberadas = {
         instituicoes: @usuario.liberacoes_instituicao.pluck(:instituicao_id).to_set,
         setores: @usuario.liberacoes_setor.pluck(:setor_id).to_set,

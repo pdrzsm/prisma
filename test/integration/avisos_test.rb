@@ -32,7 +32,7 @@ class AvisosTest < ActionDispatch::IntegrationTest
   test "permissão negada vem como aviso de erro" do
     sign_in users(:consultor)
     # Consultor tentando gravar: o aviso de permissão volta pelo flash
-    post formulario_avaliacoes_clinicas_path("seguimento_tb"), params: { avaliacao_clinica: { dados_formulario: {} } }
+    post formulario_avaliacoes_clinicas_path("acompanhamento"), params: { avaliacao_clinica: { dados_formulario: {} } }
     follow_redirect!
 
     assert_select "dialog.aviso-erro p[role='alert']", text: /Você não tem permissão/

@@ -1,0 +1,4 @@
+<% content_for :title, "Rascunho · #{@rascunho.definicao.titulo} · Gerador de formulários · Prisma" %>
+<% trilha ["Configurações", configuracoes_instituicoes_path], ["Gerador de formulários", configuracoes_formularios_path],
+          [@formulario.titulo, configuracoes_formulario_path(@formulario)], ["Rascunho da versão #{@rascunho.numero}"] %>
+<%= render "configuracoes/rascunhos/conteudo", definicao: @rascunho.definicao, erros: @erros %>

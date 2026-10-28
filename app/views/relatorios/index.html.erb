@@ -1,0 +1,137 @@
+<% content_for :title, "Relatórios · Prisma" %>
+<% trilha ["Relatórios"] %>
+<h1 class="sr-only">Relatórios</h1>
+
+<% if @base.nil? %>
+  <div class="border border-marca-200 bg-white p-8 text-center text-sm text-slate-600">
+    Você ainda não tem nenhum formulário liberado. Fale com a administração do sistema.
+  </div>
+<% else %>
+  <% unidades_da_base = @unidades.select { |_, bases| bases.any? { |formulario, _| formulario == @base } }.keys %>
+  <% filtro = ->(**mudancas) { relatorios_path({ unidade: @unidade&.id, formulario: @base.chave, periodo: @meses }.merge(mudancas)) } %>
+
+  <%# Três menus em ciclo: o formulário, a unidade onde ele é visto e o período %>
+  <div class="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end">
+    <%= render "formularios/menu_suspenso", id: "base", rotulo: "1. Formulário", simbolo: :documento, atual: @base.titulo,
+          opcoes: @bases.map { |formulario| [ formulario.titulo, filtro.call(formulario: formulario.chave, unidade: nil), formulario == @base ] } %>
+    <%= render "formularios/menu_suspenso", id: "unidade", rotulo: "2. Unidade", simbolo: :predio,
+          atual: @unidade ? @unidade.nome_completo : "Todas as minhas unidades",
+          opcoes: [ [ "Todas as minhas unidades", filtro.call(unidade: nil), @unidade.nil? ] ] +
+                  unidades_da_base.map { |setor| [ setor.nome_completo, filtro.call(unidade: setor.id), setor == @unidade ] } %>
+    <%= render "formularios/menu_suspenso", id: "periodo", rotulo: "3. Período", simbolo: :grafico, atual: "Últimos #{@meses} meses",
+          opcoes: IndicadoresDoFormulario::PERIODOS.values.map { |meses| [ "Últimos #{meses} meses", filtro.call(periodo: meses), meses == @meses ] } %>
+  </div>
+
+  <% indicadores = @indicadores %>
+  <% if indicadores.total.zero? %>
+    <div class="mt-6 border border-marca-200 bg-white p-8 text-center text-sm text-slate-600">
+      Nenhuma notificação de <%= @base.titulo %> neste período.
+    </div>
+  <% else %>
+    <% cartao = "border border-marca-200 bg-white p-4 shadow-sm" %>
+    <% numero = "mt-1 text-3xl font-bold text-slate-900" %>
+    <% legenda = "flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-slate-600" %>
+
+    <section aria-labelledby="resumo" class="mt-6">
+      <h2 id="resumo" class="sr-only">Resumo</h2>
+      <dl class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+        <div class="<%= cartao %>">
+          <dt class="<%= legenda %>"><%= icone :documento %>Registradas</dt>
+          <dd class="<%= numero %>"><%= indicadores.total %></dd>
+        </div>
+        <% if indicadores.acompanha_encerramento? %>
+          <div class="<%= cartao %>">
+            <dt class="<%= legenda %>"><%= icone :ponto %>Em acompanhamento</dt>
+            <dd class="<%= numero %>"><%= indicadores.em_acompanhamento.size %></dd>
+          </div>
+          <div class="<%= cartao %>">
+            <dt class="<%= legenda %>"><%= icone :ok %>Encerradas</dt>
+            <dd class="<%= numero %>"><%= indicadores.encerradas.size %></dd>
+          </div>
+          <div class="<%= cartao %>">
+            <dt class="<%= legenda %>"><%= icone :grafico %>Taxa de encerramento</dt>
+            <dd class="<%= numero %>"><%= indicadores.taxa_de_encerramento %>%</dd>
+          </div>
+          <div class="<%= cartao %>">
+            <dt class="<%= legenda %>"><%= icone :alerta %>Paradas</dt>
+            <dd class="<%= numero %>"><%= indicadores.paradas %></dd>
+            <dd class="text-xs text-slate-600">sem atualização há mais de <%= AcompanhamentoDoFormulario::DIAS_PARADO %> dias</dd>
+          </div>
+          <div class="<%= cartao %>">
+            <dt class="<%= legenda %>"><%= icone :pausa %>Tempo até encerrar</dt>
+            <dd class="<%= numero %>"><%= indicadores.mediana_de_dias ? "#{indicadores.mediana_de_dias} dias" : "—" %></dd>
+            <dd class="text-xs text-slate-600">mediana, do registro à última atualização</dd>
+          </div>
+        <% end %>
+      </dl>
+    </section>
+
+    <%# Notificações por mês: barras horizontais; o número fica escrito ao lado
+        de cada barra, então a informação não depende da cor %>
+    <section aria-labelledby="por-mes" class="mt-8 space-y-3">
+      <h2 id="por-mes" class="text-xs font-semibold uppercase tracking-widest text-slate-600">Notificações por mês</h2>
+      <% maior = [ indicadores.por_mes.map { |_, registradas, _| registradas }.max, 1 ].max %>
+      <div class="<%= cartao %>">
+        <table class="w-full text-sm">
+          <caption class="sr-only">Notificações registradas e encerradas em cada mês</caption>
+          <thead class="sr-only"><tr><th scope="col">Mês</th><th scope="col">Registradas</th><th scope="col">Encerradas</th></tr></thead>
+          <tbody>
+            <% indicadores.por_mes.each do |mes, registradas, encerradas| %>
+              <tr>
+                <th scope="row" class="w-24 py-1 pr-3 text-left font-normal text-slate-700"><%= l(mes, format: "%b/%Y") %></th>
+                <td class="py-1">
+                  <div class="flex items-center gap-3">
+                    <%# SVG em vez de style="width": a CSP não aceita o atributo style %>
+                    <svg class="h-4 w-full max-w-sm text-marca-500" aria-hidden="true">
+                      <rect width="<%= registradas * 100 / maior %>%" height="100%" fill="currentColor"/>
+                    </svg>
+                    <span class="font-semibold text-slate-900"><%= registradas %></span>
+                    <% if indicadores.acompanha_encerramento? && registradas.positive? %>
+                      <span class="text-xs text-slate-600"><%= encerradas %> encerrada<%= "s" unless encerradas == 1 %></span>
+                    <% end %>
+                  </div>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <% if @unidade.nil? && indicadores.por_setor.size > 1 %>
+      <section aria-labelledby="por-setor" class="mt-8 space-y-3">
+        <h2 id="por-setor" class="text-xs font-semibold uppercase tracking-widest text-slate-600">Por unidade</h2>
+        <div class="relative overflow-x-auto border border-marca-200 bg-white shadow-sm">
+          <table class="min-w-full divide-y divide-marca-200 text-sm">
+            <thead class="bg-marca-50 text-left text-xs font-semibold uppercase tracking-wider text-slate-600">
+              <tr>
+                <th scope="col" class="px-4 py-3">Unidade</th>
+                <th scope="col" class="px-4 py-3">Registradas</th>
+                <% if indicadores.acompanha_encerramento? %>
+                  <th scope="col" class="px-4 py-3">Em acompanhamento</th>
+                  <th scope="col" class="px-4 py-3">Paradas</th>
+                <% end %>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+              <% indicadores.por_setor.each do |setor, registradas, abertas, paradas| %>
+                <tr class="hover:bg-marca-50/60">
+                  <th scope="row" class="px-4 py-3 text-left font-semibold text-slate-900"><%= link_to setor.nome_completo, filtro.call(unidade: setor.id), class: "hover:underline" %></th>
+                  <td class="px-4 py-3"><%= registradas %></td>
+                  <% if indicadores.acompanha_encerramento? %>
+                    <td class="px-4 py-3"><%= abertas %></td>
+                    <td class="px-4 py-3"><%= paradas %></td>
+                  <% end %>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    <% end %>
+
+    <p class="mt-6 text-xs text-slate-600">
+      Só números: nenhum dado de paciente aparece aqui. Os totais vêm das notificações que você tem liberadas.
+    </p>
+  <% end %>
+<% end %>

@@ -1,38 +1,39 @@
 <%# Menu do sistema: na barra lateral (desktop) e no menu recolhido (celular).
-    No desktop, 12px como no layout; no menu do celular, maior para o toque.
-    Sem margens: o fundo do item da página atual vai de ponta a ponta. %>
-<nav aria-label="Seções do sistema" class="text-sm lg:text-xs uppercase tracking-wide">
-  <ul class="space-y-1 lg:space-y-8">
-    <li><%= item_do_menu "Visão geral", root_path, ativo: controller_name == "dashboard" %></li>
-    <li>
-      <%= item_do_menu "Formulários", formularios_path, ativo: controller_name == "formularios",
-                       icone: "before:content-['›'] before:mr-2 before:text-base before:leading-none" %>
-      <ul class="mt-1 space-y-1">
-        <%# Só os formulários que a pessoa consulta em algum setor %>
-        <% Formulario.todos.select { |formulario| current_user.permissoes.consulta_o_formulario?(formulario.chave) }.each do |formulario| %>
-          <li>
-            <%= item_do_menu formulario.titulo, formulario_avaliacoes_clinicas_path(formulario), subitem: true,
-                             ativo: controller_name == "avaliacoes_clinicas" && params[:formulario_id] == formulario.chave %>
-          </li>
-        <% end %>
-      </ul>
-    </li>
-    <%# Só o admin vê (ConfiguracaoPolicy); a URL também é barrada para os outros %>
-    <% if policy(Instituicao).index? %>
-      <li>
-        <%= item_do_menu "Configurações", configuracoes_instituicoes_path, ativo: false,
-                         icone: "before:content-['›'] before:mr-2 before:text-base before:leading-none" %>
-        <ul class="mt-1 space-y-1">
-          <li>
-            <%= item_do_menu "Instituições e setores", configuracoes_instituicoes_path, subitem: true,
-                             ativo: controller_path.in?(%w[configuracoes/instituicoes configuracoes/setores]) %>
-          </li>
-          <li>
-            <%= item_do_menu "Usuários", configuracoes_usuarios_path, subitem: true,
-                             ativo: controller_path.in?(%w[configuracoes/usuarios configuracoes/liberacoes configuracoes/senhas_temporarias]) %>
-          </li>
-        </ul>
-      </li>
-    <% end %>
+    Só navegação: todo item é um link para uma tela, e todos começam na mesma
+    margem. Conta, avisos, novidades e aparência ficam no cabeçalho
+    (shared/_topo). Na barra lateral, que dá ao menu a altura da tela, o
+    grupo Configurações desce para o pé (mt-auto); no menu do celular, que não
+    tem altura fixa, ele vem logo depois dos outros itens. %>
+<nav aria-label="Seções do sistema" class="flex flex-1 flex-col text-sm">
+  <ul>
+    <li><%= item_do_menu "Visão geral", root_path, icone: :casa, ativo: controller_name == "dashboard" %></li>
   </ul>
+
+  <%# Formulários: a página escolhe a unidade e a base. Sem nenhum acesso, o
+      item não aparece %>
+  <% if current_user.permissoes.formularios_consultados.any? %>
+    <ul>
+      <li><%= item_do_menu "Formulários", formularios_path, icone: :formularios,
+                           ativo: controller_path.in?(%w[formularios avaliacoes_clinicas identificacoes]) %></li>
+      <li><%= item_do_menu "Relatórios", relatorios_path, icone: :grafico, ativo: controller_path == "relatorios" %></li>
+    </ul>
+  <% end %>
+
+  <%# Configurações: só o admin, no pé do menu. O mt-auto fica neste div e a
+      margem mínima (mt-4) no grupo, para os dois não brigarem no mesmo
+      elemento: sobrando altura, o grupo vai para baixo; faltando, fica a
+      margem do grupo. %>
+  <% if policy(Instituicao).index? %>
+    <div class="mt-auto">
+      <%= grupo_do_menu "Configurações" do %>
+        <li><%= item_do_menu "Instituições e setores", configuracoes_instituicoes_path, icone: :predio,
+                             ativo: controller_path.in?(%w[configuracoes/instituicoes configuracoes/setores]) %></li>
+        <li><%= item_do_menu "Usuários", configuracoes_usuarios_path, icone: :usuarios,
+                             ativo: controller_path.in?(%w[configuracoes/usuarios configuracoes/liberacoes configuracoes/senhas_temporarias]) %></li>
+        <li><%= item_do_menu "Gerador de formulários", configuracoes_formularios_path, icone: :gerador,
+                             ativo: controller_path.in?(%w[configuracoes/formularios configuracoes/rascunhos configuracoes/secoes
+                                                            configuracoes/perguntas configuracoes/publicacoes configuracoes/versoes]) %></li>
+      <% end %>
+    </div>
+  <% end %>
 </nav>

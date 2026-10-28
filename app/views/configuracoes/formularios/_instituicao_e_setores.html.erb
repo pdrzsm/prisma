@@ -1,0 +1,40 @@
+<%# locals: (instituicoes:, instituicao_id:, setor_ids:) %>
+<%# A instituição do formulário e os setores dela em que ele vai valer, na
+    criação e enquanto ele não estiver em nenhum setor. Cada instituição é um
+    rádio, com os setores logo abaixo; os das outras ficam escondidos (só CSS:
+    .instituicao-do-formulario em application.css). O servidor só aceita
+    setores da instituição escolhida. O campo escondido manda a lista vazia
+    quando nada é marcado. %>
+<%= hidden_field_tag "formulario[setor_ids][]", "", id: nil %>
+<%= grupo_de_opcoes "Instituição e setores", id: "instituicao_e_setores",
+      descricao: "O formulário pertence a uma instituição e vale só nos setores dela que você marcar. " \
+                 "Os setores passam a valer quando ele for publicado." do %>
+  <% if instituicoes.empty? %>
+    <p class="px-4 py-3 text-sm text-slate-600 sm:px-5">
+      Nenhuma instituição cadastrada. Cadastre em
+      <%= link_to "Instituições e setores", configuracoes_instituicoes_path, class: "font-semibold text-marca-700 hover:underline" %>.
+    </p>
+  <% end %>
+
+  <% instituicoes.each do |instituicao| %>
+    <% linha = dom_id(instituicao, :do_formulario) %>
+    <div class="instituicao-do-formulario">
+      <%= linha_com_radio instituicao.nome, id: linha, nome: "formulario[instituicao_id]", valor: instituicao.id,
+                          marcado: instituicao_id.to_s == instituicao.id.to_s || instituicoes.one?, subtitulo: instituicao.sigla %>
+      <div class="setores-da-instituicao pb-2">
+        <% instituicao.setores.each do |setor| %>
+          <%= linha_com_interruptor "Setor #{setor.nome}", id: dom_id(setor, :do_formulario), contexto: "#{linha}_titulo", recuada: true do |opcoes| %>
+            <%= check_box_tag "formulario[setor_ids][]", setor.id, setor_ids.include?(setor.id.to_s), opcoes %>
+          <% end %>
+        <% end %>
+        <% if instituicao.setores.empty? %>
+          <p class="pb-2 pl-8 pr-4 text-sm text-slate-600 sm:pl-10">
+            Nenhum setor nesta instituição. Cadastre em
+            <%= link_to "Instituições e setores", configuracoes_instituicoes_path(anchor: dom_id(instituicao)),
+                        class: "font-semibold text-marca-700 hover:underline" %>.
+          </p>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+<% end %>

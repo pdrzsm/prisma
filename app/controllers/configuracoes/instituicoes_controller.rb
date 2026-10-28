@@ -1,18 +1,20 @@
 # Configurações > Instituições e setores, só para o admin (InstituicaoPolicy).
 # A lista mostra cada instituição com os seus setores; os setores têm o
-# próprio controller (Configuracoes::SetoresController).
+# próprio controller (Configuracoes::SetoresController). Cadastrar e editar
+# abrem num modal por cima da lista (ModalHelper).
 module Configuracoes
   class InstituicoesController < ApplicationController
     before_action :carregar_instituicao, only: [ :edit, :update, :destroy ]
 
     def index
       authorize Instituicao
-      @instituicoes = policy_scope(Instituicao).includes(:setores).order(:nome)
+      carregar_lista
     end
 
     def new
       authorize Instituicao
       @instituicao = Instituicao.new
+      carregar_lista
     end
 
     def create
@@ -23,11 +25,13 @@ module Configuracoes
         redirect_to configuracoes_instituicoes_path(anchor: helpers.dom_id(@instituicao)), notice: "Instituição cadastrada."
       else
         flash.now[:alert] = "Não foi possível salvar. Revise os campos destacados."
+        carregar_lista
         render :new, status: :unprocessable_content
       end
     end
 
     def edit
+      carregar_lista
     end
 
     def update
@@ -35,6 +39,7 @@ module Configuracoes
         redirect_to configuracoes_instituicoes_path(anchor: helpers.dom_id(@instituicao)), notice: "Instituição atualizada."
       else
         flash.now[:alert] = "Não foi possível salvar. Revise os campos destacados."
+        carregar_lista
         render :edit, status: :unprocessable_content
       end
     end
@@ -50,6 +55,11 @@ module Configuracoes
     end
 
     private
+
+    # As instituições com os setores: a tela da lista e o fundo dos modais
+    def carregar_lista
+      @instituicoes = policy_scope(Instituicao).includes(:setores).order(:nome)
+    end
 
     def carregar_instituicao
       @instituicao = Instituicao.find(params[:id])

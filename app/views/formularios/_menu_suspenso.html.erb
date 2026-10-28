@@ -1,0 +1,28 @@
+<%# Menu suspenso sem JavaScript (<details> com links). locals: id, rotulo,
+    simbolo (ícone), atual (texto), opcoes ([[texto, caminho, atual?], ...]) %>
+<div class="min-w-0 sm:min-w-64 sm:flex-none">
+  <p id="<%= id %>_rotulo" class="mb-1 text-xs font-semibold uppercase tracking-widest text-slate-600"><%= rotulo %></p>
+  <details class="relative">
+    <summary aria-labelledby="<%= id %>_rotulo <%= id %>_atual"
+             class="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 border border-marca-300 bg-white px-4 py-2 text-sm hover:bg-marca-50 focus-visible:outline-2 focus-visible:outline-marca-700 [&::-webkit-details-marker]:hidden open:bg-marca-50">
+      <span class="flex items-center gap-2">
+        <%= icone simbolo, classe: "h-5 w-5 text-marca-600" %>
+        <span id="<%= id %>_atual" class="font-semibold text-slate-900"><%= atual %></span>
+      </span>
+      <%= icone :seta_baixo, classe: "h-4 w-4 text-marca-600" %>
+    </summary>
+    <ul class="absolute left-0 z-20 mt-1 max-h-72 w-max min-w-full max-w-[calc(100vw-2rem)] overflow-y-auto border border-marca-200 bg-white py-1 shadow-lg">
+      <% opcoes.each do |texto, caminho, escolhida| %>
+        <li>
+          <%= link_to caminho,
+                      class: class_names("flex items-center justify-between gap-3 px-4 py-2 text-sm hover:bg-marca-50",
+                                         "bg-marca-50 font-semibold text-marca-700": escolhida, "text-slate-700": !escolhida),
+                      aria: { current: ("page" if escolhida) } do %>
+            <span><%= texto %></span>
+            <%= icone :ok, classe: "h-4 w-4 text-marca-600" if escolhida %>
+          <% end %>
+        </li>
+      <% end %>
+    </ul>
+  </details>
+</div>

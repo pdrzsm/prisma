@@ -1,0 +1,18 @@
+<%# locals: (definicao:, avaliacao:) %>
+<%# As seções de um formulário para preencher: no registro, na edição e na
+    prévia do gerador. As perguntas sem condição ficam na seção; as que
+    dependem de outra ficam dentro dela (avaliacoes_clinicas/_bloco). %>
+<% definicao.secoes.each do |secao| %>
+  <section class="bg-white rounded-xl border border-marca-200 shadow-sm p-6 flex flex-col gap-6">
+    <div class="space-y-1">
+      <h2 class="text-lg font-bold text-slate-900"><%= secao.titulo %></h2>
+      <% if secao.descricao %>
+        <p class="max-w-3xl whitespace-pre-line text-sm text-slate-600"><%= secao.descricao %></p>
+      <% end %>
+    </div>
+
+    <% definicao.raizes(secao).each do |pergunta| %>
+      <%= render "avaliacoes_clinicas/bloco", definicao:, avaliacao:, pergunta:, indice: nil %>
+    <% end %>
+  </section>
+<% end %>

@@ -73,6 +73,14 @@ pt-BR:
         one: deve ter pelo menos 1 caractere
         other: deve ter pelo menos %{count} caracteres
 
+  # Listas por extenso (Array#to_sentence): "a, b e c". Sem isto, o Rails usa o
+  # inglês ("a, b, and c") nas mensagens de erro.
+  support:
+    array:
+      words_connector: ", "
+      two_words_connector: " e "
+      last_word_connector: " e "
+
   devise:
     failure:
       already_authenticated: Você já entrou no sistema.

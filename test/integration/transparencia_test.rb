@@ -3,16 +3,16 @@ require "test_helper"
 # Transparência (LGPD, art. 6º, I e X, e art. 9º): quem digita sabe para que
 # os dados são coletados e com qual base legal, e cada notificação guarda isso
 class TransparenciaTest < ActionDispatch::IntegrationTest
-  FORMULARIO = "seguimento_tb".freeze
+  FORMULARIO = "acompanhamento".freeze
 
-  setup { @tb = Formulario.find(FORMULARIO) }
+  setup { @formulario = Formulario.publicado!(FORMULARIO) }
 
   test "o registro mostra a finalidade e a base legal antes de qualquer dado ser digitado" do
     sign_in users(:operador)
     get new_formulario_avaliacao_clinica_path(FORMULARIO)
 
     assert_response :success
-    assert_finalidade @tb.finalidade, @tb.base_legal
+    assert_finalidade @formulario.finalidade, @formulario.base_legal
     assert_operator response.body.index("Dados coletados para"), :<, response.body.index("paciente[prontuario_sah]")
   end
 
@@ -26,7 +26,7 @@ class TransparenciaTest < ActionDispatch::IntegrationTest
     [ formulario_avaliacao_clinica_path(FORMULARIO, avaliacao), edit_formulario_avaliacao_clinica_path(FORMULARIO, avaliacao) ].each do |pagina|
       get pagina
       assert_finalidade "finalidade em vigor no registro", "base legal em vigor no registro"
-      assert_not_includes response.body, @tb.finalidade, pagina
+      assert_not_includes response.body, @formulario.finalidade, pagina
     end
   end
 
@@ -34,13 +34,13 @@ class TransparenciaTest < ActionDispatch::IntegrationTest
     sign_in users(:operador)
     post formulario_avaliacoes_clinicas_path(FORMULARIO), params: {
       paciente: { prontuario_sah: "SAH-TRANSP", prontuario_aghuse: "", iniciais: "TRP" },
-      avaliacao_clinica: { setor_id: setores(:ambulatorio).id, finalidade: "outra", base_legal: "outra",
+      avaliacao_clinica: { versao_formulario_id: versoes_formulario(:acompanhamento_v1).id, setor_id: setores(:ambulatorio).id, finalidade: "outra", base_legal: "outra",
                            dados_formulario: respostas_de_abertura }
     }
 
     avaliacao = AvaliacaoClinica.order(:id).last
     assert_redirected_to formulario_avaliacao_clinica_path(FORMULARIO, avaliacao)
-    assert_equal [ @tb.finalidade, @tb.base_legal ], [ avaliacao.finalidade, avaliacao.base_legal ]
+    assert_equal [ @formulario.finalidade, @formulario.base_legal ], [ avaliacao.finalidade, avaliacao.base_legal ]
   end
 
   test "a página de privacidade mostra a finalidade e a base legal de cada formulário" do
@@ -71,7 +71,7 @@ class TransparenciaTest < ActionDispatch::IntegrationTest
   test "o rodapé de todas as telas leva à página de privacidade" do
     sign_in users(:operador)
 
-    [ root_path, formularios_path, formulario_avaliacoes_clinicas_path(FORMULARIO) ].each do |pagina|
+    [ root_path, formulario_avaliacoes_clinicas_path(FORMULARIO) ].each do |pagina|
       get pagina
       assert_select "footer a[href=?]", privacidade_path, { text: "Privacidade e proteção de dados" }, pagina
     end

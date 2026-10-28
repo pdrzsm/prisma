@@ -1,0 +1,7 @@
+# Formulários publicados nos testes. O Prisma não traz formulário nenhum: numa
+# instalação, o admin monta cada um no gerador. Aqui o acompanhamento de teste
+# (test/formularios_de_teste.rb) já vem publicado.
+acompanhamento:
+  chave: acompanhamento
+  instituicao: centro
+  versao_publicada: acompanhamento_v1

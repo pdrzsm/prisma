@@ -1,0 +1,23 @@
+<%# Troca da própria senha na janela central (ModalHelper#janela, aberta pelo
+    menu da conta no cabeçalho). "voltar" é a página atrás da janela: se algo
+    não conferir, o SenhasController volta para ela com a janela aberta de
+    novo, as mensagens de erro (flash) nos campos e um código novo.
+    locals: fechar (a página atrás da janela; também para onde o Cancelar volta) %>
+<% Hash(flash[:erros_da_troca_de_senha]).each do |atributo, mensagens| %>
+  <% Array(mensagens).each { |mensagem| current_user.errors.add(atributo.to_sym, mensagem) } %>
+<% end %>
+<%= form_with model: current_user, scope: :usuario, url: senha_path, method: :patch, class: ModalHelper::PAINEL_FORMULARIO do |form| %>
+  <%= hidden_field_tag :voltar, fechar %>
+  <div class="<%= ModalHelper::PAINEL_CORPO %>">
+    <% if current_user.errors.any? %>
+      <p role="alert" class="border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700">
+        Não foi possível trocar a senha. Revise os campos destacados.
+      </p>
+    <% end %>
+    <%= render "senhas/campos", form: %>
+  </div>
+  <div class="<%= ModalHelper::PAINEL_RODAPE %>">
+    <%= link_to "Cancelar", fechar, class: "#{ApplicationHelper::BOTAO_SECUNDARIO} h-10" %>
+    <%= form.submit "Trocar senha", class: "#{ApplicationHelper::BOTAO_PRIMARIO} h-10" %>
+  </div>
+<% end %>

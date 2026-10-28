@@ -1,0 +1,26 @@
+<% content_for :title, "Editar seção · Gerador de formulários · Prisma" %>
+<% trilha ["Configurações", configuracoes_instituicoes_path], ["Gerador de formulários", configuracoes_formularios_path],
+          [@formulario.titulo, configuracoes_formulario_path(@formulario)],
+          ["Rascunho da versão #{@rascunho.numero}", configuracoes_formulario_rascunho_path(@formulario)], ["Editar seção"] %>
+<%# O rascunho ao fundo, e a seção numa janela no centro da tela (ver ModalHelper#modal) %>
+<% voltar = configuracoes_formulario_rascunho_path(@formulario, anchor: @secao_atual.id) %>
+<%= render "configuracoes/rascunhos/conteudo", definicao: @rascunho.definicao, erros: nil %>
+
+<%# Remover, na ponta esquerda do rodapé: envia o formulário remover_secao, mais
+    abaixo, pelo atributo form (sem JavaScript). Só seção sem perguntas sai. %>
+<% if @secao_atual.perguntas.empty? %>
+  <% content_for :excluir do %>
+    <button type="submit" form="remover_secao" class="<%= ApplicationHelper::BOTAO_PERIGO %>">Remover seção</button>
+  <% end %>
+<% end %>
+
+<% modal "Editar seção", fechar: voltar, largura: "max-w-lg", rodape: true,
+         descricao: @secao_atual.perguntas.empty? ? "#{@secao_atual.titulo}. Sem perguntas: pode ser removida." : "#{@secao_atual.titulo}. Só uma seção sem perguntas pode ser removida." do %>
+  <%= render "formulario", url: configuracoes_formulario_rascunho_secao_path(@formulario, @secao_atual.id), metodo: :patch, voltar: %>
+
+  <% if @secao_atual.perguntas.empty? %>
+    <%= form_with url: configuracoes_formulario_rascunho_secao_path(@formulario, @secao_atual.id), method: :delete, id: "remover_secao", html: { hidden: true } do %>
+      <%= hidden_field_tag :lock_version, @rascunho.lock_version, id: nil %>
+    <% end %>
+  <% end %>
+<% end %>

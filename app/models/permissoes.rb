@@ -23,9 +23,10 @@ class Permissoes
     @user.admin? && @user.ativo?
   end
 
-  # "registra", "consulta" ou nil
+  # "registra", "consulta" ou nil. Só formulário publicado: nem o admin tem
+  # papel num que nunca foi publicado (ou que não existe)
   def papel(setor_id, formulario)
-    return unless setor_id && formulario
+    return unless setor_id && publicados.include?(formulario)
     return (habilitados.include?([ setor_id, formulario ]) ? "registra" : "consulta") if admin?
 
     efetivos[[ setor_id, formulario ]]
@@ -36,6 +37,7 @@ class Permissoes
 
   # Ids dos setores em que a pessoa consulta (ou registra) o formulário
   def setores_que_consultam(formulario)
+    return [] unless publicados.include?(formulario)
     return Setor.ids if admin?
 
     efetivos.keys.filter_map { |setor_id, chave| setor_id if chave == formulario }
@@ -49,6 +51,12 @@ class Permissoes
 
   def consulta_o_formulario?(formulario) = setores_que_consultam(formulario).any?
   def registra_o_formulario?(formulario) = setores_que_registram(formulario).any?
+
+  # Os formulários que a pessoa consulta em pelo menos um setor, na ordem de
+  # Formulario.todos: os do menu e os atalhos da visão geral
+  def formularios_consultados
+    @formularios_consultados ||= Formulario.todos.select { |formulario| consulta_o_formulario?(formulario.chave) }
+  end
 
   # Acessos efetivos, para mostrar à pessoa: { [setor_id, formulario] => papel }.
   # Vazio para o admin, que tem acesso a tudo.
@@ -77,7 +85,7 @@ class Permissoes
         instituicoes = @user.liberacoes_instituicao.pluck(:instituicao_id).to_set
         setores = @user.liberacoes_setor.joins(:setor).pluck(:setor_id, "setores.instituicao_id")
                        .filter_map { |setor_id, instituicao_id| setor_id if instituicoes.include?(instituicao_id) }
-        @user.liberacoes_formulario.where(setor_id: setores, formulario: Formulario.chaves)
+        @user.liberacoes_formulario.where(setor_id: setores, formulario: publicados)
              .pluck(:setor_id, :formulario, :papel)
              .select { |setor_id, formulario, _| habilitados.include?([ setor_id, formulario ]) }
              .to_h { |setor_id, formulario, papel| [ [ setor_id, formulario ], papel ] }
@@ -87,6 +95,11 @@ class Permissoes
   end
 
   def habilitados
-    @habilitados ||= FormularioHabilitado.where(formulario: Formulario.chaves).pluck(:setor_id, :formulario).to_set
+    @habilitados ||= FormularioHabilitado.where(formulario: publicados).pluck(:setor_id, :formulario).to_set
+  end
+
+  # Só formulários publicados: um que nunca foi publicado não tem o que preencher
+  def publicados
+    @publicados ||= Formulario.chaves
   end
 end

@@ -41,7 +41,7 @@ class IdentificacoesController < ApplicationController
   def carregar_notificacao
     notificacoes = policy_scope(AvaliacaoClinica).where(paciente: @paciente).order(updated_at: :desc, id: :desc)
     @notificacao = notificacoes.find_by(id: params[:avaliacao]) || notificacoes.first
-    @formulario = Formulario.find(@notificacao.formulario)
+    @formulario = @notificacao.versao_formulario.formulario
   end
 
   def destino

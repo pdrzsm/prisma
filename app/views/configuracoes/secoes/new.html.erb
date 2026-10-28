@@ -1,0 +1,13 @@
+<% content_for :title, "Nova seção · Gerador de formulários · Prisma" %>
+<% trilha ["Configurações", configuracoes_instituicoes_path], ["Gerador de formulários", configuracoes_formularios_path],
+          [@formulario.titulo, configuracoes_formulario_path(@formulario)],
+          ["Rascunho da versão #{@rascunho.numero}", configuracoes_formulario_rascunho_path(@formulario)], ["Nova seção"] %>
+<%# O rascunho ao fundo, e a seção nova numa janela no centro da tela (ver ModalHelper#modal).
+    Fechar e Cancelar voltam ao rascunho, na última seção (onde a nova entraria). %>
+<% definicao = @rascunho.definicao %>
+<% voltar = configuracoes_formulario_rascunho_path(@formulario, anchor: definicao.secoes.last&.id) %>
+<%= render "configuracoes/rascunhos/conteudo", definicao:, erros: nil %>
+<% modal "Nova seção", fechar: voltar, largura: "max-w-lg", rodape: true,
+         descricao: "Entra no fim do formulário, depois da última seção." do %>
+  <%= render "formulario", url: configuracoes_formulario_rascunho_secoes_path(@formulario), metodo: :post, voltar: %>
+<% end %>

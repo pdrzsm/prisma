@@ -1,0 +1,12 @@
+<%# locals: (definicao:, avaliacao:, pergunta:, indice:) %>
+<%# Uma pergunta e, logo abaixo, as que dependem dela, cada uma no seu bloco
+    (indice: a posição entre as dependentes, que as opções revelam). O CSS em
+    application.css mostra a dependente só com a opção certa marcada. %>
+<%= tag.div class: class_names("bloco", "dependente border-l-2 border-marca-200 pl-4" => indice), data: { indice: } do %>
+  <%= render "avaliacoes_clinicas/pergunta", definicao:, pergunta:,
+             nome: "avaliacao_clinica[dados_formulario][#{pergunta.chave}]",
+             valor: avaliacao.respostas[pergunta.chave], erros: avaliacao.erros_da_pergunta(pergunta.chave) %>
+  <% definicao.dependentes(pergunta).each.with_index(1) do |dependente, posicao| %>
+    <%= render "avaliacoes_clinicas/bloco", definicao:, avaliacao:, pergunta: dependente, indice: posicao %>
+  <% end %>
+<% end %>

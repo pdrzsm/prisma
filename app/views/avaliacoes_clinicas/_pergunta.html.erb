@@ -1,11 +1,14 @@
-<%# locals: (formulario:, pergunta:, nome:, valor:, erros:) %>
-<%# Uma pergunta do formulário. As classes .pergunta e .pergunta-condicional
-    escondem/mostram a pergunta condicional só com CSS (application.css). %>
+<%# locals: (definicao:, pergunta:, nome:, valor:, erros:) %>
+<%# Uma pergunta do formulário. As opções que mostram perguntas dependentes
+    levam data-revela (ver .bloco em application.css). A ajuda e os erros
+    ficam ligados ao campo (aria-describedby): o leitor de tela lê junto.
+    definicao é nil na identificação do paciente, que não tem dependentes. %>
 <% id = "campo_#{pergunta.chave}" %>
-<% revela = formulario.condicional_seguinte(pergunta)&.condicao&.fetch("valores") || [] %>
-<div class="pergunta <%= "pergunta-condicional" if pergunta.condicao %> space-y-2">
+<% descricoes = [ ("#{id}_ajuda" if pergunta.ajuda), ("#{id}_erros" if erros.any?) ].compact.join(" ").presence %>
+<% revela = ->(codigo) { definicao&.revelados_por(pergunta, codigo)&.join(" ").presence } %>
+<div class="pergunta space-y-2">
   <% if pergunta.tipo.in?(%w[unica multipla]) %>
-    <fieldset class="space-y-2">
+    <%= tag.fieldset class: "space-y-2", aria: { describedby: descricoes } do %>
       <legend class="text-sm"><%= render "avaliacoes_clinicas/enunciado", pergunta: %></legend>
       <% if pergunta.tipo == "multipla" %>
         <p class="text-xs text-slate-500">Marque todas que se aplicam.</p>
@@ -18,9 +21,10 @@
           <label for="<%= opcao_id %>" class="flex items-start gap-2 rounded-lg border border-marca-200 bg-white px-3 py-2 text-sm cursor-pointer hover:border-marca-400 has-checked:border-marca-500 has-checked:bg-marca-50">
             <% if pergunta.tipo == "unica" %>
               <%= radio_button_tag nome, opcao.codigo, valor == opcao.codigo, id: opcao_id, class: "mt-0.5 accent-marca-600",
-                                   data: ({ revela: true } if revela.include?(opcao.codigo)) %>
+                                   data: { revela: revela.(opcao.codigo) } %>
             <% else %>
-              <%= check_box_tag "#{nome}[]", opcao.codigo, Array(valor).include?(opcao.codigo), id: opcao_id, class: "mt-0.5 accent-marca-600" %>
+              <%= check_box_tag "#{nome}[]", opcao.codigo, Array(valor).include?(opcao.codigo), id: opcao_id, class: "mt-0.5 accent-marca-600",
+                                data: { revela: revela.(opcao.codigo) } %>
             <% end %>
             <span><%= opcao.rotulo %></span>
           </label>
@@ -33,29 +37,40 @@
           </label>
         <% end %>
       </div>
-    </fieldset>
+    <% end %>
   <% else %>
     <label for="<%= id %>" class="block text-sm"><%= render "avaliacoes_clinicas/enunciado", pergunta: %></label>
-    <% atributos = { id:, class: "#{ApplicationHelper::CAMPO} sm:max-w-md", aria: { invalid: erros.any? } } %>
+    <% atributos = { id:, class: "#{ApplicationHelper::CAMPO} sm:max-w-md", aria: { invalid: erros.any?, describedby: descricoes } } %>
     <% case pergunta.tipo %>
-    <% when "numero" %>
-      <%= number_field_tag nome, valor, min: pergunta.minimo, max: pergunta.maximo, step: 1, inputmode: "numeric", autocomplete: "off", **atributos %>
-    <% when "data" %>
-      <%= date_field_tag nome, valor, max: Date.current.iso8601, **atributos %>
-    <% else %>
-      <% if pergunta.maximo >= 200 %>
-        <%# Texto longo (ex.: motivo da mudança de esquema): várias linhas na tela %>
-        <%= text_area_tag nome, valor, rows: 3, maxlength: pergunta.maximo, autocomplete: "off", **atributos %>
-      <% else %>
-        <%= text_field_tag nome, valor, maxlength: pergunta.maximo, autocomplete: "off", **atributos %>
+    <% when "lista_suspensa" %>
+      <%= tag.select name: nome, **atributos do %>
+        <%= tag.option "Selecione uma opção", value: "", selected: valor.nil? %>
+        <% pergunta.opcoes.each do |opcao| %>
+          <%= tag.option opcao.rotulo, value: opcao.codigo, selected: valor == opcao.codigo, data: { revela: revela.(opcao.codigo) } %>
+        <% end %>
       <% end %>
+    <% when "numero" %>
+      <% casas = pergunta.decimais.to_i %>
+      <%= number_field_tag nome, valor, min: pergunta.minimo, max: pergunta.maximo, step: casas.zero? ? 1 : "0.#{"0" * (casas - 1)}1",
+                           inputmode: casas.zero? ? "numeric" : "decimal", autocomplete: "off", **atributos %>
+    <% when "data" %>
+      <% ultima = pergunta.permite_futuro ? DefinicaoDeFormulario::DATAS.last : Date.current %>
+      <%= date_field_tag nome, valor, min: DefinicaoDeFormulario::DATAS.first.iso8601, max: ultima.iso8601, **atributos %>
+    <% when "texto_longo" %>
+      <%= text_area_tag nome, valor, rows: 4, maxlength: pergunta.maximo, autocomplete: "off", **atributos %>
+    <% else %>
+      <%= text_field_tag nome, valor, maxlength: pergunta.maximo, autocomplete: "off", **atributos %>
     <% end %>
   <% end %>
 
   <% if pergunta.ajuda %>
-    <p class="text-xs text-slate-500"><%= pergunta.ajuda %></p>
+    <p id="<%= id %>_ajuda" class="whitespace-pre-line text-xs text-slate-500"><%= pergunta.ajuda %></p>
   <% end %>
-  <% erros.each do |erro| %>
-    <p class="text-sm font-medium text-rose-600"><%= erro %></p>
+  <% if erros.any? %>
+    <div id="<%= id %>_erros">
+      <% erros.each do |erro| %>
+        <p class="text-sm font-medium text-rose-600"><%= erro %></p>
+      <% end %>
+    </div>
   <% end %>
 </div>

@@ -1,51 +1,55 @@
 # Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
 
-# Notificações de seguimento de TB com dados fictícios, só com a abertura.
-# "one" e "two" são do Ambulatório; "tres" é do Laboratório. Finalidade e base
-# legal são as do formulário, como no registro (AvaliacaoClinica).
-<% tb = Formulario.find("seguimento_tb") %>
+# Notificações do acompanhamento de teste com dados fictícios, só com a
+# abertura, na versão 1 do formulário. "one" e "two" são do Ambulatório;
+# "tres" é do Laboratório. Finalidade e base legal são as da versão, como no
+# registro (AvaliacaoClinica).
+<% definicao = FormulariosDeTeste.acompanhamento %>
 one:
-  formulario: seguimento_tb
-  finalidade: <%= tb.finalidade.to_json %>
-  base_legal: <%= tb.base_legal.to_json %>
+  formulario: acompanhamento
+  versao_formulario: acompanhamento_v1
+  finalidade: <%= definicao.finalidade.to_json %>
+  base_legal: <%= definicao.base_legal.to_json %>
   setor: ambulatorio
   paciente: one
   user: operador
   dados_formulario:
-    numero_sinan: "0000001"
+    numero_registro: "0000001"
     gestante: "6"
     populacoes_especiais: ["0"]
     recebe_beneficio: "0"
     municipio_residencia: Cidade Fictícia
-    forma_clinica: "1"
+    forma: "1"
 
 two:
-  formulario: seguimento_tb
-  finalidade: <%= tb.finalidade.to_json %>
-  base_legal: <%= tb.base_legal.to_json %>
+  formulario: acompanhamento
+  versao_formulario: acompanhamento_v1
+  finalidade: <%= definicao.finalidade.to_json %>
+  base_legal: <%= definicao.base_legal.to_json %>
   setor: ambulatorio
   paciente: two
   user: admin
   dados_formulario:
-    numero_sinan: "0000002"
+    numero_registro: "0000002"
     gestante: "5"
     populacoes_especiais: ["3"]
     recebe_beneficio: "1"
     municipio_residencia: Outra Cidade
-    forma_clinica: "2"
-    tb_extrapulmonar: ["1", "2"]
+    forma: "2"
+    locais: ["1", "2"]
 
 tres:
-  formulario: seguimento_tb
-  finalidade: <%= tb.finalidade.to_json %>
-  base_legal: <%= tb.base_legal.to_json %>
+  formulario: acompanhamento
+  versao_formulario: acompanhamento_v1
+  finalidade: <%= definicao.finalidade.to_json %>
+  base_legal: <%= definicao.base_legal.to_json %>
   setor: laboratorio
   paciente: tres
   user: laboratorista
   dados_formulario:
-    numero_sinan: "0000003"
+    numero_registro: "0000003"
     gestante: "6"
     populacoes_especiais: ["0"]
     recebe_beneficio: "2"
     municipio_residencia: Cidade do Laboratório
-    forma_clinica: "1"
+    forma: "1"

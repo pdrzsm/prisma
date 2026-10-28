@@ -1,0 +1,32 @@
+<%# locals: (url:, metodo:, voltar:) %>
+<%# A seção no gerador, dentro do modal (new e edit): o corpo com os campos e o
+    rodapé com as ações sempre à vista. voltar: para onde Cancelar leva (o
+    rascunho, na seção). No edit, o Remover (só de seção vazia) fica na ponta
+    esquerda do rodapé e envia o formulário remover_secao, que está fora deste
+    por não poder haver um formulário dentro de outro (atributo form, sem
+    JavaScript). %>
+<% campo = ApplicationHelper::CAMPO %>
+<%= form_with url:, method: metodo, scope: :secao, class: ModalHelper::PAINEL_FORMULARIO do |form| %>
+  <div class="<%= ModalHelper::PAINEL_CORPO %>">
+    <%= render "configuracoes/erros", erros: @erros %>
+    <%= hidden_field_tag :lock_version, @rascunho.lock_version, id: nil %>
+    <div class="space-y-1">
+      <%= form.label :titulo, "Título da seção", class: "block text-sm font-semibold text-slate-900" %>
+      <%= form.text_field :titulo, value: @secao[:titulo], maxlength: DefinicaoDeFormulario::TAMANHOS[:titulo_da_secao], autocomplete: "off", class: campo %>
+    </div>
+    <div class="space-y-1">
+      <%= form.label :descricao, "Descrição (opcional)", class: "block text-sm font-semibold text-slate-900" %>
+      <%= form.text_area :descricao, value: @secao[:descricao], rows: 3, maxlength: DefinicaoDeFormulario::TAMANHOS[:descricao_da_secao], class: campo,
+                                     aria: { describedby: "secao_descricao_ajuda" } %>
+      <p id="secao_descricao_ajuda" class="text-xs text-slate-600">Uma orientação para quem preenche, mostrada no alto da seção.</p>
+    </div>
+  </div>
+
+  <div class="<%= ModalHelper::PAINEL_RODAPE %>">
+    <% if content_for?(:excluir) %>
+      <div class="me-auto"><%= yield :excluir %></div>
+    <% end %>
+    <%= link_to "Cancelar", voltar, class: ApplicationHelper::BOTAO_SECUNDARIO %>
+    <%= form.submit metodo == :post ? "Criar seção" : "Salvar seção", class: ApplicationHelper::BOTAO_PRIMARIO %>
+  </div>
+<% end %>

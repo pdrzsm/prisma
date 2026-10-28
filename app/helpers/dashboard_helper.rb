@@ -1,8 +1,8 @@
 module DashboardHelper
   # O que cada papel pode fazer, como nas policies (docs/seguranca.md#permissões)
   O_QUE_O_PAPEL_PODE = {
-    "admin" => "a conta única que administra o sistema (usuários, instituições, setores e liberações) e vê e registra tudo",
-    "usuario" => "vê e registra só o que o admin liberar: em cada setor, cada formulário, para consultar ou registrar"
+    "admin" => "A conta única do sistema. Administra formulários, usuários, instituições, setores e liberações, consulta as notificações de todos os setores e registra onde o formulário está habilitado.",
+    "usuario" => "Usa só o que o admin liberou: cada formulário, em cada setor, para apenas consultar ou também registrar. Não vê as Configurações."
   }.freeze
 
   # Como o papel aparece na tela

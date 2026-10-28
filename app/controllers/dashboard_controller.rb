@@ -1,16 +1,15 @@
 class DashboardController < ApplicationController
   def index
     authorize :dashboard
-    registros = policy_scope(AvaliacaoClinica)
-    @total = registros.count
-    @registrados_hoje = registros.where(created_at: Time.current.all_day).count
-    @atualizados_no_mes = registros.where(updated_at: 30.days.ago..).count
+    # A visão geral não lista notificações, só o acesso de quem está logado
+    skip_policy_scope
 
     # O que a pessoa pode acessar, por setor: { setor => [[formulario, papel], ...] }
     acessos = current_user.permissoes.acessos
     setores = Setor.where(id: acessos.keys.map(&:first)).includes(:instituicao).index_by(&:id)
+    formularios = Formulario.todos.index_by(&:chave)
     @acessos = acessos.group_by { |(setor_id, _), _| setores[setor_id] }
-                      .transform_values { |pares| pares.map { |(_, formulario), papel| [ Formulario.find(formulario), papel ] } }
+                      .transform_values { |pares| pares.map { |(_, formulario), papel| [ formularios.fetch(formulario), papel ] } }
                       .sort_by { |setor, _| setor.nome_completo }
   end
 end

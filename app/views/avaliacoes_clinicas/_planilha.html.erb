@@ -1,0 +1,57 @@
+<%# A tabela de registros (usada em Ver registros e em Formulários), com o rodapé da paginação.
+    locals: formulario, definicao, avaliacoes, autores, varios_setores, paginacao, caminho (ver shared/_paginacao) %>
+<div class="border border-marca-200 bg-white shadow-sm">
+  <%# relative: segura dentro da rolagem o "Ações" só para leitores de tela (sr-only é absolute) %>
+  <div class="relative overflow-x-auto">
+    <table class="min-w-full divide-y divide-marca-200 text-sm">
+      <thead class="bg-marca-50 text-left text-xs font-semibold uppercase tracking-wider text-slate-600">
+        <tr>
+          <th scope="col" class="px-4 py-3">Iniciais</th>
+          <th scope="col" class="px-4 py-3">Prontuário SAH</th>
+          <th scope="col" class="px-4 py-3">Prontuário AGHUSE</th>
+          <% if varios_setores %>
+            <th scope="col" class="px-4 py-3">Setor</th>
+          <% end %>
+          <% definicao.perguntas_da_lista.each do |pergunta| %>
+            <th scope="col" class="px-4 py-3"><%= pergunta.texto %></th>
+          <% end %>
+          <th scope="col" class="px-4 py-3">Situação</th>
+          <th scope="col" class="px-4 py-3">Atualizada em</th>
+          <th scope="col" class="px-4 py-3">Atualizada por</th>
+          <th scope="col" class="px-4 py-3"><span class="sr-only">Ações</span></th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100">
+        <% avaliacoes.each do |avaliacao| %>
+          <tr class="hover:bg-marca-50/60">
+            <td class="px-4 py-3 font-semibold text-slate-900"><%= avaliacao.paciente.iniciais %></td>
+            <td class="px-4 py-3"><%= avaliacao.paciente.prontuario_sah || "—" %></td>
+            <td class="px-4 py-3"><%= avaliacao.paciente.prontuario_aghuse || "—" %></td>
+            <% if varios_setores %>
+              <td class="px-4 py-3 whitespace-nowrap"><%= avaliacao.setor.nome_completo %></td>
+            <% end %>
+            <%# Colunas da versão atual; cada valor lido com a versão da própria
+                notificação (numa versão antiga, a pergunta pode nem existir) %>
+            <% definicao = avaliacao.definicao %>
+            <% definicao.perguntas_da_lista.each do |coluna| %>
+              <% pergunta = definicao.pergunta(coluna.chave) %>
+              <% valor = pergunta && avaliacao.respostas[pergunta.chave] %>
+              <td class="px-4 py-3"><%= valor.nil? ? "—" : definicao.resposta_formatada(pergunta, valor) %></td>
+            <% end %>
+            <td class="px-4 py-3"><%= selo_da_situacao(avaliacao) %></td>
+            <td class="px-4 py-3 whitespace-nowrap text-slate-600"><%= data_e_hora(avaliacao.updated_at) %></td>
+            <td class="px-4 py-3 whitespace-nowrap text-slate-600">@<%= autores[avaliacao.id].username %></td>
+            <td class="px-4 py-3 whitespace-nowrap text-right">
+              <%= link_to "Ver", formulario_avaliacao_clinica_path(formulario, avaliacao), class: "font-semibold text-marca-700 hover:text-marca-900 hover:underline" %>
+              <% if policy(avaliacao).update? %>
+                <%= link_to "Editar", edit_formulario_avaliacao_clinica_path(formulario, avaliacao), class: "ml-3 font-semibold text-marca-700 hover:text-marca-900 hover:underline" %>
+              <% end %>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+  <%= render "shared/paginacao", paginacao:, caminho: %>
+</div>
+

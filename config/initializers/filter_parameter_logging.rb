@@ -7,7 +7,7 @@ Rails.application.config.filter_parameters += [
   :passw, :secret, :token, :_key, :crypt, :salt, :certificate, :otp, :ssn,
   :cpf, :login, :sus_card, :medical_notes, :form_data,
   # Dados pessoais e de saúde (LGPD art. 11). :paciente e :avaliacao_clinica
-  # mascaram o objeto inteiro (todos os formulários de config/formularios usam
-  # essas duas chaves); os demais cobrem os mesmos campos fora desse aninhamento.
+  # mascaram o objeto inteiro (as telas de todo formulário usam essas duas
+  # chaves); os demais cobrem os mesmos campos fora desse aninhamento.
   :paciente, :avaliacao_clinica, :dados_formulario, :prontuario, :iniciais, :nome, :municipio_residencia
 ]

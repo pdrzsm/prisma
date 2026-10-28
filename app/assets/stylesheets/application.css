@@ -16,26 +16,112 @@
 }
 
 /*
- * Pergunta condicional dos formulários clínicos (ex.: a pergunta 10 do
- * seguimento de TB só vale para forma clínica extrapulmonar). Ela fica logo
- * depois da pergunta que a controla e só aparece quando uma opção marcada
- * com data-revela está selecionada. Funciona sem JavaScript: :has() existe em
- * todos os navegadores aceitos pelo allow_browser :modern. O servidor aplica a
- * mesma regra (Formulario#condicao_atendida?) de qualquer forma.
+ * Perguntas condicionais dos formulários ("se escolher isso, aparece aquilo"),
+ * sem JavaScript. Cada pergunta é um .bloco com a própria .pergunta e, logo
+ * depois, as perguntas que dependem dela (.dependente), numeradas a partir de
+ * 1 em data-indice. Cada opção (rádio, caixa ou item da lista suspensa) diz em
+ * data-revela quais dependentes ela mostra; :checked vale também para o item
+ * selecionado de um <select>. Há uma regra por posição, até o máximo de
+ * dependentes de uma pergunta (DefinicaoDeFormulario::MAXIMO_DE_DEPENDENTES).
+ * Um dependente escondido esconde junto os que estão dentro dele.
+ *
+ * :has() existe em todos os navegadores aceitos pelo allow_browser :modern. O
+ * servidor aplica a mesma regra de qualquer forma: a resposta de uma pergunta
+ * escondida é descartada (DefinicaoDeFormulario#normalizar).
  */
-.pergunta-condicional {
+.bloco {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.dependente {
   display: none;
 }
 
-.pergunta:has(input[data-revela]:checked) + .pergunta-condicional {
+.bloco:has(> .pergunta :checked[data-revela~="1"]) > .dependente[data-indice="1"],
+.bloco:has(> .pergunta :checked[data-revela~="2"]) > .dependente[data-indice="2"],
+.bloco:has(> .pergunta :checked[data-revela~="3"]) > .dependente[data-indice="3"],
+.bloco:has(> .pergunta :checked[data-revela~="4"]) > .dependente[data-indice="4"],
+.bloco:has(> .pergunta :checked[data-revela~="5"]) > .dependente[data-indice="5"],
+.bloco:has(> .pergunta :checked[data-revela~="6"]) > .dependente[data-indice="6"],
+.bloco:has(> .pergunta :checked[data-revela~="7"]) > .dependente[data-indice="7"],
+.bloco:has(> .pergunta :checked[data-revela~="8"]) > .dependente[data-indice="8"],
+.bloco:has(> .pergunta :checked[data-revela~="9"]) > .dependente[data-indice="9"],
+.bloco:has(> .pergunta :checked[data-revela~="10"]) > .dependente[data-indice="10"] {
+  display: flex;
+}
+
+/*
+ * Gerador de formulários: os campos de cada tipo de pergunta só aparecem com
+ * o tipo escolhido na lista .tipo-da-pergunta (data-tipos diz para quais tipos
+ * cada grupo vale). O servidor só lê os campos do tipo escolhido.
+ */
+.campos-do-tipo {
+  display: none;
+}
+
+.pergunta-do-gerador:has(.tipo-da-pergunta option[value="texto"]:checked) .campos-do-tipo[data-tipos~="texto"],
+.pergunta-do-gerador:has(.tipo-da-pergunta option[value="texto_longo"]:checked) .campos-do-tipo[data-tipos~="texto_longo"],
+.pergunta-do-gerador:has(.tipo-da-pergunta option[value="numero"]:checked) .campos-do-tipo[data-tipos~="numero"],
+.pergunta-do-gerador:has(.tipo-da-pergunta option[value="data"]:checked) .campos-do-tipo[data-tipos~="data"],
+.pergunta-do-gerador:has(.tipo-da-pergunta option[value="unica"]:checked) .campos-do-tipo[data-tipos~="unica"],
+.pergunta-do-gerador:has(.tipo-da-pergunta option[value="lista_suspensa"]:checked) .campos-do-tipo[data-tipos~="lista_suspensa"],
+.pergunta-do-gerador:has(.tipo-da-pergunta option[value="multipla"]:checked) .campos-do-tipo[data-tipos~="multipla"] {
   display: block;
 }
 
 /*
- * Liberações (Configurações > Usuários > Liberações): com a caixa de um nível
- * desmarcada, o que está dentro dele fica apagado, porque deixa de valer (o
- * servidor também ignora). Só CSS, como a pergunta condicional.
+ * Liberações (Configurações > Usuários > Liberações): com o interruptor de um
+ * nível desligado (a caixa na linha do nível, o <label> de cima), o que está
+ * dentro dele fica apagado, porque deixa de valer (o servidor também
+ * ignora). Só CSS, como a pergunta condicional.
  */
 .liberacao:has(> label input[type="checkbox"]:not(:checked)) > .liberacao-dentro {
   opacity: 0.45;
+}
+
+/*
+ * Gerador de formulários, instituição e setores do formulário: só os setores
+ * da instituição escolhida aparecem (o servidor ignora os das outras).
+ */
+.instituicao-do-formulario:has(> label input[type="radio"]:not(:checked)) > .setores-da-instituicao {
+  display: none;
+}
+
+/*
+ * Os links com âncora (#cabecalho, #s2, #pergunta-peso, o fim de um cadastro)
+ * levam o alvo até o alto da tela, que o cabeçalho fixo (shared/_topo) cobriria.
+ * O recuo é a altura dele (61 px no desktop; no celular, a trilha desce para uma
+ * segunda fileira) mais uma folga.
+ */
+html {
+  scroll-padding-top: 8rem;
+}
+@media (min-width: 64rem) {
+  html {
+    scroll-padding-top: 5rem;
+  }
+}
+
+/*
+ * Barra de rolagem fina, na cor da marca (em vez da padrão do sistema
+ * operacional). scrollbar-color/-width (Firefox e navegadores modernos) dão
+ * o "thin" padrão; ::-webkit-scrollbar (Chrome, Edge, Safari) afina mais
+ * ainda, com um valor em pixel que a propriedade padrão não permite. O
+ * marca-300 já escurece no modo noturno (tema_escuro.css), então serve aos dois.
+ */
+html {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-marca-300) transparent;
+}
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-marca-300);
 }

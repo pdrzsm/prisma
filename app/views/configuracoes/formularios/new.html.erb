@@ -1,0 +1,31 @@
+<% content_for :title, "Novo formulário · Configurações · Prisma" %>
+<% trilha ["Configurações", configuracoes_instituicoes_path], ["Gerador de formulários", configuracoes_formularios_path], ["Novo formulário"] %>
+
+<%= render "lista" %>
+<% modal "Novo formulário", fechar: configuracoes_formularios_path,
+         descricao: "O formulário começa como rascunho: monte as seções e as perguntas, confira na prévia e publique. " \
+                    "Nada aparece para quem preenche antes disso." do %>
+  <%= render "configuracoes/erros", erros: @erros %>
+
+  <%= form_with url: configuracoes_formularios_path, scope: :formulario, class: "space-y-6" do |form| %>
+    <%= grupo_de_opcoes do %>
+      <%= linha_de_campo do %>
+        <div class="space-y-1">
+          <%= form.label :titulo, "Título", class: "block text-sm font-semibold text-slate-900" %>
+          <%= form.text_field :titulo, value: @titulo, maxlength: DefinicaoDeFormulario::TAMANHOS[:titulo], autocomplete: "off",
+                                       class: "#{ApplicationHelper::CAMPO} sm:max-w-md", aria: { describedby: "formulario_titulo_ajuda" } %>
+          <p id="formulario_titulo_ajuda" class="text-xs text-slate-600">
+            Como aparece no menu, por exemplo “Avaliação nutricional”.
+          </p>
+        </div>
+      <% end %>
+    <% end %>
+
+    <%= render "instituicao_e_setores", instituicoes: @instituicoes, instituicao_id: @instituicao&.id, setor_ids: @setor_ids || [] %>
+
+    <div class="flex flex-wrap items-center gap-3">
+      <%= form.submit "Criar rascunho", class: ApplicationHelper::BOTAO_PRIMARIO %>
+      <%= link_to "Cancelar", configuracoes_formularios_path, class: ApplicationHelper::BOTAO_SECUNDARIO %>
+    </div>
+  <% end %>
+<% end %>

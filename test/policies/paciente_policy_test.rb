@@ -20,7 +20,9 @@ class PacientePolicyTest < ActiveSupport::TestCase
   test "com notificação num formulário que a pessoa não registra, não corrige" do
     # O paciente one passa a ter também uma notificação de outro formulário:
     # a correção mudaria o que aparece nela
-    avaliacoes_clinicas(:two).update_columns(paciente_id: pacientes(:one).id, formulario: "outro_formulario")
+    outro = publicar_formulario("outro_formulario")
+    AvaliacaoClinica.where(id: avaliacoes_clinicas(:two).id)
+                    .update_all(paciente_id: pacientes(:one).id, formulario: outro.chave, versao_formulario_id: outro.versao_publicada_id)
 
     assert_not policy(:operador, pacientes(:one)).update?
   end

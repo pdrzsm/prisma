@@ -1,0 +1,27 @@
+<%# Painel lateral dos avisos: o que outras pessoas fizeram nas notificações que
+    esta pessoa vê. Sem dado de paciente; abrir a notificação fica na auditoria
+    de leitura. locals: atividade (AtividadeRecente#itens) %>
+<div class="<%= ModalHelper::PAINEL_CORPO %>">
+  <% if atividade.empty? %>
+    <p class="border border-marca-200 p-6 text-center text-sm text-slate-600">Nenhuma atividade recente de outras pessoas.</p>
+  <% else %>
+    <ul class="divide-y divide-marca-200 border border-marca-200">
+      <% atividade.each do |item| %>
+        <% avaliacao = item.avaliacao %>
+        <li>
+          <%= link_to formulario_avaliacao_clinica_path(avaliacao.formulario, avaliacao), class: "flex items-start gap-3 px-4 py-3 hover:bg-marca-50" do %>
+            <%= icone(item.acao == :registrou ? :mais : :lapis, classe: "mt-0.5 h-4 w-4 text-marca-600") %>
+            <span class="min-w-0">
+              <span class="block text-sm text-slate-900">
+                <span class="font-semibold">@<%= item.autor&.username || "sistema" %></span>
+                <%= item.acao == :registrou ? "registrou" : "atualizou" %> uma notificação
+              </span>
+              <span class="block text-xs text-slate-600"><%= Formulario.publicado!(avaliacao.formulario).titulo %> · <%= avaliacao.setor.nome_completo %></span>
+              <span class="block text-xs text-slate-600"><%= data_e_hora(item.quando) %></span>
+            </span>
+          <% end %>
+        </li>
+      <% end %>
+    </ul>
+  <% end %>
+</div>

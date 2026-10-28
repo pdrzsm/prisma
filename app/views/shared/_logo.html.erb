@@ -1,20 +1,38 @@
 <%# locals: (classe: "", versao: :simbolo) %>
 <%# Logo do Prisma, gerado a partir do arquivo original (LOGO PRISMA.svg), em
     três versões:
-      :simbolo   só o símbolo (barra lateral, menu do celular)
+      :simbolo   só o símbolo, como selo: cada faceta numa cor do espectro,
+                 sobre um quadrado arredondado índigo escuro (#312e81, cor
+                 própria do logo) — o prisma abrindo a
+                 luz branca em cores, igual ao ícone do navegador (barra
+                 lateral, topo, avisos, menu do celular)
       :nome      só o nome, PRIƧM∀, com o S e o A rotacionados (é o desenho)
-      :completo  símbolo e nome, como no arquivo original
-    Os desenhos vêm de LogoHelper. A cor vem do CSS (fill="currentColor"). %>
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="<%= LogoHelper::RECORTES.fetch(versao) %>"
-     fill="currentColor" class="<%= classe %>" role="img" aria-label="Prisma">
-  <% unless versao == :nome %>
-    <% LogoHelper::CAMADAS_DO_SIMBOLO.flatten.each do |faceta| %>
-      <path d="<%= faceta %>"/>
-    <% end %>
+      :completo  símbolo e nome, como no arquivo original (sem o selo: pendente
+                 de redesenho, não usado em nenhuma tela hoje)
+    Os desenhos vêm de LogoHelper. O nome usa a cor do CSS (fill="currentColor");
+    o selo do símbolo tem cores fixas (docs/identidade-visual.md). %>
+<svg xmlns="http://www.w3.org/2000/svg"
+     viewBox="<%= versao == :simbolo ? LogoHelper::BADGE_RECORTE : LogoHelper::RECORTES.fetch(versao) %>"
+     class="<%= class_names(classe, "selo-prisma": versao == :simbolo) %>" role="img" aria-label="Prisma">
+  <% if versao == :simbolo %>
+    <rect x="59.4" y="59.4" width="241.21" height="241.21" rx="<%= LogoHelper::BADGE_RAIO %>" fill="<%= LogoHelper::BADGE_FUNDO %>"/>
+    <g stroke="<%= LogoHelper::BADGE_FUNDO %>" stroke-width="6" stroke-linejoin="round">
+      <% LogoHelper::CAMADAS_DO_SIMBOLO.each_with_index do |faceta, i| %>
+        <path d="<%= faceta %>" fill="<%= LogoHelper::CORES_DO_ESPECTRO[i] %>"/>
+      <% end %>
+    </g>
+  <% elsif versao == :completo %>
+    <g fill="currentColor">
+      <% LogoHelper::CAMADAS_DO_SIMBOLO.each do |faceta| %>
+        <path d="<%= faceta %>"/>
+      <% end %>
+    </g>
   <% end %>
   <% unless versao == :simbolo %>
-    <% LogoHelper::NOME.each do |letra| %>
-      <path d="<%= letra %>"/>
-    <% end %>
+    <g fill="currentColor">
+      <% LogoHelper::NOME.each do |letra| %>
+        <path d="<%= letra %>"/>
+      <% end %>
+    </g>
   <% end %>
 </svg>
