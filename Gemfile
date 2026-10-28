@@ -33,9 +33,6 @@ gem "solid_cable"
 # Reduces boot times through caching; required in config/boot.rb
 gem "bootsnap", require: false
 
-# Deploy this application anywhere as a Docker container [https://kamal-deploy.org]
-gem "kamal", require: false
-
 # Add HTTP asset caching/compression and X-Sendfile acceleration to Puma [https://github.com/basecamp/thruster/]
 gem "thruster", require: false
 
@@ -59,6 +56,10 @@ end
 group :development do
   # Use console on exceptions pages [https://github.com/rails/web-console]
   gem "web-console"
+
+  # Implanta em produção como container [https://kamal-deploy.org]. Fica fora da
+  # imagem de produção (BUNDLE_WITHOUT), que não precisa de SSH nem de deploy.
+  gem "kamal", require: false
 end
 
 group :test do

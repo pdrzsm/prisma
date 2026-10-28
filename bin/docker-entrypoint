@@ -1,7 +1,10 @@
 #!/bin/bash -e
 
-# If running the rails server then create or migrate existing database
-if [ "${@: -2:1}" == "./bin/rails" ] && [ "${@: -1:1}" == "server" ]; then
+# O banco é migrado ANTES de o app subir, por um container à parte e com outro
+# usuário do banco (.kamal/hooks/pre-app-boot): o usuário do app não pode alterar
+# tabelas nem apagar auditoria (docs/implantacao.md). Num ambiente simples, com um
+# usuário só, MIGRAR_AO_INICIAR=1 volta a migrar aqui, ao subir o servidor.
+if [ "${MIGRAR_AO_INICIAR:-}" = "1" ] && [ "${@: -2:1}" == "./bin/rails" ] && [ "${@: -1:1}" == "server" ]; then
   ./bin/rails db:prepare
 fi
 

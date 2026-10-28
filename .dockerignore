@@ -49,3 +49,11 @@
 # Ignore Docker-related files
 /.dockerignore
 /Dockerfile*
+
+# Fora da imagem de produção: testes, documentação, arquivos de design e do
+# ambiente de desenvolvimento
+/test
+/docs
+/img
+/logo-prisma.vectorcraft
+/docker-compose.yml

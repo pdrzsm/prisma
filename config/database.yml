@@ -14,5 +14,9 @@ test:
   <<: *default
   url: <%= ENV.fetch("TEST_DATABASE_URL", "mysql2://root:root_password@db/prisma_test") %>
 
+# Os seeds são de desenvolvimento e se recusam a rodar em produção (db/seeds.rb).
+# Sem seeds: false, o db:prepare, ao carregar o esquema num banco novo, tentaria
+# rodá-los e abortaria a implantação (docs/implantacao.md).
 production:
   <<: *default
+  seeds: false

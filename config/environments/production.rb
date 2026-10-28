@@ -24,6 +24,10 @@ Rails.application.configure do
   # Store uploaded files on the local file system (see config/storage.yml for options).
   config.active_storage.service = :local
 
+  # Prisma: não guarda nem processa imagens. Sem isto, cada inicialização avisa no
+  # log que falta a gem ruby-vips.
+  config.active_storage.variant_processor = :disabled
+
   # Assume all access to the app is happening through a SSL-terminating reverse proxy.
   # Prisma: o proxy (kamal-proxy, nginx...) PRECISA terminar o TLS; ver docs/seguranca.md.
   config.assume_ssl = true

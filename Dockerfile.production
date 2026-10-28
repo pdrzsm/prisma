@@ -1,0 +1,74 @@
+# syntax=docker/dockerfile:1
+# check=error=true
+
+# Imagem de PRODUÇÃO do Prisma, construída pelo Kamal (config/deploy.yml,
+# builder.dockerfile). O Dockerfile da raiz é só de desenvolvimento: tem o
+# Chromium dos testes e as ferramentas de build, e o código entra por volume.
+#
+# Três estágios: base (o que roda), build (compila as gems e os assets) e a
+# imagem final, que leva só o resultado e roda sem root. Fica de fora tudo o que
+# não é do sistema no ar: testes, documentação, as gems de desenvolvimento e de
+# teste e os arquivos de ambiente (ver .dockerignore).
+ARG RUBY_VERSION=3.3.12
+FROM docker.io/library/ruby:${RUBY_VERSION}-slim AS base
+
+WORKDIR /rails
+
+# curl: diagnóstico dentro do container. default-mysql-client: a gem mysql2 usa a
+# biblioteca cliente. jemalloc: menos memória fragmentada no Puma. Sem libvips:
+# o Prisma não guarda nem processa imagens, e essas bibliotecas leem formatos
+# de arquivo que ninguém usa aqui.
+RUN apt-get update -qq && \
+    apt-get install --no-install-recommends -y curl libjemalloc2 default-mysql-client && \
+    ln -s /usr/lib/$(uname -m)-linux-gnu/libjemalloc.so.2 /usr/local/lib/libjemalloc.so && \
+    rm -rf /var/lib/apt/lists /var/cache/apt/archives
+
+# As gems de desenvolvimento e de teste (Kamal, RuboCop, Brakeman, Capybara,
+# Selenium) não entram na imagem: menos código, menos superfície de ataque
+ENV RAILS_ENV="production" \
+    BUNDLE_DEPLOYMENT="1" \
+    BUNDLE_PATH="/usr/local/bundle" \
+    BUNDLE_WITHOUT="development:test" \
+    LD_PRELOAD="/usr/local/lib/libjemalloc.so"
+
+
+FROM base AS build
+
+RUN apt-get update -qq && \
+    apt-get install --no-install-recommends -y build-essential git libyaml-dev pkg-config default-libmysqlclient-dev && \
+    rm -rf /var/lib/apt/lists /var/cache/apt/archives
+
+COPY Gemfile Gemfile.lock ./
+RUN bundle install && \
+    rm -rf ~/.bundle/ "${BUNDLE_PATH}"/ruby/*/cache "${BUNDLE_PATH}"/ruby/*/bundler/gems/*/.git && \
+    bundle exec bootsnap precompile --gemfile
+
+COPY . .
+RUN bundle exec bootsnap precompile app/ lib/
+
+# Os assets (inclusive o Tailwind) são compilados aqui. SECRET_KEY_BASE_DUMMY
+# deixa o Rails subir sem as chaves e sem APP_HOSTS, só neste passo
+# (config/environments/production.rb e config/application.rb)
+RUN SECRET_KEY_BASE_DUMMY=1 ./bin/rails assets:precompile
+
+
+FROM base
+
+COPY --from=build "${BUNDLE_PATH}" "${BUNDLE_PATH}"
+COPY --from=build /rails /rails
+
+# O sistema roda como um usuário comum. Só estas pastas são graváveis: log, tmp
+# (o cache do limite de login fica em tmp/cache, num volume) e storage.
+RUN groupadd --system --gid 1000 rails && \
+    useradd rails --uid 1000 --gid 1000 --create-home --shell /bin/bash && \
+    mkdir -p tmp/cache && \
+    chown -R rails:rails db log storage tmp
+USER 1000:1000
+
+# O banco é migrado antes de o app subir, por um container à parte (ver
+# bin/docker-entrypoint e .kamal/hooks/pre-app-boot)
+ENTRYPOINT ["/rails/bin/docker-entrypoint"]
+
+# O Thruster fica na frente do Puma (cache de assets, compressão) e escuta na 80
+EXPOSE 80
+CMD ["./bin/thrust", "./bin/rails", "server"]
