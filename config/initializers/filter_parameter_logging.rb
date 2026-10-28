@@ -9,5 +9,8 @@ Rails.application.config.filter_parameters += [
   # Dados pessoais e de saúde (LGPD art. 11). :paciente e :avaliacao_clinica
   # mascaram o objeto inteiro (as telas de todo formulário usam essas duas
   # chaves); os demais cobrem os mesmos campos fora desse aninhamento.
-  :paciente, :avaliacao_clinica, :dados_formulario, :prontuario, :iniciais, :nome, :municipio_residencia
+  :paciente, :avaliacao_clinica, :dados_formulario, :prontuario, :iniciais, :nome, :municipio_residencia,
+  # :termo é o que se digita na busca global (prontuário ou iniciais, em GET
+  # /buscar?termo=...); :username é metade da credencial de login.
+  :termo, :username
 ]
