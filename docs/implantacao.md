@@ -241,7 +241,7 @@ shell. Em seguida, entre pelo navegador e cadastre as instituições e os setore
 | `bin/implantar dbc` | Console do banco com o usuário `prisma_app` |
 | `bin/implantar rollback VERSÃO` | Volta para uma versão anterior da imagem. **Não desfaz migrações** |
 | `bin/implantar como-dono TAREFA` | Roda uma tarefa do Rails como dono do banco, o que o `prisma_app` não pode (ver [Banco](#banco)) |
-| `bin/tunel-banco` | Abre o banco de produção em `127.0.0.1:3307` por túnel SSH, para um cliente como o HeidiSQL |
+| `bin/tunel-banco` | Abre o banco de produção em `127.0.0.1:3309` por túnel SSH, para um cliente como o HeidiSQL |
 | `bin/implantar accessory logs db` | Log do MariaDB |
 | `bin/implantar lock release` | Libera o bloqueio de um deploy que foi interrompido |
 
@@ -293,12 +293,26 @@ O banco não tem porta publicada, então o HeidiSQL, o DBeaver ou o `mariadb` da
 sua máquina entram por um túnel SSH, que escuta só no seu `127.0.0.1`:
 
 ```bash
-bin/tunel-banco        # deixe rodando; Ctrl+C fecha. Escuta em 127.0.0.1:3307
+bin/tunel-banco        # deixe rodando; Ctrl+C fecha. Escuta em 127.0.0.1:3309
 ```
 
-No cliente, use rede TCP/IP, host `127.0.0.1`, porta `3307`. O script pergunta
+No cliente, use rede TCP/IP, host `127.0.0.1`, porta `3309`. O script pergunta
 ao servidor o IP do container do banco a cada vez (ele muda se o container for
-recriado), e a porta nunca fica aberta para a rede.
+recriado), e a porta nunca fica aberta para a rede. A 3309 foge de propósito da
+3306 (o MariaDB local) e da 3307; se ela estiver ocupada, passe outra:
+`bin/tunel-banco 3310`.
+
+Para só **olhar** o `prisma_production`, use um usuário de leitura, que não grava
+nem altera nada (escrever direto no banco pula a auditoria e a cifra de colunas).
+Ele lê tudo, inclusive os hashes de senha de `users`: guarde a senha dele como a
+do admin.
+
+```bash
+ssh USUARIO@SERVIDOR "docker exec -i prisma-db sh -c 'MYSQL_PWD=\"\$MARIADB_ROOT_PASSWORD\" mariadb -uroot'" <<'SQL'
+CREATE USER 'prisma_leitura'@'%' IDENTIFIED BY 'SENHA_LONGA_E_ALEATORIA';
+GRANT SELECT ON `prisma_production`.* TO 'prisma_leitura'@'%';
+SQL
+```
 
 Entre com um usuário **só do banco que for mexer**, nunca com o `prisma_app` nem
 com o `root`. Para carregar dados num banco à parte do mesmo MariaDB, crie o

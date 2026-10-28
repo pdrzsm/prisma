@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Abre um túnel SSH da sua máquina até o MariaDB de produção, que não tem porta
 # publicada no servidor (docs/implantacao.md, "Banco"). Enquanto o comando rodar,
-# o banco responde em 127.0.0.1:3307 aqui, para o HeidiSQL ou qualquer cliente.
+# o banco responde em 127.0.0.1:3309 aqui, para o HeidiSQL ou qualquer cliente.
 #
 # Uso:  bin/tunel-banco [porta-local]        (Ctrl+C fecha o túnel)
 #
@@ -17,7 +17,7 @@ set -a; . "$SEGREDOS"; set +a
 : "${PRISMA_SSH_USER:?Falta PRISMA_SSH_USER em $SEGREDOS.}"
 
 CHAVE="${PRISMA_SSH_KEY:-$HOME/.ssh/prisma_deploy_ed25519}"
-PORTA="${1:-3307}"
+PORTA="${1:-3309}"
 [[ "$PORTA" =~ ^[0-9]+$ ]] || { echo "Uso: bin/tunel-banco [porta-local]" >&2; exit 1; }
 
 ssh_opcoes=(-i "$CHAVE" -o IdentitiesOnly=yes -o BatchMode=yes)
