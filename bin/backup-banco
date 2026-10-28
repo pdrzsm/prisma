@@ -1,16 +1,24 @@
 #!/usr/bin/env bash
-# Backup do banco de produção, cifrado (docs/implantacao.md, "Backups").
+# Backup dos bancos de produção, cifrado (docs/implantacao.md, "Backups").
 #
 # O dump sai do container do banco pelo SSH e é cifrado AQUI, antes de tocar o
 # disco: o servidor nunca guarda um backup em texto puro, e a senha do dono do
-# banco não sai do container. Guarde o arquivo gerado fora desta máquina, e a
-# senha do backup (PRISMA_BACKUP_SENHA) num lugar que não seja o mesmo do arquivo.
+# banco não sai do container. Guarde os arquivos fora desta máquina, e a senha do
+# backup (PRISMA_BACKUP_SENHA) num lugar que não seja o mesmo dos arquivos.
+#
+# Por padrão faz o backup do prisma_production. Para incluir outros bancos do
+# mesmo MariaDB, liste-os em PRISMA_BANCOS (no producao.env ou na linha de comando):
+#   PRISMA_BANCOS="prisma_production p-sah"
+# Sai um arquivo por banco: BANCO-AAAAMMDD-HHMMSS.sql.enc
 #
 # Uso:  PRISMA_BACKUP_SENHA='...' bin/backup-banco [pasta-de-destino]
 # Abrir: openssl enc -d -aes-256-cbc -pbkdf2 -iter 600000 -pass env:PRISMA_BACKUP_SENHA -in ARQUIVO.sql.enc
 set -euo pipefail
 
-: "${PRISMA_BACKUP_SENHA:?Informe PRISMA_BACKUP_SENHA: a senha que cifra o backup (guarde-a longe do arquivo).}"
+: "${PRISMA_BACKUP_SENHA:?Informe PRISMA_BACKUP_SENHA: a senha que cifra o backup (guarde-a longe dos arquivos).}"
+
+# O que veio da linha de comando vale mais do que o producao.env
+bancos_da_linha="${PRISMA_BANCOS:-}"
 
 # O servidor e o usuário do SSH vêm do mesmo arquivo do bin/implantar
 SEGREDOS="${PRISMA_SEGREDOS:-$HOME/.config/prisma/producao.env}"
@@ -22,26 +30,36 @@ set -a; . "$SEGREDOS"; set +a
 SERVIDOR="$PRISMA_SERVIDOR"
 USUARIO="$PRISMA_SSH_USER"
 CHAVE="${PRISMA_SSH_KEY:-$HOME/.ssh/prisma_deploy_ed25519}"
+BANCOS="${bancos_da_linha:-${PRISMA_BANCOS:-prisma_production}}"
 DESTINO="${1:-$HOME/backups-prisma}"
 
 umask 077
 mkdir -p "$DESTINO"
 
-ARQUIVO="$DESTINO/prisma-$(date +%Y%m%d-%H%M%S).sql.enc"
-PARCIAL="$ARQUIVO.parcial"
-trap 'rm -f "$PARCIAL"' EXIT
+agora="$(date +%Y%m%d-%H%M%S)"
+parcial=""
+trap 'rm -f "$parcial"' EXIT
 
-# MYSQL_PWD em vez de -p: a senha não aparece na lista de processos do servidor
-ssh -i "$CHAVE" -o IdentitiesOnly=yes -o BatchMode=yes "$USUARIO@$SERVIDOR" \
-  "docker exec prisma-db sh -c 'MYSQL_PWD=\"\$MARIADB_ROOT_PASSWORD\" mariadb-dump -uroot --single-transaction --routines --triggers prisma_production'" \
-  | openssl enc -aes-256-cbc -pbkdf2 -iter 600000 -salt -pass env:PRISMA_BACKUP_SENHA -out "$PARCIAL"
+for banco in $BANCOS; do
+  # O nome entra no comando que roda no servidor: só letras, números, _ e -
+  [[ "$banco" =~ ^[A-Za-z0-9_][A-Za-z0-9_-]*$ ]] || { echo "Nome de banco inválido: $banco" >&2; exit 1; }
+  arquivo="$DESTINO/$banco-$agora.sql.enc"
+  parcial="$arquivo.parcial"
 
-# Antes de dizer que deu certo, confere que o arquivo abre e é um dump do MariaDB
-inicio=$(openssl enc -d -aes-256-cbc -pbkdf2 -iter 600000 -pass env:PRISMA_BACKUP_SENHA -in "$PARCIAL" 2>/dev/null | head -c 4000 || true)
-if ! grep -q "MariaDB dump" <<<"$inicio"; then
-  echo "O backup não abriu como um dump do MariaDB; apaguei o arquivo." >&2
-  exit 1
-fi
+  # MYSQL_PWD em vez de -p: a senha não aparece na lista de processos do servidor
+  ssh -i "$CHAVE" -o IdentitiesOnly=yes -o BatchMode=yes "$USUARIO@$SERVIDOR" \
+    "docker exec prisma-db sh -c 'MYSQL_PWD=\"\$MARIADB_ROOT_PASSWORD\" mariadb-dump -uroot --single-transaction --routines --triggers $banco'" \
+    | openssl enc -aes-256-cbc -pbkdf2 -iter 600000 -salt -pass env:PRISMA_BACKUP_SENHA -out "$parcial"
 
-mv "$PARCIAL" "$ARQUIVO"
-echo "Backup cifrado: $ARQUIVO ($(du -h "$ARQUIVO" | cut -f1)). Teste a restauração de tempos em tempos (docs/implantacao.md)."
+  # Antes de dizer que deu certo, confere que o arquivo abre e é um dump do MariaDB
+  inicio=$(openssl enc -d -aes-256-cbc -pbkdf2 -iter 600000 -pass env:PRISMA_BACKUP_SENHA -in "$parcial" 2>/dev/null | head -c 4000 || true)
+  if ! grep -q "MariaDB dump" <<<"$inicio"; then
+    echo "O backup de $banco não abriu como um dump do MariaDB; apaguei o arquivo." >&2
+    exit 1
+  fi
+
+  mv "$parcial" "$arquivo"
+  parcial=""
+  echo "Backup cifrado de $banco: $arquivo ($(du -h "$arquivo" | cut -f1))"
+done
+echo "Teste a restauração de tempos em tempos (docs/implantacao.md)."

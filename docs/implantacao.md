@@ -241,6 +241,7 @@ shell. Em seguida, entre pelo navegador e cadastre as instituições e os setore
 | `bin/implantar dbc` | Console do banco com o usuário `prisma_app` |
 | `bin/implantar rollback VERSÃO` | Volta para uma versão anterior da imagem. **Não desfaz migrações** |
 | `bin/implantar como-dono TAREFA` | Roda uma tarefa do Rails como dono do banco, o que o `prisma_app` não pode (ver [Banco](#banco)) |
+| `bin/tunel-banco` | Abre o banco de produção em `127.0.0.1:3307` por túnel SSH, para um cliente como o HeidiSQL |
 | `bin/implantar accessory logs db` | Log do MariaDB |
 | `bin/implantar lock release` | Libera o bloqueio de um deploy que foi interrompido |
 
@@ -286,16 +287,55 @@ Para ver o que o `prisma_app` tem:
 ssh USUARIO@SERVIDOR "docker exec -i prisma-db sh -c 'MYSQL_PWD=\"\$MARIADB_ROOT_PASSWORD\" mariadb -uroot'" <<< "SHOW GRANTS FOR 'prisma_app'@'%';"
 ```
 
+### Abrir o banco num cliente e carregar outros dados
+
+O banco não tem porta publicada, então o HeidiSQL, o DBeaver ou o `mariadb` da
+sua máquina entram por um túnel SSH, que escuta só no seu `127.0.0.1`:
+
+```bash
+bin/tunel-banco        # deixe rodando; Ctrl+C fecha. Escuta em 127.0.0.1:3307
+```
+
+No cliente, use rede TCP/IP, host `127.0.0.1`, porta `3307`. O script pergunta
+ao servidor o IP do container do banco a cada vez (ele muda se o container for
+recriado), e a porta nunca fica aberta para a rede.
+
+Entre com um usuário **só do banco que for mexer**, nunca com o `prisma_app` nem
+com o `root`. Para carregar dados num banco à parte do mesmo MariaDB, crie o
+banco e o usuário dele com o dono (a senha viaja pelo stdin do SSH, não pela
+linha de comando):
+
+```bash
+ssh USUARIO@SERVIDOR "docker exec -i prisma-db sh -c 'MYSQL_PWD=\"\$MARIADB_ROOT_PASSWORD\" mariadb -uroot'" <<'SQL'
+CREATE DATABASE `meu-banco` CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
+CREATE USER 'meu_usuario'@'%' IDENTIFIED BY 'SENHA_LONGA_E_ALEATORIA';
+GRANT ALL PRIVILEGES ON `meu-banco`.* TO 'meu_usuario'@'%';
+SQL
+```
+
+- O `prisma_app` não enxerga o banco novo, e o usuário novo não enxerga o
+  `prisma_production`. Nome de banco com hífen pede crases no SQL.
+- Dado inserido direto no banco não passa pela cifra de colunas do Prisma nem
+  pela auditoria. Se forem dados de pacientes, o banco é tão sensível quanto o
+  `prisma_production`: acesso restrito, e o disco do servidor cifrado.
+- O [backup](#backups) só cobre o `prisma_production`, a menos que você liste os
+  outros bancos em `PRISMA_BANCOS`.
+- `bin/implantar remove` apaga a pasta de dados do MariaDB, e com ela todos os
+  bancos.
+
 ## Backups
 
 ```bash
 PRISMA_BACKUP_SENHA='uma senha longa' bin/backup-banco [pasta]
+PRISMA_BANCOS="prisma_production p-sah" PRISMA_BACKUP_SENHA='...' bin/backup-banco   # mais de um banco
 ```
 
 O dump sai do container pelo SSH e é cifrado (AES-256, PBKDF2) **na sua
 máquina**, antes de tocar o disco: o servidor nunca guarda um backup em texto
-puro, e a senha do dono não sai do container. Antes de dizer que deu certo, o
-script abre o arquivo e confere que é um dump do MariaDB.
+puro, e a senha do dono não sai do container. Sai um arquivo por banco
+(`BANCO-AAAAMMDD-HHMMSS.sql.enc`). Antes de dizer que deu certo, o script abre
+cada arquivo e confere que é um dump do MariaDB. `PRISMA_BANCOS` também pode ficar
+no `producao.env`.
 
 - O backup tem as contas (hashes de senha) e os dados dos pacientes, ainda
   cifrados nas colunas protegidas. Trate o arquivo como dado sensível: guarde
@@ -313,7 +353,7 @@ script abre o arquivo e confere que é um dump do MariaDB.
 docker run -d --name prisma-restauracao -e MARIADB_ROOT_PASSWORD=teste \
   -e MARIADB_DATABASE=prisma_restauracao mariadb:10.11
 openssl enc -d -aes-256-cbc -pbkdf2 -iter 600000 -pass env:PRISMA_BACKUP_SENHA \
-  -in prisma-AAAAMMDD-HHMMSS.sql.enc \
+  -in prisma_production-AAAAMMDD-HHMMSS.sql.enc \
   | docker exec -i -e MYSQL_PWD=teste prisma-restauracao mariadb -uroot prisma_restauracao
 docker exec -e MYSQL_PWD=teste prisma-restauracao mariadb -uroot prisma_restauracao -e 'SELECT COUNT(*) FROM users'
 docker rm -f prisma-restauracao

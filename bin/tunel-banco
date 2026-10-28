@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+# Abre um túnel SSH da sua máquina até o MariaDB de produção, que não tem porta
+# publicada no servidor (docs/implantacao.md, "Banco"). Enquanto o comando rodar,
+# o banco responde em 127.0.0.1:3307 aqui, para o HeidiSQL ou qualquer cliente.
+#
+# Uso:  bin/tunel-banco [porta-local]        (Ctrl+C fecha o túnel)
+#
+# A porta só escuta no seu 127.0.0.1: ninguém mais na rede alcança o banco por
+# aqui. Entre com um usuário só do banco que for mexer, nunca com o prisma_app
+# nem com o dono (root).
+set -euo pipefail
+
+SEGREDOS="${PRISMA_SEGREDOS:-$HOME/.config/prisma/producao.env}"
+[ -f "$SEGREDOS" ] || { echo "Falta $SEGREDOS (docs/implantacao.md, 'Segredos')." >&2; exit 1; }
+set -a; . "$SEGREDOS"; set +a
+: "${PRISMA_SERVIDOR:?Falta PRISMA_SERVIDOR em $SEGREDOS.}"
+: "${PRISMA_SSH_USER:?Falta PRISMA_SSH_USER em $SEGREDOS.}"
+
+CHAVE="${PRISMA_SSH_KEY:-$HOME/.ssh/prisma_deploy_ed25519}"
+PORTA="${1:-3307}"
+[[ "$PORTA" =~ ^[0-9]+$ ]] || { echo "Uso: bin/tunel-banco [porta-local]" >&2; exit 1; }
+
+ssh_opcoes=(-i "$CHAVE" -o IdentitiesOnly=yes -o BatchMode=yes)
+
+# O IP do container do banco na rede Docker "kamal" muda quando ele é recriado:
+# pergunta ao servidor a cada vez
+ip=$(ssh "${ssh_opcoes[@]}" "$PRISMA_SSH_USER@$PRISMA_SERVIDOR" \
+  "docker inspect -f '{{(index .NetworkSettings.Networks \"kamal\").IPAddress}}' prisma-db")
+[[ "$ip" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "Não achei o container prisma-db no servidor." >&2; exit 1; }
+
+echo "Túnel aberto: 127.0.0.1:$PORTA -> prisma-db ($ip:3306) em $PRISMA_SERVIDOR. Ctrl+C fecha."
+exec ssh "${ssh_opcoes[@]}" -N -o ExitOnForwardFailure=yes -o ServerAliveInterval=30 \
+  -L "127.0.0.1:$PORTA:$ip:3306" "$PRISMA_SSH_USER@$PRISMA_SERVIDOR"
