@@ -49,6 +49,10 @@ Rails.application.configure do
 
   # Replace the default in-process memory cache store with a durable alternative.
   # config.cache_store = :mem_cache_store
+  # Prisma: o limite de tentativas de login e de troca de senha usa este cache.
+  # Em arquivo, num volume do Kamal (config/deploy.yml, prisma_cache): sobrevive
+  # ao deploy e é compartilhado pelos containers do mesmo servidor.
+  config.cache_store = :file_store, ENV.fetch("PRISMA_CACHE_DIR", Rails.root.join("tmp/cache").to_s)
 
   # Replace the default in-process and non-durable queuing backend for Active Job.
   # config.active_job.queue_adapter = :resque
@@ -81,8 +85,12 @@ Rails.application.configure do
 
   # Enable DNS rebinding protection and other `Host` header attacks.
   # Prisma: domínios aceitos vêm de APP_HOSTS, separados por vírgula
-  # (ex.: "prisma.hospital.gov.br"). Sem a variável, qualquer Host é aceito.
+  # (ex.: "prisma.hospital.gov.br"). Obrigatório: sem ele, qualquer Host seria
+  # aceito, e a aplicação não sobe (exceto no build dos assets).
   config.hosts = ENV.fetch("APP_HOSTS", "").split(",").map(&:strip).compact_blank
+  if config.hosts.empty? && ENV["SECRET_KEY_BASE_DUMMY"].blank?
+    raise "APP_HOSTS ausente: informe o domínio do sistema. Ver docs/seguranca.md."
+  end
 
   # Prisma: IPs do proxy reverso (o que termina o TLS) na frente da aplicação,
   # separados por vírgula; aceita faixas (ex.: "172.20.0.2" ou "10.0.5.0/24").
