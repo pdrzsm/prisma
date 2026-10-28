@@ -321,6 +321,16 @@ confiável, mesmo vinda do admin:
   `PROXIES_CONFIAVEIS` (o IP do proxy reverso), a aplicação nem sobe.
 - No `docker-compose.yml`, o banco e o servidor de desenvolvimento só escutam
   em `127.0.0.1`.
+- A imagem de produção (`Dockerfile.production`) roda como usuário comum, sem as
+  gems de desenvolvimento e de teste nem o Kamal. A implantação é com o Kamal
+  ([implantacao.md](implantacao.md)): só o proxy publica portas (80 e 443), o
+  banco e o Prisma ficam numa rede Docker interna, e os segredos vêm de fora do
+  repositório (`.kamal/secrets` só diz de onde).
+- O Prisma acessa o banco com um usuário de privilégios tabela a tabela
+  (`PrivilegiosDoBanco`): as duas auditorias só aceitam `INSERT`, o registro
+  clínico e as contas não se apagam, e ele não altera o esquema. As migrações
+  rodam antes de cada versão subir, com o dono do banco, num container à parte
+  (`.kamal/hooks/pre-app-boot`).
 - O CI roda Brakeman, bundler-audit, RuboCop, os testes e os testes de
   navegador, contra MariaDB, com token do GitHub somente leitura. Os controles
   desta página têm testes próprios (`test/integration/seguranca_test.rb`,
@@ -377,23 +387,30 @@ Antes de colocar dados reais:
 - [ ] TLS terminado no proxy (kamal-proxy, nginx ou o proxy da instituição). A
       aplicação assume HTTPS (`assume_ssl`); sem TLS no proxy, o tráfego ficaria
       aberto sem nenhum aviso. Em rede interna sem DNS público, use um
-      certificado da instituição em vez de Let's Encrypt.
-- [ ] `APP_HOSTS` com o domínio do sistema.
+      certificado da instituição em vez de Let's Encrypt (um certificado próprio
+      para o IP serve, mas os navegadores avisam até a TI instalá-lo; ver
+      [implantacao.md](implantacao.md#https)).
+- [ ] `APP_HOSTS` com o domínio do sistema (o deploy preenche com
+      `PRISMA_ENDERECO`).
 - [ ] `PROXIES_CONFIAVEIS` com o IP (ou a faixa) do proxy reverso, e a porta da
       aplicação **inacessível** sem passar por ele (o Rails confia no
       `X-Forwarded-For` de quem chegar direto). Com o Kamal, a faixa da rede
       Docker `kamal` (ver `config/deploy.yml`).
 - [ ] Usuário do banco da aplicação **sem `UPDATE` nem `DELETE`** em
       `audit_logs` e `versions`, para as duas auditorias serem imutáveis de
-      verdade. No MariaDB, um `GRANT` no banco inteiro não pode ser retirado de
-      uma tabela só: dê os privilégios tabela a tabela, por exemplo
-      `GRANT SELECT, INSERT ON prisma.audit_logs TO 'prisma_app'@'%'` e
-      `GRANT SELECT, INSERT, UPDATE, DELETE ON prisma.pacientes TO 'prisma_app'@'%'`,
-      e rode as migrações com outro usuário, que tem permissão de alterar tabelas.
+      verdade. O deploy com o Kamal já faz isso (`prisma:conceder_privilegios`,
+      em [implantacao.md](implantacao.md#banco)); confira com `SHOW GRANTS`.
+      Fora do Kamal, faça o equivalente: no MariaDB, um `GRANT` no banco inteiro
+      não pode ser retirado de uma tabela só, então dê os privilégios tabela a
+      tabela (`PrivilegiosDoBanco`) e rode as migrações com outro usuário, que
+      tem permissão de alterar tabelas.
 - [ ] Política de retenção para `audit_logs` (contém IP e navegador de quem
       acessou), definida com o encarregado (DPO). O descarte é manual, com um
       usuário do banco que tenha `DELETE` na tabela: `bin/rails prisma:descartar_leituras DIAS=730`
-      só conta o que seria apagado; com `CONFIRMAR=sim`, apaga.
+      só conta o que seria apagado; com `CONFIRMAR=sim`, apaga. Com o deploy do
+      Kamal, o usuário do Prisma não tem `DELETE` ali; use o dono do banco por
+      `bin/implantar como-dono prisma:descartar_leituras DIAS=730`
+      ([implantacao.md](implantacao.md#banco)).
 - [ ] Finalidade e base legal de cada formulário validadas com o encarregado
       (DPO) antes de publicar (a publicação pede essa confirmação). Para um
       agravo de notificação compulsória, costumam ser obrigação legal e
@@ -406,9 +423,12 @@ Antes de colocar dados reais:
 - [ ] `secret_key_base` próprio: crie as suas credenciais com
       `bin/rails credentials:edit` ou defina `SECRET_KEY_BASE`. Não reaproveite
       o `config/credentials.yml.enc` de outra instalação.
-- [ ] `DATABASE_URL` com usuário próprio (não root). Se o banco estiver em outro
-      servidor, use conexão com TLS.
-- [ ] Backup do banco testado e cifrado, com política de retenção.
+- [ ] `DATABASE_URL` com usuário próprio (não root; o deploy usa o `prisma_app`).
+      Se o banco estiver em outro servidor, use conexão com TLS.
+- [ ] Backup do banco testado e cifrado, com política de retenção. O
+      `bin/backup-banco` gera o dump cifrado; o agendamento, a retenção e o
+      teste de restauração são da instituição
+      ([implantacao.md](implantacao.md#backups)).
 - [ ] `RAILS_LOG_LEVEL` em `info` ou acima. `debug` grava SQL.
 - [ ] Contas criadas só para quem precisa, com o papel mínimo necessário.
 
@@ -416,9 +436,11 @@ Antes de colocar dados reais:
 
 Em ordem aproximada de prioridade:
 
-1. **Dockerfile de produção.** O `Dockerfile` atual é só de desenvolvimento:
-   roda como root e não instala gems nem compila assets na imagem. O deploy com
-   Kamal (`config/deploy.yml`) ainda não funciona.
+1. **Rotina de operação da implantação.** O deploy, as migrações e os
+   privilégios do banco estão prontos ([implantacao.md](implantacao.md)), mas
+   ficam por montar: o agendamento do backup (`bin/backup-banco` roda à mão), o
+   aviso de renovação do certificado e as atualizações do sistema do servidor,
+   do Docker e da imagem do MariaDB.
 2. **Tela de consulta da auditoria de leitura.** As leituras já são gravadas,
    mas consultar (ex.: responder a um titular quem viu os dados dele) ainda é
    pelo console. O descarte pela política de retenção é manual

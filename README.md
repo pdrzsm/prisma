@@ -102,6 +102,8 @@ cada pull request.
   motor de formulários, versões e convenções
 - [docs/seguranca.md](docs/seguranca.md): controles, permissões, chaves,
   checklist de produção e pendências
+- [docs/implantacao.md](docs/implantacao.md): servidor, Kamal, segredos, HTTPS,
+  banco e backup para colocar em produção
 - [docs/novo-formulario.md](docs/novo-formulario.md): como criar um formulário
   no gerador
 - [docs/identidade-visual.md](docs/identidade-visual.md): cores, fonte, logo e
