@@ -21,6 +21,7 @@ class FormulariosController < ApplicationController
     @avaliacoes = carregar_registros
     @autores = AvaliacaoClinica.autores_da_ultima_alteracao(@avaliacoes)
     log_read_access(@avaliacoes)
+    @sugestoes = Paciente.sugestoes_de_busca(@avaliacoes.map(&:paciente)) if params[:filtros].present?
   end
 
   private
@@ -34,7 +35,6 @@ class FormulariosController < ApplicationController
 
     registros = registros.where(formulario: @base.chave, setor: @unidade)
     registros = registros.where(paciente_id: Paciente.ids_que_combinam(registros, params[:prontuario])) if params[:prontuario].present?
-    @sugestoes = Paciente.sugestoes_de_busca(registros) if params[:filtros].present?
     @paginacao = Paginacao.new(params[:pagina], por_pagina: LIMITE, total: registros.count)
     # O id desempata as de mesma hora: sem ele, uma notificação podia aparecer em duas páginas, ou em nenhuma
     registros.includes(:paciente, :user, :versao_formulario, setor: :instituicao)

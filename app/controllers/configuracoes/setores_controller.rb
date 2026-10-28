@@ -58,6 +58,9 @@ module Configuracoes
     end
 
     def carregar_instituicao
+      # Autoriza antes de procurar: quem não é admin recebe a mesma resposta
+      # para um id que existe e para um que não existe
+      authorize Instituicao, :index?
       @instituicao = Instituicao.find(params[:instituicao_id])
     end
 

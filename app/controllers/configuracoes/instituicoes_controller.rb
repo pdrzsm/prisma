@@ -62,6 +62,7 @@ module Configuracoes
     end
 
     def carregar_instituicao
+      authorize Instituicao, :index? # antes de procurar (ver SetoresController)
       @instituicao = Instituicao.find(params[:id])
       authorize @instituicao
     end

@@ -18,7 +18,6 @@ class AvaliacoesClinicasController < ApplicationController
     @definicao = @formulario.definicao
     registros = policy_scope(AvaliacaoClinica).where(formulario: @formulario.chave)
     registros = registros.where(paciente_id: Paciente.ids_que_combinam(registros, params[:prontuario])) if params[:prontuario].present?
-    @sugestoes = Paciente.sugestoes_de_busca(policy_scope(AvaliacaoClinica).where(formulario: @formulario.chave)) if params[:filtros].present?
 
     # Filtro por setor, só entre os setores que a pessoa vê
     @setores = setores_do_formulario(permissoes.setores_que_consultam(@formulario.chave))
@@ -32,6 +31,7 @@ class AvaliacoesClinicasController < ApplicationController
     @autores = AvaliacaoClinica.autores_da_ultima_alteracao(@avaliacoes)
     # Cada linha da lista mostra iniciais e prontuários: todas são lidas
     log_read_access(@avaliacoes)
+    @sugestoes = Paciente.sugestoes_de_busca(@avaliacoes.map(&:paciente)) if params[:filtros].present?
   end
 
   def show

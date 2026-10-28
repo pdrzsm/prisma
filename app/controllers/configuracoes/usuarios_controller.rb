@@ -58,6 +58,7 @@ module Configuracoes
     end
 
     def carregar_usuario
+      authorize User, :index? # antes de procurar: o id não vaza para quem não é admin
       @usuario = User.find(params[:id])
       authorize @usuario
     end

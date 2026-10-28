@@ -53,10 +53,12 @@ class Paciente < ApplicationRecord
   end
 
   # Sugestões para o autocomplete do filtro: prontuários e iniciais dos
-  # pacientes dos registros visíveis, sem repetição e em ordem
-  def self.sugestoes_de_busca(registros, limite: 200)
-    where(id: registros.select(:paciente_id)).flat_map { |paciente| [ paciente.prontuario_sah, paciente.prontuario_aghuse, paciente.iniciais ] }
-                                             .compact.uniq.sort.first(limite)
+  # pacientes dados, sem repetição e em ordem. Os controllers passam só os da
+  # página exibida, que já está na auditoria de leitura: sugerir os de outras
+  # páginas seria uma leitura sem registro.
+  def self.sugestoes_de_busca(pacientes, limite: 200)
+    pacientes.flat_map { |paciente| [ paciente.prontuario_sah, paciente.prontuario_aghuse, paciente.iniciais ] }
+             .compact.uniq.sort.first(limite)
   end
 
   scope :com_prontuario, ->(prontuario) { where(prontuario_sah: prontuario).or(where(prontuario_aghuse: prontuario)) }
