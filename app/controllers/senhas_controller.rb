@@ -9,6 +9,11 @@
 # também volta para ela. Pela tela de troca (senhas/edit), o erro redesenha a
 # tela.
 class SenhasController < ApplicationController
+  # A senha atual é conferida a cada tentativa, e o :lockable do Devise não
+  # conta as erradas aqui: o limite impede adivinhá-la numa sessão sequestrada
+  rate_limit to: 10, within: 10.minutes, only: :update, by: -> { current_user.id },
+             with: -> { redirect_to edit_senha_path, alert: "Muitas tentativas de troca de senha. Aguarde alguns minutos.", status: :see_other }
+
   def edit
     authorize :senha
   end

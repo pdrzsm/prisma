@@ -36,6 +36,7 @@ class User < ApplicationRecord
   validates :cpf, cpf: true, uniqueness: true, allow_blank: true
   validates :password, presence: true, if: :new_record?
   validates :password, length: { within: Devise.password_length }, confirmation: true, allow_blank: true
+  validate :senha_previsivel, if: -> { password.present? }
   validate :admin_unico, if: :admin?
   validate :admin_sempre_ativo, if: :admin?
 
@@ -72,7 +73,24 @@ class User < ApplicationRecord
     find_by(username: login) || (Cpf.normalizar(login) && find_by(cpf: login))
   end
 
+  # Senhas por onde qualquer lista de tentativas começa (o Devise só confere o tamanho)
+  SENHAS_COMUNS = %w[
+    12345678 123456789 1234567890 password senha123 senha1234 password1 qwerty123 qwertyuiop
+    11111111 00000000 abc12345 abcd1234 iloveyou administrador prisma123 prisma1234 mudar123 trocar123
+  ].freeze
+
   private
+
+  # Recusa a senha comum, a de um caractere repetido e a que contém o login ou
+  # o CPF da própria pessoa
+  def senha_previsivel
+    simples = password.downcase
+    cpf_digitos = cpf.to_s.gsub(/\D/, "")
+    previsivel = SENHAS_COMUNS.include?(simples) || simples.chars.uniq.one? ||
+                 (username.to_s.size >= 4 && simples.include?(username.to_s.downcase)) ||
+                 (cpf_digitos.size == 11 && simples.delete("^0-9").include?(cpf_digitos))
+    errors.add(:password, "é muito previsível: evite sequências, o seu login ou o seu CPF") if previsivel
+  end
 
   def admin_unico
     errors.add(:role, "admin já existe: o sistema tem uma só conta admin") if User.admin.where.not(id:).exists?
