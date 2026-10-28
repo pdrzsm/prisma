@@ -158,11 +158,34 @@ openssl req -x509 -newkey rsa:3072 -nodes -sha256 -days 825 \
 chmod 600 ~/.config/prisma/tls/prisma.key
 ```
 
-- O navegador avisa que o certificado não é confiável até a TI da instituição
-  instalá-lo como confiável nos computadores (por política de grupo, no
-  Windows). A conexão já é cifrada; o aviso é sobre quem assinou.
+- O navegador mostra "Not secure" (ou "Não seguro") até confiar no certificado.
+  A conexão já está cifrada; o aviso é só sobre quem assinou. Para tirá-lo,
+  instale o `prisma.crt` como confiável em cada computador (a TI faz isso em
+  todos de uma vez, por política de grupo no Windows). Sem isso o sistema
+  funciona, mas as pessoas se acostumam a clicar em "continuar mesmo assim".
+  Como confiar no `prisma.crt`:
+
+  ```bash
+  # Windows (prompt de comando como administrador). Em vários computadores, use a
+  # política de grupo: Configuração do Computador > Configurações do Windows >
+  # Configurações de Segurança > Políticas de Chave Pública > Autoridades de
+  # Certificação Raiz Confiáveis
+  certutil -addstore -f ROOT prisma.crt
+
+  # Linux, Chrome e Chromium (precisa do nss-tools, ou libnss3-tools no Debian)
+  certutil -d sql:$HOME/.pki/nssdb -A -t "C,," -n prisma -i prisma.crt
+
+  # Linux, o resto do sistema (curl etc.)
+  sudo cp prisma.crt /etc/pki/ca-trust/source/anchors/ && sudo update-ca-trust          # Fedora, RHEL
+  sudo cp prisma.crt /usr/local/share/ca-certificates/ && sudo update-ca-certificates   # Debian, Ubuntu
+  ```
+
+  O Firefox tem o repositório próprio: Configurações > Privacidade e Segurança >
+  Certificados > Ver certificados > Autoridades > Importar, marcando "Confiar
+  nesta CA para identificar sites". Reinicie o navegador depois.
 - O certificado vence (825 dias, no comando acima). Anote a data e gere outro
-  antes, com `bin/implantar deploy` depois.
+  antes, com `bin/implantar deploy` depois. Cada renovação pede instalar o novo
+  `prisma.crt` de novo nos computadores.
 - O HSTS não vale para endereços IP (RFC 6797), então com IP ainda dá para
   aceitar a exceção do certificado; com nome de DNS, não. Por isso, antes de
   trocar para um nome, tenha um certificado válido.
