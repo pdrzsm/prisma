@@ -1,0 +1,63 @@
+#!/usr/bin/env bash
+# Implantação em produção com o Kamal (docs/implantacao.md).
+#
+# Carrega os segredos de ~/.config/prisma/producao.env (fora do repositório) e
+# roda o Kamal na imagem oficial, na mesma versão da gem do Gemfile, para não
+# depender do Ruby desta máquina. Use como o kamal: "bin/implantar deploy",
+# "bin/implantar logs", "bin/implantar console".
+#
+# Para dentro do container vão só o repositório, o socket do Docker, o
+# certificado do HTTPS, a chave de deploy e o known_hosts; o resto do seu
+# ~/.ssh e do ~/.config fica de fora.
+set -euo pipefail
+
+cd "$(dirname "$0")/.."
+SEGREDOS="${PRISMA_SEGREDOS:-$HOME/.config/prisma/producao.env}"
+CHAVE_SSH="${PRISMA_SSH_KEY:-$HOME/.ssh/prisma_deploy_ed25519}"
+VERSAO_DO_KAMAL="$(sed -n 's/^    kamal (\(.*\))$/\1/p' Gemfile.lock)"
+
+[ -f "$SEGREDOS" ] || { echo "Falta $SEGREDOS. Veja docs/implantacao.md ('Segredos')." >&2; exit 1; }
+[ -d "$HOME/.config/prisma/tls" ] || { echo "Faltam o certificado e a chave em ~/.config/prisma/tls (docs/implantacao.md, 'HTTPS')." >&2; exit 1; }
+
+# Os segredos entram no ambiente do Kamal e dos hooks, e nunca na linha de comando
+set -a; . "$SEGREDOS"; set +a
+ambiente="$(env | grep -E '^(SECRET_KEY_BASE|DATABASE_URL|ACTIVE_RECORD_ENCRYPTION_|MARIADB_ROOT_PASSWORD|PRISMA_)' | grep -vE '^PRISMA_(SSH_KEY|SEGREDOS)=' || true)"
+
+# Dentro do container, o HOME é /root
+montagens=(
+  -v "$PWD:/workdir"
+  -v /var/run/docker.sock:/var/run/docker.sock
+  -v "$HOME/.config/prisma/tls:/root/.config/prisma/tls:ro"
+)
+if [ -f "$CHAVE_SSH" ]; then
+  montagens+=(-v "$CHAVE_SSH:/root/.ssh/chave-de-deploy:ro")
+else
+  echo "Aviso: falta a chave SSH de deploy ($CHAVE_SSH). O que conecta no servidor vai falhar (docs/implantacao.md, 'Acesso ao servidor')." >&2
+fi
+[ -f "$HOME/.ssh/known_hosts" ] && montagens+=(-v "$HOME/.ssh/known_hosts:/root/.ssh/known_hosts:ro")
+
+terminal=(-i)
+if [ -t 0 ] && [ -t 1 ]; then terminal=(-it); fi
+
+# "bin/implantar como-dono TAREFA ..." roda uma tarefa do Rails com o dono do
+# banco (bin/como-dono) no lugar do Kamal, com o mesmo ambiente e a mesma chave
+entrada=()
+if [ "${1:-}" = "como-dono" ]; then
+  shift
+  entrada=(--entrypoint /workdir/bin/como-dono)
+fi
+
+# --network host: o túnel do registry local (localhost:5555) tem de enxergar o
+# Docker desta máquina, e o Kamal sobe o registry nela.
+# --security-opt label=disable: com SELinux, o container não leria o repositório
+# nem o socket do Docker. O GIT_CONFIG_*: o git recusa um repositório de outro
+# dono (aqui o container é root, e o repositório é seu). O GIT_OPTIONAL_LOCKS=0
+# impede o "git status" do Kamal de regravar o .git/index como root.
+exec docker run --rm "${terminal[@]}" --network host --security-opt label=disable \
+  "${montagens[@]}" \
+  -e HOME=/root -e PRISMA_SSH_KEY=/root/.ssh/chave-de-deploy \
+  -e GIT_OPTIONAL_LOCKS=0 \
+  -e GIT_CONFIG_COUNT=1 -e GIT_CONFIG_KEY_0=safe.directory -e GIT_CONFIG_VALUE_0=/workdir \
+  --env-file <(printf '%s\n' "$ambiente") \
+  "${entrada[@]}" \
+  "ghcr.io/basecamp/kamal:v${VERSAO_DO_KAMAL}" "$@"

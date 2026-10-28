@@ -1,140 +1,122 @@
-# Name of your application. Used to uniquely configure containers.
+<%
+  # O que muda de uma instalação para outra vem de ~/.config/prisma/producao.env
+  # (o bin/implantar carrega), e não deste arquivo, que vai para o git:
+  #   PRISMA_SERVIDOR    endereço do servidor, para o SSH e o deploy
+  #   PRISMA_SSH_USER    usuário do SSH no servidor (precisa estar no grupo docker)
+  #   PRISMA_ENDERECO    (opcional) o nome ou IP que as pessoas digitam no
+  #                      navegador; se não houver, é o do servidor
+  servidor = ENV.fetch("PRISMA_SERVIDOR") { raise "Defina PRISMA_SERVIDOR em ~/.config/prisma/producao.env (docs/implantacao.md)." }
+  endereco = ENV.fetch("PRISMA_ENDERECO", servidor)
+%>
+# Implantação em produção com o Kamal. O passo a passo, os segredos e o que
+# conferir antes de colocar dados reais estão em docs/implantacao.md. Rode pelo
+# bin/implantar, que carrega os segredos de fora do repositório.
+
+# Nome da aplicação, usado para identificar os containers.
 service: prisma
 
-# Name of the container image (use your-user/app-name on external registries).
+# Imagem. Com o registry local do Kamal (abaixo), o nome fica só "prisma".
 image: prisma
 
-# Deploy to these servers.
+# Servidor. O Kamal conecta por SSH com o usuário e a chave de ssh (abaixo).
 servers:
   web:
-    - 192.168.0.1
-  # job:
-  #   hosts:
-  #     - 192.168.0.1
-  #   cmd: bin/jobs
+    - <%= servidor %>
 
-# Enable SSL auto certification via Let's Encrypt and allow for multiple apps on a single web server.
-# If used with Cloudflare, set encryption mode in SSL/TLS setting to "Full" to enable CF-to-app encryption.
+# O kamal-proxy fica nas portas 80 e 443, termina o HTTPS e repassa para a
+# aplicação, sem tirar o servidor do ar a cada deploy. A porta 80 só redireciona
+# para o HTTPS. Os segredos nomeados aqui vêm de .kamal/secrets.
 #
-# Using an SSL proxy like this requires turning on config.assume_ssl and config.force_ssl in production.rb!
-#
-# Don't use this when deploying to multiple web servers (then you have to terminate SSL at your load balancer).
-#
-# Prisma: TLS é obrigatório (production.rb assume HTTPS). Troque o host; em rede
-# interna sem DNS público, use um certificado próprio no proxy (ver docs/seguranca.md).
+# TLS é obrigatório (config/environments/production.rb assume HTTPS). Sem nome
+# de DNS não há como usar o Let's Encrypt: o certificado é o da instituição ou
+# um próprio, com o IP (docs/implantacao.md, "HTTPS").
 proxy:
-  ssl: true
-  host: prisma.example.com
+  host: <%= endereco %>
+  ssl:
+    certificate_pem: SSL_CERTIFICATE_PEM
+    private_key_pem: SSL_PRIVATE_KEY_PEM
 
-# Where you keep your container images.
+# As imagens ficam num registry local, que o Kamal sobe nesta máquina e abre para
+# o servidor por um túnel SSH: não precisa de conta em registry nenhum.
 registry:
-  # Alternatives: hub.docker.com / registry.digitalocean.com / ghcr.io / ...
   server: localhost:5555
 
-  # Needed for authenticated registries.
-  # username: your-user
-
-  # Always use an access token rather than real password when possible.
-  # password:
-  #   - KAMAL_REGISTRY_PASSWORD
-
-# Inject ENV variables into containers (secrets come from .kamal/secrets).
+# Variáveis do container. Os segredos vêm de .kamal/secrets (nunca escreva o valor
+# aqui). O container do app NÃO recebe a senha do dono do banco: o DATABASE_URL
+# dele é de um usuário que só faz o que o sistema faz (app/models/privilegios_do_banco.rb).
 env:
   secret:
-    - RAILS_MASTER_KEY
+    - SECRET_KEY_BASE
     - DATABASE_URL
     - ACTIVE_RECORD_ENCRYPTION_PRIMARY_KEY
     - ACTIVE_RECORD_ENCRYPTION_DETERMINISTIC_KEY
     - ACTIVE_RECORD_ENCRYPTION_KEY_DERIVATION_SALT
   clear:
     # Domínios aceitos (proteção contra Host header / DNS rebinding)
-    APP_HOSTS: prisma.example.com
+    APP_HOSTS: <%= endereco %>
 
-    # Obrigatório: IP do proxy reverso, para o IP real de quem acessa (auditoria
-    # de leitura e limite de login) não poder ser forjado. Com o kamal-proxy, é a
-    # faixa da rede Docker "kamal", por onde o proxy fala com a aplicação. Confira
-    # no servidor (a faixa muda se já existirem outras redes Docker):
+    # Obrigatório: a faixa da rede Docker "kamal", por onde o kamal-proxy fala com
+    # a aplicação, para o IP real de quem acessa (auditoria de leitura e limite de
+    # login) não poder ser forjado. A rede é criada no servidor com esta faixa
+    # (docker network create --subnet 172.30.20.0/24 kamal); se for recriada com
+    # outra, confira com:
     #   docker network inspect kamal --format '{{(index .IPAM.Config 0).Subnet}}'
-    PROXIES_CONFIAVEIS: 172.18.0.0/16
+    PROXIES_CONFIAVEIS: 172.30.20.0/24
 
     # Encarregado de dados (DPO) da instituição, mostrado em /privacidade
     # PRISMA_ENCARREGADO: "Maria Souza · dpo@hospital.gov.br"
 
-    # Run the Solid Queue Supervisor inside the web server's Puma process to do jobs.
-    # When you start using multiple servers, you should split out job processing to a dedicated machine.
-    # Prisma: desligado até existirem jobs (não há config/queue.yml nem tabelas do Solid Queue)
-    # SOLID_QUEUE_IN_PUMA: true
+    PRISMA_FUSO_HORARIO: America/Sao_Paulo
+    RAILS_LOG_LEVEL: info
 
-    # Set number of processes dedicated to Solid Queue (default: 1)
-    # JOB_CONCURRENCY: 3
-
-    # Set number of cores available to the application on each server (default: 1).
-    # WEB_CONCURRENCY: 2
-
-    # Match this to any external database server to configure Active Record correctly
-    # Use prisma-db for a db accessory server on same machine via local kamal docker network.
-    # DB_HOST: 192.168.0.2
-
-    # Log everything from Rails
-    # RAILS_LOG_LEVEL: debug
-
-# Aliases are triggered with "bin/kamal <alias>". You can overwrite arguments on invocation:
-# "bin/kamal logs -r job" will tail logs from the first server in the job section.
+# Atalhos: "bin/implantar console", "bin/implantar logs" etc.
 aliases:
   console: app exec --interactive --reuse "bin/rails console"
   shell: app exec --interactive --reuse "bash"
   logs: app logs -f
   dbc: app exec --interactive --reuse "bin/rails dbconsole --include-password"
 
-# Use a persistent storage volume for sqlite database files and local Active Storage files.
-# Recommended to change this to a mounted volume path that is backed up off server.
+# Volume nomeado, no servidor: o cache em arquivo do limite de tentativas de
+# login, que assim sobrevive ao deploy (config/environments/production.rb,
+# PRISMA_CACHE_DIR). O Prisma não guarda arquivos enviados (não usa Active
+# Storage), então não há mais nada para fazer backup além do banco.
 volumes:
-  - "prisma_storage:/rails/storage"
   - "prisma_cache:/rails/tmp/cache"
 
-# Bridge fingerprinted assets, like JS and CSS, between versions to avoid
-# hitting 404 on in-flight requests. Combines all files from new and old
-# version inside the asset_path.
+# Passa os assets com nome por versão de um deploy para o outro, para nenhuma
+# requisição em andamento receber 404.
 asset_path: /rails/public/assets
 
-# Configure the image builder.
+# Imagem de produção (Dockerfile.production); o Dockerfile da raiz é de desenvolvimento.
 builder:
   arch: amd64
+  dockerfile: Dockerfile.production
 
-  # # Build image via remote server (useful for faster amd64 builds on arm64 computers)
-  # remote: ssh://docker@docker-builder-server
-  #
-  # # Pass arguments and secrets to the Docker build process
-  # args:
-  #   RUBY_VERSION: ruby-3.3.0
-  # secrets:
-  #   - GITHUB_TOKEN
-  #   - RAILS_MASTER_KEY
+# Usuário e chave do SSH. A chave é a do deploy (docs/implantacao.md, "Acesso ao
+# servidor"); o bin/implantar a entrega ao container em PRISMA_SSH_KEY.
+# keys_only: só a chave indicada, nunca as de um agente SSH.
+ssh:
+  user: <%= ENV.fetch("PRISMA_SSH_USER") { raise "Defina PRISMA_SSH_USER em ~/.config/prisma/producao.env (docs/implantacao.md)." } %>
+  keys:
+    - <%= ENV.fetch("PRISMA_SSH_KEY", "~/.ssh/prisma_deploy_ed25519") %>
+  keys_only: true
 
-# Use a different ssh user than root
-# ssh:
-#   user: app
-
-# Use accessory services (secrets come from .kamal/secrets).
-# accessories:
-#   db:
-#     image: mysql:8.0
-#     host: 192.168.0.2
-#     # Change to 3306 to expose port to the world instead of just local network.
-#     port: "127.0.0.1:3306:3306"
-#     env:
-#       clear:
-#         MYSQL_ROOT_HOST: '%'
-#       secret:
-#         - MYSQL_ROOT_PASSWORD
-#     files:
-#       - config/mysql/production.cnf:/etc/mysql/my.cnf
-#       - db/production.sql:/docker-entrypoint-initdb.d/setup.sql
-#     directories:
-#       - data:/var/lib/mysql
-#   redis:
-#     image: valkey/valkey:8
-#     host: 192.168.0.2
-#     port: 6379
-#     directories:
-#       - data:/data
+# O banco: um MariaDB em container, no mesmo servidor, SEM porta publicada. Só
+# a rede Docker "kamal" o alcança (o app o chama por prisma-db). Os dados ficam
+# em ~/prisma-db/data do usuário do SSH, no servidor (faça backup:
+# bin/backup-banco). A senha do dono (root) só é usada pelo hook de migração
+# (.kamal/hooks/pre-app-boot), num container que some depois, e nos backups; o
+# app usa outro usuário.
+accessories:
+  db:
+    image: mariadb:10.11
+    host: <%= servidor %>
+    cmd: --character-set-server=utf8mb4 --collation-server=utf8mb4_general_ci
+    env:
+      clear:
+        MARIADB_DATABASE: prisma_production
+        MARIADB_AUTO_UPGRADE: "1"
+      secret:
+        - MARIADB_ROOT_PASSWORD
+    directories:
+      - data:/var/lib/mysql

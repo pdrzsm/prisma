@@ -1,0 +1,99 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# Roda uma tarefa do Rails COMO DONO DO BANCO, num container que some depois, com
+# a imagem do Prisma que está no servidor. O usuário que o Prisma usa não altera
+# tabelas nem apaga a auditoria (app/models/privilegios_do_banco.rb), então as
+# migrações e o descarte da auditoria precisam do dono, cuja senha o container do
+# Prisma nunca recebe.
+#
+# Uso, pelo bin/implantar (que carrega os segredos e a chave do SSH):
+#   bin/implantar como-dono prisma:descartar_leituras DIAS=730 CONFIRMAR=sim
+#
+# No deploy, o .kamal/hooks/pre-app-boot chama este script com a versão nova
+# (KAMAL_VERSION) antes de o app subir. Fora do deploy, usa a imagem que está no ar.
+#
+# Os segredos passam para o container pelo stdin do SSH (--env-file /dev/stdin), e
+# não na linha de comando, onde qualquer pessoa no servidor os veria na lista de
+# processos.
+
+require "cgi"
+require "open3"
+require "shellwords"
+require "uri"
+
+def exigir(nome)
+  ENV.fetch(nome) { abort "como-dono: falta #{nome} no ambiente (rode pelo bin/implantar)." }
+end
+
+tarefa = ARGV
+abort "Uso: bin/implantar como-dono TAREFA [VARIAVEL=valor ...]   (ex.: prisma:descartar_leituras DIAS=730)" if tarefa.empty?
+
+hosts = (ENV["KAMAL_HOSTS"] || exigir("PRISMA_SERVIDOR")).split(",")
+usuario_ssh = exigir("PRISMA_SSH_USER")
+chave_ssh = File.expand_path(ENV.fetch("PRISMA_SSH_KEY", "~/.ssh/prisma_deploy_ed25519"))
+versao = ENV["KAMAL_VERSION"]
+abort "como-dono: KAMAL_VERSION inválida." if versao && !versao.match?(/\A[A-Za-z0-9_.-]+\z/)
+
+# O app: mysql2://usuario:senha@prisma-db/banco. O dono (root) tem a mesma casa e o mesmo banco.
+app = URI(exigir("DATABASE_URL"))
+dono = "mysql2://root:#{CGI.escape(exigir('MARIADB_ROOT_PASSWORD'))}@#{app.host}#{app.path}"
+
+ambiente = {
+  "DATABASE_URL" => dono,
+  # A tarefa prisma:conceder_privilegios cria o usuário do app com estes dados
+  "APP_DB_USER" => URI.decode_www_form_component(app.user.to_s),
+  "APP_DB_PASSWORD" => URI.decode_www_form_component(app.password.to_s),
+  # Sobe o Rails sem os segredos do app (só roda a tarefa): sem APP_HOSTS nem PROXIES_CONFIAVEIS
+  "SECRET_KEY_BASE_DUMMY" => "1",
+  # As chaves de cifra, para uma tarefa que leia coluna cifrada
+  "ACTIVE_RECORD_ENCRYPTION_PRIMARY_KEY" => exigir("ACTIVE_RECORD_ENCRYPTION_PRIMARY_KEY"),
+  "ACTIVE_RECORD_ENCRYPTION_DETERMINISTIC_KEY" => exigir("ACTIVE_RECORD_ENCRYPTION_DETERMINISTIC_KEY"),
+  "ACTIVE_RECORD_ENCRYPTION_KEY_DERIVATION_SALT" => exigir("ACTIVE_RECORD_ENCRYPTION_KEY_DERIVATION_SALT")
+}
+abort "como-dono: DATABASE_URL sem usuário ou senha do app." if ambiente["APP_DB_USER"].empty? || ambiente["APP_DB_PASSWORD"].empty?
+# Uma quebra de linha num valor viraria outra variável no arquivo de ambiente
+abort "como-dono: um dos segredos tem quebra de linha." if ambiente.values.any? { |valor| valor.match?(/[\r\n]/) }
+
+# A imagem pelo nome que o servidor lhe deu (com o registry na frente, se houver):
+# a versão do deploy em andamento ou, fora dele, a que está no ar
+escolha_da_imagem =
+  if versao
+    "docker images --format '{{.Repository}}:{{.Tag}}' | grep -F ':#{versao}' | grep -F prisma | head -n 1"
+  else
+    "docker ps --filter label=service=prisma --filter label=role=web --format '{{.Image}}' | head -n 1"
+  end
+
+comando_remoto = <<~SH.strip
+  IMAGEM=$(#{escolha_da_imagem})
+  [ -n "$IMAGEM" ] || { echo "nenhuma imagem do Prisma encontrada no servidor#{" para a versão #{versao}" if versao}" >&2; exit 3; }
+  docker run --rm --network kamal --env-file /dev/stdin "$IMAGEM" bin/rails #{Shellwords.join(tarefa)}
+SH
+
+arquivo_de_ambiente = ambiente.map { |nome, valor| "#{nome}=#{valor}" }.join("\n") + "\n"
+
+hosts.each do |host|
+  puts "== #{host}: bin/rails #{tarefa.join(' ')} (como dono do banco)"
+  tentativas = 0
+  loop do
+    tentativas += 1
+    saida = +""
+    sucesso = Open3.popen2e("ssh", "-i", chave_ssh, "-o", "IdentitiesOnly=yes", "-o", "BatchMode=yes",
+                            "#{usuario_ssh}@#{host}", comando_remoto) do |entrada, linhas, espera|
+      entrada.write(arquivo_de_ambiente)
+      entrada.close
+      # A saída aparece enquanto a tarefa roda: uma migração demorada não fica muda
+      linhas.each_line { |linha| print linha; saida << linha }
+      espera.value.success?
+    end
+    break if sucesso
+
+    # O MariaDB novo leva alguns segundos para aceitar conexões: só nesse caso, tenta de novo
+    if tentativas < 12 && saida.match?(/Can't connect|Unknown MySQL server host|Lost connection|Connection refused|server has gone away|Connection reset/i)
+      puts "O banco ainda não responde (tentativa #{tentativas} de 12); aguardando 5 segundos..."
+      sleep 5
+    else
+      abort "como-dono: falhou em #{host}."
+    end
+  end
+end

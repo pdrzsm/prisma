@@ -1,0 +1,14 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# Antes de o app novo subir: migra o banco e acerta os privilégios do usuário do
+# app (rails db:prepare prisma:conceder_privilegios). Roda como DONO do banco,
+# numa imagem que o Kamal já mandou para o servidor (KAMAL_VERSION é a versão
+# dela), porque o usuário do app não altera tabelas nem mexe nas auditorias
+# (bin/como-dono, app/models/privilegios_do_banco.rb, docs/implantacao.md, "Banco").
+# Os segredos vêm do ambiente, carregado pelo bin/implantar.
+
+como_dono = File.expand_path("../../bin/como-dono", __dir__)
+unless system(como_dono, "db:prepare", "prisma:conceder_privilegios")
+  abort "pre-app-boot: a migração falhou; o deploy foi interrompido e o app antigo continua no ar."
+end
